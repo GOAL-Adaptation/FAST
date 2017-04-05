@@ -12,6 +12,22 @@ import CEnergymon
 // Monitoring //
 ////////////////
 
+class Measure<T> {
+    var value: T
+    init(value: T) {
+        self.value = value
+
+    }
+    func get() -> T {
+        return value
+    }
+}
+class Knob<T> : Measure<T> {
+    internal func set(value: T) {
+        self.value = value
+    }
+}
+
 /** Global measure store */
 private var measures: [String: Double] = [:]
 private var measuresLock = NSLock()
@@ -159,7 +175,6 @@ class MeasuringDevice {
 
     public func sample() {
         for (m,s) in stats { s.observe(measures[m]!) }
-        print("energy: \(measures["energy"]),\ttime: \(measures["time"]),\terror: \(measures["error"]),\terrorWindowAverage: \(stats["error"]?.windowAverage)")
     }
 
     func reportProgress() {
@@ -259,15 +274,72 @@ class Statistics {
 // Optimization //
 //////////////////
 
+/** Global intent store */
+private var intents: [String: Intent] = [:]
+private var intentsLock = NSLock()
+
+typealias KnobName = String
+typealias KnobValue = String
+
+class KnobSettings {
+
+    let settings: [KnobName: KnobValue]
+
+    init(settings: [KnobName: KnobValue]) {
+        self.settings = settings
+    }
+
+    func apply() {
+        for (knobName, knobValue) in settings {
+            // TODO applu knob settings
+        }
+    }
+
+}
+
+class KnobSettingStrategy {
+
+    let strategy: (_ progress: UInt) -> KnobSettings
+
+    init(strategy: @escaping (_ progress: UInt) -> KnobSettings) {
+        self.strategy = strategy
+    }
+
+    subscript(index: UInt) -> KnobSettings {
+        get {
+            return strategy(index)
+        }
+    }
+
+}
+
 public func optimize
     ( _ id: String
     , across windowSize: UInt
     , samplingPolicy: SamplingPolicy = TimingSamplingPolicy(100.millisecond)
     , _ labels: [String]
     , _ routine: (Void) -> Void) {
-        
-    // TODO: Replace placeholder delegation to monitor() with optimizer call.
-    monitor(across: windowSize, samplingPolicy: samplingPolicy, labels, routine)
+
+    let intent = intents[id]
+
+    let m = MeasuringDevice(samplingPolicy, windowSize, labels)
+
+    func computeStrategy() -> KnobSettingStrategy {
+        // FIXME Replace dummy strategy
+        return KnobSettingStrategy(strategy: { (_: UInt) -> KnobSettings in return KnobSettings(settings: [:]) })
+    }
+
+    var progress: UInt = 0 // progress counter distinct from that used in ProgressSamplingPolicy
+    var strategy: KnobSettingStrategy = computeStrategy()
+    while true {
+        monitor(m, routine)
+        progress += 1
+        if progress % windowSize == 0 {
+            strategy = computeStrategy()
+        }
+        // FIXME This should only apply when the strategy actually needs to change knobs
+        strategy[progress % windowSize].apply()
+    }
 
 }
 
