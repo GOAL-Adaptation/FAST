@@ -94,7 +94,14 @@ public class ProgressSamplingPolicy : SamplingPolicy {
 
 }
 
-class EnergyMonitor {
+protocol EnergyMonitor {
+
+    /** Returns the current energy in microjoules */
+    func read() -> UInt64
+
+}
+
+class CEnergyMonitor : EnergyMonitor {
 
     var em = energymon()
 
@@ -123,7 +130,7 @@ class MeasuringDevice {
     private var applicationMeasures: Array<String>
     private var systemMeasures: Array<String> = ["energy", "time"]
     private var samplingPolicy: SamplingPolicy
-    private let energyMonitor: EnergyMonitor = EnergyMonitor()
+    private let energyMonitor: EnergyMonitor = CEnergyMonitor()
     private var energy: UInt64 = 0
 
     private var stats = [String : Statistics]()
