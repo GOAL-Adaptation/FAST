@@ -8,38 +8,67 @@ import Foundation
 import Venice
 import CEnergymon
 
-////////////////
-// Monitoring //
-////////////////
+///////////////////
+// Runtime State //
+///////////////////
 
-class Measure<T> {
-    var value: T
-    init(value: T) {
-        self.value = value
-
-    }
-    func get() -> T {
-        return value
-    }
-}
-class Knob<T> : Measure<T> {
-    internal func set(value: T) {
-        self.value = value
-    }
-}
+/** Global measure store */
+private var intents: [String: IntentSpec] = [:]
+private var intentsLock = NSLock()
 
 /** Global measure store */
 private var measures: [String: Double] = [:]
 private var measuresLock = NSLock()
 
-@discardableResult public func measure(_ label: String, _ m: Double) -> Double {
-    synchronized(measuresLock) {
-        measures[label] = m
+/** Global knob setter store */
+private var knobSetters: [String: (Any) -> Void] = [:]
+private var knobSettersLock = NSLock()
+
+public class Knob<T> {
+    var v: T
+    init(_ name: String, _ v: T) {
+        self.v = v
+        knobSetters[name] = { (a: Any) -> Void in
+            switch a {
+            case let vv as T:
+                self.v = vv
+            default:
+                fatalError("Tried to assign \(a) to a knob of type \(type(of: v)).")
+            }
+        }
     }
-    return m
+    func get() -> T {
+        return self.v
+    }
+    func set(_ v: T) {
+        self.v = v
+    }
 }
 
-internal func monitor(_ m: MeasuringDevice, _ routine: (Void) -> Void) {
+/* Update the value of name in the global measure store and return that value. */
+internal func setKnob(_ name: String, to value: Any) {
+    if let setKnobTo = knobSetters[name] {
+        setKnobTo(value)
+    }
+    else {
+        fatalError("Tried to assign \(value) to an unknown knob called \(name).")
+    }    
+}
+
+/* Update the value of name in the global measure store and return that value. */
+@discardableResult public func measure(_ name: String, _ value: Double) -> Double {
+    synchronized(measuresLock) {
+        measures[name] = value
+    }
+    return value
+}
+
+////////////////
+// Monitoring //
+////////////////
+
+/* Execute routine and update the progress counter in  */
+internal func executeAndReportProgress(_ m: MeasuringDevice, _ routine: (Void) -> Void) {
     routine()
     m.reportProgress()
 }
@@ -51,7 +80,7 @@ public func monitor
     , _ routine: (Void) -> Void) {
     let m = MeasuringDevice(samplingPolicy, windowSize, labels)
     while true {
-        monitor(m, routine)
+        executeAndReportProgress(m, routine)
     }
 }
 
@@ -274,43 +303,28 @@ class Statistics {
 // Optimization //
 //////////////////
 
-/** Global intent store */
-private var intents: [String: Intent] = [:]
-private var intentsLock = NSLock()
-
-typealias KnobName = String
-typealias KnobValue = String
-
 class KnobSettings {
-
-    let settings: [KnobName: KnobValue]
-
-    init(settings: [KnobName: KnobValue]) {
+    let settings: [String: Any]
+    init(settings: [String: Any]) {
         self.settings = settings
     }
-
     func apply() {
-        for (knobName, knobValue) in settings {
-            // TODO applu knob settings
+        for (name, value) in settings {
+            setKnob(name, to: value)
         }
     }
-
 }
 
 class KnobSettingStrategy {
-
     let strategy: (_ progress: UInt) -> KnobSettings
-
     init(strategy: @escaping (_ progress: UInt) -> KnobSettings) {
         self.strategy = strategy
     }
-
     subscript(index: UInt) -> KnobSettings {
         get {
             return strategy(index)
         }
     }
-
 }
 
 public func optimize
@@ -332,7 +346,7 @@ public func optimize
     var progress: UInt = 0 // progress counter distinct from that used in ProgressSamplingPolicy
     var strategy: KnobSettingStrategy = computeStrategy()
     while true {
-        monitor(m, routine)
+        executeAndReportProgress(m, routine)
         progress += 1
         if progress % windowSize == 0 {
             strategy = computeStrategy()
