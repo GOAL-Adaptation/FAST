@@ -26,7 +26,7 @@ private var knobSettersLock = NSLock()
 
 public class Knob<T> {
     var v: T
-    init(_ name: String, _ v: T) {
+    public init(_ name: String, _ v: T) {
         self.v = v
         knobSetters[name] = { (a: Any) -> Void in
             switch a {
@@ -37,10 +37,10 @@ public class Knob<T> {
             }
         }
     }
-    func get() -> T {
+    public func get() -> T {
         return self.v
     }
-    func set(_ v: T) {
+    internal func set(_ v: T) {
         self.v = v
     }
 }
