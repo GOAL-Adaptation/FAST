@@ -7,6 +7,7 @@
 import Foundation
 import Venice
 import CEnergymon
+import Intent
 
 ///////////////////
 // Runtime State //
@@ -334,7 +335,7 @@ public func optimize
     , _ labels: [String]
     , _ routine: (Void) -> Void) {
 
-    let intent = intents[id]
+    let intent: IntentSpec = intents[id]!
 
     let m = MeasuringDevice(samplingPolicy, windowSize, labels)
 

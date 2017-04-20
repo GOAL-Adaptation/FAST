@@ -4,6 +4,6 @@
 
 */
 
-class IntentSpec {
+open class IntentSpec {
 
 }
