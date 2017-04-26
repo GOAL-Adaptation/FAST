@@ -6,25 +6,25 @@
 
 import Foundation
 import Venice
-import CEnergymon
 import Intent
 
 ///////////////////
 // Runtime State //
 ///////////////////
 
-/** Global measure store */
+/* Global measure store */
 private var intents: [String: IntentSpec] = [:]
 private var intentsLock = NSLock()
 
-/** Global measure store */
+/* Global measure store */
 private var measures: [String: Double] = [:]
 private var measuresLock = NSLock()
 
-/** Global knob setter store */
+/* Global knob setter store */
 private var knobSetters: [String: (Any) -> Void] = [:]
 private var knobSettersLock = NSLock()
 
+/* Wrapper for a value that can be read freely, but can only be changed by the runtime. */
 public class Knob<T> {
     var v: T
     public init(_ name: String, _ v: T) {
@@ -68,7 +68,7 @@ internal func setKnob(_ name: String, to value: Any) {
 // Monitoring //
 ////////////////
 
-/* Execute routine and update the progress counter in  */
+/* Execute routine and update the progress counter. */
 internal func executeAndReportProgress(_ m: MeasuringDevice, _ routine: (Void) -> Void) {
     routine()
     m.reportProgress()
@@ -85,91 +85,9 @@ public func monitor
     }
 }
 
-public protocol SamplingPolicy {
-
-    func registerSampler(_ sample: @escaping () -> Void) -> Void
-
-    func reportProgress(_ progress: UInt) -> Void
-
-}
-
-/** Sample once per N seconds, where N is the samplingRate passed to init(). */
-public class TimingSamplingPolicy : SamplingPolicy {
-
-    let samplingRate: Double
-
-    init(_ samplingRate: Double) {
-        self.samplingRate = samplingRate
-    }
-
-    /** Runs sample() once per N seconds, where N is the samplingRate passed to init(). */
-    public func registerSampler(_ sample: @escaping () -> Void) -> Void {
-        co {
-            while true {
-                sample()
-                nap(for: self.samplingRate)
-            }
-        }
-    }
-
-    /** Ignored. Sampling is done purely based on time. */
-    public func reportProgress(_ progress: UInt) -> Void {}
-
-}
-
-/** Sample once per N calls to reportProgress(), where N is the period passed to init(). */
-public class ProgressSamplingPolicy : SamplingPolicy {
-
-    private let period: UInt
-    private var sample: () -> Void = { }
-
-    init(period: UInt) {
-        self.period = period
-    }
-
-    public func registerSampler(_ sample: @escaping () -> Void) -> Void {
-        self.sample = sample
-    }
-
-    /** Calls sample once per N invocations, where N is the period passed to init(). */
-    public func reportProgress(_ progress: UInt) -> Void {
-        if progress % period == 0 {
-            self.sample()
-        }
-    }
-
-}
-
-protocol EnergyMonitor {
-
-    /** Returns the current energy in microjoules */
-    func read() -> UInt64
-
-}
-
-class CEnergyMonitor : EnergyMonitor {
-
-    var em = energymon()
-
-    /** Get the energymon instance and initialize */
-    init() {
-        let _ = energymon_get_default(&em)
-        let _ = em.finit(&em)
-    }
-
-    /** Returns the current energy in microjoules */
-    func read() -> UInt64 {
-        return em.fread(&em)
-    }
-
-    /** Destroy the energymon instance */
-    deinit {
-        let _ = em.ffinish(&em)
-    }
-
-}
-
-class MeasuringDevice {
+/* Periodically sample measures, according to the samplingPolicy passed at 
+   initialization, and compute statistics for them. */
+internal class MeasuringDevice {
 
     private var progress: UInt = 0
     private var windowSize: UInt = 20
@@ -214,96 +132,11 @@ class MeasuringDevice {
 
 }
 
-/**
-    Computes total and window statistics for a single quantity,
-    using constant-time algorithms.
-
-    - Cumulative moving average is computed over all observed values.
-    - Window average is computed over the N latest observations,
-      where N is the windowSize passed to init().
-*/
-class Statistics {
-
-    private var _totalAverage: Double = 0
-    private var totalCount: Int = 0
-
-    private var _windowAverage: Double = 0
-    private var window: [Double] = []
-    private var windowHead: Int = 0
-    private var windowIsComplete: Bool = false
-    private var windowLock: NSLock = NSLock()
-
-    /** Returns the cumulative moving average, computed over all observations. */
-    var totalAverage: Double {
-        get { return _totalAverage }
-    }
-
-    /** Returns the moving average, computed over the last N observations, where
-        N is the windowSize passed to init(). When less than windowSize
-        observations have been made, returns Double.nan. */
-    var windowAverage: Double {
-        get { return windowIsComplete ? _windowAverage : Double.nan }
-    }
-
-    init(windowSize: Int) {
-        precondition(windowSize > 0, "Window size must be positive")
-        window = Array(repeating: Double.nan, count: windowSize)
-    }
-
-    /**
-        NB: The new window size must not be greater than the current window size.
-        NB: Linear in windowSize.
-    */
-    var windowSize: Int {
-        get {
-            return window.count
-        }
-        set(newSize) {
-            precondition(newSize > 0, "Window size must be positive")
-            precondition(windowSize >= newSize, "Window size can not grow")
-            synchronized(windowLock) {
-                var newWindow = Array(repeating: 0.0, count: newSize)
-                for i in 0 ..< newSize {
-                    newWindow[i] = window[windowHead + i % windowSize]
-                }
-                window = newWindow
-                _windowAverage = window.reduce(0.0, +) / Double(newSize)
-            }
-        }
-    }
-
-    /** Update statistics */
-    @discardableResult func observe(_ value: Double) -> Double {
-        /* Total average */
-        _totalAverage = cumulativeMovingAverage(current: _totalAverage, count: totalCount, newValue: value)
-        totalCount += 1
-        synchronized(windowLock) {
-            /* Window average */
-            if windowIsComplete {
-                _windowAverage = _windowAverage + (value - window[windowHead]) / Double(windowSize)
-            }
-            else {
-                _windowAverage = cumulativeMovingAverage(current: _windowAverage, count: windowHead, newValue: value)
-                if windowHead == windowSize - 1 {
-                    windowIsComplete = true
-                }
-            }
-            window[windowHead] = value
-            windowHead = (windowHead + 1) % windowSize
-        }
-        return value
-    }
-
-    @inline(__always) private func cumulativeMovingAverage(current: Double, count: Int, newValue: Double) -> Double {
-        return (current * Double(count) + newValue) / Double(count + 1)
-    }
-
-}
-
 //////////////////
 // Optimization //
 //////////////////
 
+/* A collection of knob values that can be applied to control the system. */
 class KnobSettings {
     let settings: [String: Any]
     init(settings: [String: Any]) {
@@ -316,6 +149,7 @@ class KnobSettings {
     }
 }
 
+/* A strategy for switching between KnobSettings, based on the input index. */
 class KnobSettingStrategy {
     let strategy: (_ progress: UInt) -> KnobSettings
     init(strategy: @escaping (_ progress: UInt) -> KnobSettings) {
@@ -328,6 +162,7 @@ class KnobSettingStrategy {
     }
 }
 
+/* Defines an optimization scope. Replaces a loop in a pure Swift program. */
 public func optimize
     ( _ id: String
     , across windowSize: UInt
@@ -356,14 +191,4 @@ public func optimize
         strategy[progress % windowSize].apply()
     }
 
-}
-
-///////////////
-// Utilities //
-///////////////
-
-func synchronized<L: NSLocking>(_ lock: L, routine: () -> ()) {
-    lock.lock()
-    routine()
-    lock.unlock()
 }
