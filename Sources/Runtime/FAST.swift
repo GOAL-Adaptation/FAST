@@ -170,25 +170,27 @@ public func optimize
     , _ labels: [String]
     , _ routine: (Void) -> Void) {
 
-    let intent: IntentSpec = intents[id]!
+    if let intent = intents[id] {
+        let m = MeasuringDevice(samplingPolicy, windowSize, labels)
 
-    let m = MeasuringDevice(samplingPolicy, windowSize, labels)
-
-    func computeStrategy() -> KnobSettingStrategy {
-        // FIXME Replace dummy strategy
-        return KnobSettingStrategy(strategy: { (_: UInt) -> KnobSettings in return KnobSettings(settings: [:]) })
-    }
-
-    var progress: UInt = 0 // progress counter distinct from that used in ProgressSamplingPolicy
-    var strategy: KnobSettingStrategy = computeStrategy()
-    while true {
-        executeAndReportProgress(m, routine)
-        progress += 1
-        if progress % windowSize == 0 {
-            strategy = computeStrategy()
+        func computeStrategy() -> KnobSettingStrategy {
+            // FIXME Replace dummy strategy
+            return KnobSettingStrategy(strategy: { (_: UInt) -> KnobSettings in return KnobSettings(settings: [:]) })
         }
-        // FIXME This should only apply when the strategy actually needs to change knobs
-        strategy[progress % windowSize].apply()
-    }
+
+        var progress: UInt = 0 // progress counter distinct from that used in ProgressSamplingPolicy
+        var strategy: KnobSettingStrategy = computeStrategy()
+        while true {
+            executeAndReportProgress(m, routine)
+            progress += 1
+            if progress % windowSize == 0 {
+                strategy = computeStrategy()
+            }
+            // FIXME This should only apply when the strategy actually needs to change knobs
+            strategy[progress % windowSize].apply()
+        }
+    } else {
+        fatalError("No intent defined for optimize scope \"\(id)\".")
+    }   
 
 }
