@@ -6,11 +6,15 @@
 
 import Foundation
 import Venice
+import HeliumLogger
+import LoggerAPI
 import Intent
 
 ///////////////////
 // Runtime State //
 ///////////////////
+
+let logger = HeliumLogger()
 
 /* Global measure store */
 private var intents: [String: IntentSpec] = [:]
@@ -190,7 +194,7 @@ public func optimize
             strategy[progress % windowSize].apply()
         }
     } else {
-        fatalError("No intent defined for optimize scope \"\(id)\".")
+        Log.warning("No intent defined for optimize scope \"\(id)\". Proceeding without adaptation.")
     }   
 
 }
