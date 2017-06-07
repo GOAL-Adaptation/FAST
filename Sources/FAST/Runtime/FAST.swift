@@ -6,9 +6,9 @@
 
 import Foundation
 import Venice
+
 import HeliumLogger
 import LoggerAPI
-import Intent
 
 ///////////////////
 // Runtime State //
@@ -17,16 +17,23 @@ import Intent
 let logger = HeliumLogger()
 
 /* Global measure store */
-private var intents: [String: IntentSpec] = [:]
+internal var intents: [String : IntentSpec] = [:]
 private var intentsLock = NSLock()
 
 /* Global measure store */
-private var measures: [String: Double] = [:]
+internal var measures: [String : Double] = [:]
 private var measuresLock = NSLock()
 
 /* Global knob setter store */
-private var knobSetters: [String: (Any) -> Void] = [:]
+internal var knobSetters: [String : (Any) -> Void] = [:]
 private var knobSettersLock = NSLock()
+
+/* Global model relating knob settings to measure values */
+internal var model: Model = Model()
+private var modelLock = NSLock()
+
+/* Global controller */
+internal var controller: Controller = ConstantController()
 
 /* Wrapper for a value that can be read freely, but can only be changed by the runtime. */
 public class Knob<T> {
@@ -65,6 +72,7 @@ internal func setKnob(_ name: String, to value: Any) {
     synchronized(measuresLock) {
         measures[name] = value
     }
+    Log.verbose("Registered value \(value) for measure \(name).")
     return value
 }
 
@@ -142,26 +150,31 @@ internal class MeasuringDevice {
 
 /* A collection of knob values that can be applied to control the system. */
 class KnobSettings {
-    let settings: [String: Any]
-    init(settings: [String: Any]) {
+    let settings: [String : Any]
+    init(_ settings: [String : Any]) {
         self.settings = settings
     }
     func apply() {
         for (name, value) in settings {
             setKnob(name, to: value)
         }
+        Log.verbose("Applied knob settings.")
     }
 }
 
 /* A strategy for switching between KnobSettings, based on the input index. */
-class KnobSettingStrategy {
-    let strategy: (_ progress: UInt) -> KnobSettings
-    init(strategy: @escaping (_ progress: UInt) -> KnobSettings) {
-        self.strategy = strategy
+class Schedule {
+    let schedule: (_ progress: UInt) -> KnobSettings
+    init(_ schedule: @escaping (_ progress: UInt) -> KnobSettings) {
+        self.schedule = schedule
+    }
+    init(constant:  KnobSettings) {
+        schedule = { (_: UInt) in constant }
     }
     subscript(index: UInt) -> KnobSettings {
         get {
-            return strategy(index)
+            Log.verbose("Querying schedule at index \(index)")
+            return schedule(index)
         }
     }
 }
@@ -173,25 +186,19 @@ public func optimize
     , samplingPolicy: SamplingPolicy = TimingSamplingPolicy(100.millisecond)
     , _ labels: [String]
     , _ routine: (Void) -> Void) {
-
+    
     if let intent = intents[id] {
         let m = MeasuringDevice(samplingPolicy, windowSize, labels)
-
-        func computeStrategy() -> KnobSettingStrategy {
-            // FIXME Replace dummy strategy
-            return KnobSettingStrategy(strategy: { (_: UInt) -> KnobSettings in return KnobSettings(settings: [:]) })
-        }
-
         var progress: UInt = 0 // progress counter distinct from that used in ProgressSamplingPolicy
-        var strategy: KnobSettingStrategy = computeStrategy()
+        var schedule: Schedule = Schedule(constant: model.getInitialConfiguration()!.knobSettings)
         while true {
             executeAndReportProgress(m, routine)
             progress += 1
             if progress % windowSize == 0 {
-                strategy = computeStrategy()
+                schedule = controller.getSchedule(intent, measures)
             }
-            // FIXME This should only apply when the strategy actually needs to change knobs
-            strategy[progress % windowSize].apply()
+            // FIXME This should only apply when the schedule actually needs to change knobs
+            schedule[progress % windowSize].apply()
         }
     } else {
         Log.warning("No intent defined for optimize scope \"\(id)\". Proceeding without adaptation.")

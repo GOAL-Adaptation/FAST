@@ -1,0 +1,49 @@
+import FASTController
+
+protocol Controller {
+
+    func getSchedule(_ intent: IntentSpec, _ measureValues: [String : Double]) -> Schedule
+
+}
+
+class ConstantController : Controller {
+
+    func getSchedule(_ intent: IntentSpec, _ measureValues: [String : Double]) -> Schedule {
+        return Schedule({ (_: UInt) -> KnobSettings in 
+            return KnobSettings([:]) 
+        })
+    }
+
+}
+
+class IntentPreservingController : Controller {
+
+    let model: Model
+    let fastController: FASTController
+
+    init(model: Model,
+         intent: IntentSpec,
+         window: UInt32,
+         optType: FASTControllerOptimizationType) {
+        self.model = model
+        let constraintMeasureIdx = model.measureNames!.index(of: intent.constraintName())! // FIXME Add error handling
+        self.fastController = 
+            FASTController( model: model.getFASTControllerModel()
+                          , constraint: intent.constraint()
+                          , constraintMeasureIdx: constraintMeasureIdx
+                          , window: window
+                          , optType: optType
+                          , ocb: intent.costOrValue()
+                          , initialModelEntryIdx: model.initialConfigurationIndex!
+                          )
+    }
+
+    func getSchedule(_ intent: IntentSpec, _ measureValues: [String : Double]) -> Schedule {
+        let values = model.measureNames!.map{ measureValues[$0]! } // FIXME Replace global measure store with custom ordered collection that avoids this conversion
+        let s = fastController.computeSchedule(tag: 0, measures: values) // FIXME Pass meaningful tag for logging
+        return Schedule({ (i: UInt) -> KnobSettings in 
+            return self.model[Int(i) < s.nLowerIterations ? s.idLower : s.idUpper].knobSettings
+        })
+    }
+
+}
