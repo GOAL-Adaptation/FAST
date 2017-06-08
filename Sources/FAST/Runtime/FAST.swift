@@ -56,6 +56,7 @@ public class Runtime {
     /** Intialize intent preserving controller with the given model, intent and window */
     public static func initializeController(_ model: Model, _ intent: IntentSpec, _ window: UInt32 = 20) {
         synchronized(controllerLock) {
+            intents[intent.name] = intent
             controller = IntentPreservingController(model, intent, window)
         }
     }
