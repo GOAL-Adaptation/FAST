@@ -66,9 +66,18 @@ public class Runtime {
         }
     }
 
+    /** Update the value of name in the global measure store and return that value */
+    @discardableResult public static func measure(_ name: String, _ value: Double) -> Double {
+        synchronized(measuresLock) {
+            measures[name] = value
+        }
+        Log.verbose("Registered value \(value) for measure \(name).")
+        return value
+    }
+
     /** Read the current value of a measure */
-    public readMeasure(_ name: String) -> Double? {
-        return measure[name]
+    public static func readMeasure(_ name: String) -> Double? {
+        return measures[name]
     }
 
     /** Update the value of name in the global measure store and return that value */
@@ -79,15 +88,6 @@ public class Runtime {
         else {
             fatalError("Tried to assign \(value) to an unknown knob called \(name).")
         }    
-    }
-
-    /** Update the value of name in the global measure store and return that value */
-    @discardableResult public static func measure(_ name: String, _ value: Double) -> Double {
-        synchronized(measuresLock) {
-            measures[name] = value
-        }
-        Log.verbose("Registered value \(value) for measure \(name).")
-        return value
     }
 
 }
