@@ -17,40 +17,12 @@ import CSwiftV
 
 let logger = HeliumLogger()
 
-/* Global intent store */
-private var intents: [String : IntentSpec] = [:]
-private var intentsLock = NSLock()
-
-public func setIntent(_ name: String, _ intent: IntentSpec) {
-    synchronized(intentsLock) {
-        intents[name] = intent
-    }
-}
-
-/* Global measure store */
-internal var measures: [String : Double] = [:]
-private var measuresLock = NSLock()
-
-/* Global knob setter store */
-internal var knobSetters: [String : (Any) -> Void] = [:]
-private var knobSettersLock = NSLock()
-
-/* Global controller */
-internal var controller: Controller = ConstantController()
-private var controllerLock = NSLock()
-
-public func initializeController(_ model: Model, _ intent: IntentSpec, _ window: UInt32 = 20) {
-    synchronized(controllerLock) {
-        controller = IntentPreservingController(model, intent, window)
-    }
-}
-
 /* Wrapper for a value that can be read freely, but can only be changed by the runtime. */
 public class Knob<T> {
     var v: T
     public init(_ name: String, _ v: T) {
         self.v = v
-        knobSetters[name] = { (a: Any) -> Void in
+        Runtime.knobSetters[name] = { (a: Any) -> Void in
             switch a {
             case let vv as T:
                 self.v = vv
@@ -67,23 +39,57 @@ public class Knob<T> {
     }
 }
 
-/* Update the value of name in the global measure store and return that value. */
-internal func setKnob(_ name: String, to value: Any) {
-    if let setKnobTo = knobSetters[name] {
-        setKnobTo(value)
-    }
-    else {
-        fatalError("Tried to assign \(value) to an unknown knob called \(name).")
-    }    
-}
+public class Runtime {
 
-/* Update the value of name in the global measure store and return that value. */
-@discardableResult public func measure(_ name: String, _ value: Double) -> Double {
-    synchronized(measuresLock) {
-        measures[name] = value
+    private init() {}
+
+    /* Global intent store */
+    fileprivate static var intents: [String : IntentSpec] = [:]
+    private static var intentsLock = NSLock()
+
+    public static func setIntent(_ name: String, _ intent: IntentSpec) {
+        synchronized(intentsLock) {
+            intents[name] = intent
+        }
     }
-    Log.verbose("Registered value \(value) for measure \(name).")
-    return value
+
+    /* Global measure store */
+    fileprivate static var measures: [String : Double] = [:]
+    private static var measuresLock = NSLock()
+
+    /* Global knob setter store */
+    fileprivate static var knobSetters: [String : (Any) -> Void] = [:]
+    private static var knobSettersLock = NSLock()
+
+    /* Global controller */
+    fileprivate static var controller: Controller = ConstantController()
+    private static var controllerLock = NSLock()
+
+    public static func initializeController(_ model: Model, _ intent: IntentSpec, _ window: UInt32 = 20) {
+        synchronized(controllerLock) {
+            controller = IntentPreservingController(model, intent, window)
+        }
+    }
+
+    /* Update the value of name in the global measure store and return that value. */
+    internal static func setKnob(_ name: String, to value: Any) {
+        if let setKnobTo = knobSetters[name] {
+            setKnobTo(value)
+        }
+        else {
+            fatalError("Tried to assign \(value) to an unknown knob called \(name).")
+        }    
+    }
+
+    /* Update the value of name in the global measure store and return that value. */
+    @discardableResult public static func measure(_ name: String, _ value: Double) -> Double {
+        synchronized(measuresLock) {
+            measures[name] = value
+        }
+        Log.verbose("Registered value \(value) for measure \(name).")
+        return value
+    }
+
 }
 
 ////////////////
@@ -135,16 +141,16 @@ internal class MeasuringDevice {
             while true {
                 let energyNow = self.energyMonitor.read()
                 let (deltaEnergy, _) = UInt64.subtractWithOverflow(energyNow, self.energy)
-                let _ = measure("energy", Double(deltaEnergy))
+                let _ = Runtime.measure("energy", Double(deltaEnergy))
                 self.energy = energyNow
-                let _ = measure("time", NSDate().timeIntervalSince1970)
+                let _ = Runtime.measure("time", NSDate().timeIntervalSince1970)
                 nap(for: 1.millisecond)
             }
         }
     }
 
     public func sample() {
-        for (m,s) in stats { s.observe(measures[m]!) }
+        for (m,s) in stats { s.observe(Runtime.measures[m]!) }
     }
 
     func reportProgress() {
@@ -166,7 +172,7 @@ class KnobSettings {
     }
     func apply() {
         for (name, value) in settings {
-            setKnob(name, to: value)
+            Runtime.setKnob(name, to: value)
         }
         Log.verbose("Applied knob settings.")
     }
@@ -197,15 +203,15 @@ public func optimize
     , _ labels: [String]
     , _ routine: (Void) -> Void) {
     
-    if let intent = intents[id] {
+    if let intent = Runtime.intents[id] {
         let m = MeasuringDevice(samplingPolicy, windowSize, labels)
         var progress: UInt32 = 0 // progress counter distinct from that used in ProgressSamplingPolicy
-        var schedule: Schedule = Schedule(constant: controller.model.getInitialConfiguration()!.knobSettings)
+        var schedule: Schedule = Schedule(constant: Runtime.controller.model.getInitialConfiguration()!.knobSettings)
         while true {
             executeAndReportProgress(m, routine)
             progress += 1
             if progress % windowSize == 0 {
-                schedule = controller.getSchedule(intent, measures)
+                schedule = Runtime.controller.getSchedule(intent, Runtime.measures)
             }
             // FIXME This should only apply when the schedule actually needs to change knobs
             schedule[progress % windowSize].apply()
