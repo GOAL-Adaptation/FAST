@@ -43,19 +43,13 @@ public class Runtime {
 
     private init() {}
 
-    /* Global intent store */
-    fileprivate static var intents: [String : IntentSpec] = [:]
-    private static var intentsLock = NSLock()
-
-    /* Global measure store */
     fileprivate static var measures: [String : Double] = [:]
     private static var measuresLock = NSLock()
 
-    /* Global knob setter store */
     fileprivate static var knobSetters: [String : (Any) -> Void] = [:]
     private static var knobSettersLock = NSLock()
 
-    /* Global controller */
+    fileprivate static var intents: [String : IntentSpec] = [:]
     fileprivate static var controller: Controller = ConstantController()
     private static var controllerLock = NSLock()
 
