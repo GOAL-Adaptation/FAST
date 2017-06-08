@@ -47,12 +47,6 @@ public class Runtime {
     fileprivate static var intents: [String : IntentSpec] = [:]
     private static var intentsLock = NSLock()
 
-    public static func setIntent(_ name: String, _ intent: IntentSpec) {
-        synchronized(intentsLock) {
-            intents[name] = intent
-        }
-    }
-
     /* Global measure store */
     fileprivate static var measures: [String : Double] = [:]
     private static var measuresLock = NSLock()
