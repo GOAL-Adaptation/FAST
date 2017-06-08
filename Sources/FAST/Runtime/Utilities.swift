@@ -5,3 +5,12 @@ func synchronized<L: NSLocking>(_ lock: L, routine: () -> ()) {
     routine()
     lock.unlock()
 }
+
+extension Dictionary {
+    init(elements:[(Key, Value)]) {
+        self.init()
+        for (key, value) in elements {
+            updateValue(value, forKey: key)
+        }
+    }
+}

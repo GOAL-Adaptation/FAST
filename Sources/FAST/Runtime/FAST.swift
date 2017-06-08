@@ -9,6 +9,7 @@ import Venice
 
 import HeliumLogger
 import LoggerAPI
+import CSwiftV
 
 ///////////////////
 // Runtime State //
@@ -16,9 +17,15 @@ import LoggerAPI
 
 let logger = HeliumLogger()
 
-/* Global measure store */
-internal var intents: [String : IntentSpec] = [:]
+/* Global intent store */
+private var intents: [String : IntentSpec] = [:]
 private var intentsLock = NSLock()
+
+public func setIntent(_ name: String, _ intent: IntentSpec) {
+    synchronized(intentsLock) {
+        intents[name] = intent
+    }
+}
 
 /* Global measure store */
 internal var measures: [String : Double] = [:]
@@ -28,12 +35,15 @@ private var measuresLock = NSLock()
 internal var knobSetters: [String : (Any) -> Void] = [:]
 private var knobSettersLock = NSLock()
 
-/* Global model relating knob settings to measure values */
-internal var model: Model = Model()
-private var modelLock = NSLock()
-
 /* Global controller */
 internal var controller: Controller = ConstantController()
+private var controllerLock = NSLock()
+
+public func initializeController(_ model: Model, _ intent: IntentSpec, _ window: UInt32 = 20) {
+    synchronized(controllerLock) {
+        controller = IntentPreservingController(model, intent, window)
+    }
+}
 
 /* Wrapper for a value that can be read freely, but can only be changed by the runtime. */
 public class Knob<T> {
@@ -163,7 +173,7 @@ class KnobSettings {
 }
 
 /* A strategy for switching between KnobSettings, based on the input index. */
-class Schedule {
+public class Schedule {
     let schedule: (_ progress: UInt32) -> KnobSettings
     init(_ schedule: @escaping (_ progress: UInt32) -> KnobSettings) {
         self.schedule = schedule
@@ -189,8 +199,8 @@ public func optimize
     
     if let intent = intents[id] {
         let m = MeasuringDevice(samplingPolicy, windowSize, labels)
-        var schedule: Schedule = Schedule(constant: model.getInitialConfiguration()!.knobSettings)
         var progress: UInt32 = 0 // progress counter distinct from that used in ProgressSamplingPolicy
+        var schedule: Schedule = Schedule(constant: controller.model.getInitialConfiguration()!.knobSettings)
         while true {
             executeAndReportProgress(m, routine)
             progress += 1
