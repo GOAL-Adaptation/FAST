@@ -4,6 +4,8 @@
 
 */
 
+import FASTController
+
 public protocol IntentSpec {
 
   // knobs       k = 1 ..< 30               reference 1
@@ -23,6 +25,8 @@ public protocol IntentSpec {
   func constraintName() -> String
 
   func costOrValue() -> ([Double]) -> Double
+
+  func optimizationType() -> FASTControllerOptimizationType
 
   func trainingSet() -> [String]
 

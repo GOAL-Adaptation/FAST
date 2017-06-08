@@ -2,11 +2,15 @@ import FASTController
 
 protocol Controller {
 
+    var model: Model { get }
+
     func getSchedule(_ intent: IntentSpec, _ measureValues: [String : Double]) -> Schedule
 
 }
 
 class ConstantController : Controller {
+
+    let model = Model()
 
     func getSchedule(_ intent: IntentSpec, _ measureValues: [String : Double]) -> Schedule {
         return Schedule({ (_: UInt) -> KnobSettings in 
@@ -32,7 +36,7 @@ class IntentPreservingController : Controller {
                           , constraint: intent.constraint()
                           , constraintMeasureIdx: constraintMeasureIdx
                           , window: window
-                          , optType: optType
+                          , optType: intent.optimizationType()
                           , ocb: intent.costOrValue()
                           , initialModelEntryIdx: model.initialConfigurationIndex!
                           )
