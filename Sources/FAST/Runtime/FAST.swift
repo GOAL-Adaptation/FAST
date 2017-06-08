@@ -65,13 +65,14 @@ public class Runtime {
     fileprivate static var controller: Controller = ConstantController()
     private static var controllerLock = NSLock()
 
+    /** Intialize intent preserving controller with the given model, intent and window */
     public static func initializeController(_ model: Model, _ intent: IntentSpec, _ window: UInt32 = 20) {
         synchronized(controllerLock) {
             controller = IntentPreservingController(model, intent, window)
         }
     }
 
-    /* Update the value of name in the global measure store and return that value. */
+    /** Update the value of name in the global measure store and return that value */
     internal static func setKnob(_ name: String, to value: Any) {
         if let setKnobTo = knobSetters[name] {
             setKnobTo(value)
@@ -81,7 +82,7 @@ public class Runtime {
         }    
     }
 
-    /* Update the value of name in the global measure store and return that value. */
+    /** Update the value of name in the global measure store and return that value */
     @discardableResult public static func measure(_ name: String, _ value: Double) -> Double {
         synchronized(measuresLock) {
             measures[name] = value
