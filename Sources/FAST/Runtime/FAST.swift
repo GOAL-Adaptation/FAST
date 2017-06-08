@@ -72,6 +72,11 @@ public class Runtime {
         }
     }
 
+    /** Read the current value of a measure */
+    public readMeasure(_ name: String) -> Double? {
+        return measure[name]
+    }
+
     /** Update the value of name in the global measure store and return that value */
     internal static func setKnob(_ name: String, to value: Any) {
         if let setKnobTo = knobSetters[name] {
