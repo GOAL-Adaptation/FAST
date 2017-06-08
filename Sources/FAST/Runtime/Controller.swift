@@ -25,10 +25,9 @@ class IntentPreservingController : Controller {
     let model: Model
     let fastController: FASTController
 
-    init(model: Model,
-         intent: IntentSpec,
-         window: UInt32,
-         optType: FASTControllerOptimizationType) {
+    init(_ model: Model,
+         _ intent: IntentSpec,
+         _ window: UInt32) {
         self.model = model
         let constraintMeasureIdx = model.measureNames!.index(of: intent.constraintName())! // FIXME Add error handling
         self.fastController = 
