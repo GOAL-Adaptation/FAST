@@ -13,7 +13,7 @@ class ConstantController : Controller {
     let model = Model()
 
     func getSchedule(_ intent: IntentSpec, _ measureValues: [String : Double]) -> Schedule {
-        return Schedule({ (_: UInt) -> KnobSettings in 
+        return Schedule({ (_: UInt32) -> KnobSettings in 
             return KnobSettings([:]) 
         })
     }
@@ -45,7 +45,7 @@ class IntentPreservingController : Controller {
     func getSchedule(_ intent: IntentSpec, _ measureValues: [String : Double]) -> Schedule {
         let values = model.measureNames!.map{ measureValues[$0]! } // FIXME Replace global measure store with custom ordered collection that avoids this conversion
         let s = fastController.computeSchedule(tag: 0, measures: values) // FIXME Pass meaningful tag for logging
-        return Schedule({ (i: UInt) -> KnobSettings in 
+        return Schedule({ (i: UInt32) -> KnobSettings in 
             return self.model[Int(i) < s.nLowerIterations ? s.idLower : s.idUpper].knobSettings
         })
     }

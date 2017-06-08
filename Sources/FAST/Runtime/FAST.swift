@@ -87,7 +87,7 @@ internal func executeAndReportProgress(_ m: MeasuringDevice, _ routine: (Void) -
 }
 
 public func monitor
-    ( across windowSize: UInt
+    ( across windowSize: UInt32
     , samplingPolicy: SamplingPolicy = TimingSamplingPolicy(100.millisecond)
     , _ labels: [String]
     , _ routine: (Void) -> Void) {
@@ -101,8 +101,8 @@ public func monitor
    initialization, and compute statistics for them. */
 internal class MeasuringDevice {
 
-    private var progress: UInt = 0
-    private var windowSize: UInt = 20
+    private var progress: UInt32 = 0
+    private var windowSize: UInt32 = 20
     private var applicationMeasures: Array<String>
     private var systemMeasures: Array<String> = ["energy", "time"]
     private var samplingPolicy: SamplingPolicy
@@ -111,7 +111,7 @@ internal class MeasuringDevice {
 
     private var stats = [String : Statistics]()
 
-    init(_ samplingPolicy: SamplingPolicy, _ windowSize: UInt, _ applicationMeasures: [String]) {
+    init(_ samplingPolicy: SamplingPolicy, _ windowSize: UInt32, _ applicationMeasures: [String]) {
         self.windowSize = windowSize
         self.applicationMeasures = applicationMeasures
         self.samplingPolicy = samplingPolicy
@@ -164,14 +164,14 @@ class KnobSettings {
 
 /* A strategy for switching between KnobSettings, based on the input index. */
 class Schedule {
-    let schedule: (_ progress: UInt) -> KnobSettings
-    init(_ schedule: @escaping (_ progress: UInt) -> KnobSettings) {
+    let schedule: (_ progress: UInt32) -> KnobSettings
+    init(_ schedule: @escaping (_ progress: UInt32) -> KnobSettings) {
         self.schedule = schedule
     }
     init(constant:  KnobSettings) {
-        schedule = { (_: UInt) in constant }
+        schedule = { (_: UInt32) in constant }
     }
-    subscript(index: UInt) -> KnobSettings {
+    subscript(index: UInt32) -> KnobSettings {
         get {
             Log.verbose("Querying schedule at index \(index)")
             return schedule(index)
@@ -182,15 +182,15 @@ class Schedule {
 /* Defines an optimization scope. Replaces a loop in a pure Swift program. */
 public func optimize
     ( _ id: String
-    , across windowSize: UInt
+    , across windowSize: UInt32
     , samplingPolicy: SamplingPolicy = TimingSamplingPolicy(100.millisecond)
     , _ labels: [String]
     , _ routine: (Void) -> Void) {
     
     if let intent = intents[id] {
         let m = MeasuringDevice(samplingPolicy, windowSize, labels)
-        var progress: UInt = 0 // progress counter distinct from that used in ProgressSamplingPolicy
         var schedule: Schedule = Schedule(constant: model.getInitialConfiguration()!.knobSettings)
+        var progress: UInt32 = 0 // progress counter distinct from that used in ProgressSamplingPolicy
         while true {
             executeAndReportProgress(m, routine)
             progress += 1

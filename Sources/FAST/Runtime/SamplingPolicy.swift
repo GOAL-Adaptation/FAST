@@ -14,7 +14,7 @@ public protocol SamplingPolicy {
 
     /** Called by the runtime every time application processes an input, giving the policy
         the chance to call the sample function that was passed to registerSampler */
-    func reportProgress(_ progress: UInt) -> Void
+    func reportProgress(_ progress: UInt32) -> Void
 
 }
 
@@ -38,17 +38,17 @@ public class TimingSamplingPolicy : SamplingPolicy {
     }
 
     /** Ignored. Sampling is done purely based on time. */
-    public func reportProgress(_ progress: UInt) -> Void {}
+    public func reportProgress(_ progress: UInt32) -> Void {}
 
 }
 
 /** Sample once per N calls to reportProgress(), where N is the period passed to init(). */
 public class ProgressSamplingPolicy : SamplingPolicy {
 
-    private let period: UInt
+    private let period: UInt32
     private var sample: () -> Void = { }
 
-    init(period: UInt) {
+    init(period: UInt32) {
         self.period = period
     }
 
@@ -57,7 +57,7 @@ public class ProgressSamplingPolicy : SamplingPolicy {
     }
 
     /** Calls sample once per N invocations, where N is the period passed to init(). */
-    public func reportProgress(_ progress: UInt) -> Void {
+    public func reportProgress(_ progress: UInt32) -> Void {
         if progress % period == 0 {
             self.sample()
         }
