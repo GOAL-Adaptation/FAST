@@ -16,18 +16,20 @@ public protocol IntentSpec {
   // intent      max(q/r) such that p == 20 
   // trainingSet { "input1.dat --someFlag=true", "input2.dat" }
 
-  func knobs() -> [String : ([Any], Any)]
+  var name: String { get }
+
+  var knobs: [String : ([Any], Any)]  { get }
   
-  func measures() -> [String]
+  var measures: [String]  { get }
 
-  func constraint() -> Double
+  var constraint: Double { get }
 
-  func constraintName() -> String
+  var constraintName: String { get }
 
-  func costOrValue() -> ([Double]) -> Double
+  var costOrValue: ([Double]) -> Double { get }
 
-  func optimizationType() -> FASTControllerOptimizationType
+  var optimizationType: FASTControllerOptimizationType  { get }
 
-  func trainingSet() -> [String]
+  var trainingSet: [String]  { get }
 
 }

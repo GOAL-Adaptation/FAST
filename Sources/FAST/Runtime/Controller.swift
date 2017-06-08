@@ -29,14 +29,14 @@ class IntentPreservingController : Controller {
          _ intent: IntentSpec,
          _ window: UInt32) {
         self.model = model
-        let constraintMeasureIdx = model.measureNames!.index(of: intent.constraintName())! // FIXME Add error handling
+        let constraintMeasureIdx = model.measureNames!.index(of: intent.constraintName)! // FIXME Add error handling
         self.fastController = 
             FASTController( model: model.getFASTControllerModel()
-                          , constraint: intent.constraint()
+                          , constraint: intent.constraint
                           , constraintMeasureIdx: constraintMeasureIdx
                           , window: window
-                          , optType: intent.optimizationType()
-                          , ocb: intent.costOrValue()
+                          , optType: intent.optimizationType
+                          , ocb: intent.costOrValue
                           , initialModelEntryIdx: model.initialConfigurationIndex!
                           )
     }
