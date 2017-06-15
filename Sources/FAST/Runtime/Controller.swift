@@ -28,7 +28,7 @@ class IntentPreservingController : Controller {
     init(_ model: Model,
          _ intent: IntentSpec,
          _ window: UInt32) {
-        self.model = model
+        self.model = model.sorted(by: intent.constraintName)
         let constraintMeasureIdx = model.measureNames!.index(of: intent.constraintName)! // FIXME Add error handling
         self.fastController = 
             FASTController( model: model.getFASTControllerModel()
