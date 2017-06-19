@@ -6,14 +6,13 @@
 
 import CEnergymon
 
-internal protocol EnergyMonitor {
+public protocol EnergyMonitor {
 
     /* Returns the current energy in microjoules */
-    func read() -> UInt64
-
+    func readEnergy() -> UInt64
 }
 
-internal class CEnergyMonitor : EnergyMonitor {
+class CEnergyMonitor : EnergyMonitor {
 
     var em = energymon()
 
@@ -24,7 +23,7 @@ internal class CEnergyMonitor : EnergyMonitor {
     }
 
     /* Returns the current energy in microjoules */
-    func read() -> UInt64 {
+    func readEnergy() -> UInt64 {
         return em.fread(&em)
     }
 
@@ -32,5 +31,18 @@ internal class CEnergyMonitor : EnergyMonitor {
     deinit {
         let _ = em.ffinish(&em)
     }
+}
 
+class DummyEnergyMonitor : EnergyMonitor {
+
+    /* Get the energymon instance and initialize */
+    init() {}
+
+    /* Returns the current energy in microjoules */
+    func readEnergy() -> UInt64 {
+        return 0
+    }
+
+    /* Destroy the energymon instance */
+    deinit {}
 }

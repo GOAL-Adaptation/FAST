@@ -19,23 +19,57 @@ let logger = HeliumLogger()
 
 /* Wrapper for a value that can be read freely, but can only be changed by the runtime. */
 public class Knob<T> {
-    var v: T
-    public init(_ name: String, _ v: T) {
-        self.v = v
-        Runtime.knobSetters[name] = { (a: Any) -> Void in
-            switch a {
-            case let vv as T:
-                self.v = vv
-            default:
-                fatalError("Tried to assign \(a) to a knob of type \(type(of: v)).")
-            }
-        }
+
+    public typealias Action = (T, T) -> Void
+
+    var preSetter:  Action
+    var postSetter: Action
+
+    // TODO check if these are necessary
+    func overridePreSetter(newPreSetter: @escaping Action) -> Void {
+        self.preSetter = newPreSetter
     }
+
+    func overridePostSetter(newPostSetter: @escaping Action) -> Void {
+        self.postSetter = newPostSetter
+    }
+
+    public let name:  String
+    var value: T
+
+    public init(_ name: String, _ value: T, _ preSetter: @escaping Action = {_,_ in }, _ postSetter: @escaping Action = {_,_ in }) {
+
+        self.name  = name
+        self.value = value
+        self.preSetter = preSetter
+        self.postSetter = postSetter
+        
+        Runtime.knobSetters[name] = self.setter
+    }
+
     public func get() -> T {
-        return self.v
+        return self.value
     }
-    internal func set(_ v: T) {
-        self.v = v
+
+    internal func set(_ newValue: T) {
+        // for the postSetter
+        let oldValue = self.value
+
+        self.preSetter(oldValue, newValue)
+        self.value = newValue
+        self.postSetter(oldValue, newValue)
+    }
+
+    internal func setter(_ newValue: Any) -> Void {
+
+        switch newValue {
+
+            case let castedValue as T:
+                self.set(castedValue)
+
+            default:
+                fatalError("Tried to assign \(newValue) to a knob of type \(T.self).")
+        }
     }
 }
 
@@ -52,6 +86,56 @@ public class Runtime {
     fileprivate static var intents: [String : IntentSpec] = [:]
     fileprivate static var controller: Controller = ConstantController()
     private static var controllerLock = NSLock()
+
+//------------------- very new stuff
+    internal static var architecture: Architecture? = nil
+    internal static var application: Application? = nil
+
+    public class RuntimeApiModule: TextApiModule {
+        public var subModules = [String : TextApiModule]()
+        init() {}
+    }
+
+    public static var apiModule = RuntimeApiModule()
+
+    public static func initializeArchitecture(name architectureName: String) {
+        switch architectureName {
+            case "ArmBigLittle": 
+                self.architecture = ArmBigLittle()
+
+            case "XilinxZcu":
+                self.architecture = XilinxZcu()
+
+            case "Default":
+                self.architecture = DefaultArchitecture()
+
+            case "Dummy":
+                self.architecture = DummyArchitecture()
+
+            default:
+                break
+        }
+
+        reregisterSubModules()
+    }
+
+    public static func registerApplication(application: Application) {
+
+        self.application = application
+
+        reregisterSubModules()
+    }
+
+    static func reregisterSubModules() -> Void {
+        apiModule.subModules = [String : TextApiModule]()
+        if let architecture = self.architecture {
+            apiModule.addSubModule(newModule: architecture)
+        }
+        if let application = self.application {
+            apiModule.addSubModule(newModule: application)
+        }
+    }
+//------------------- end of very new stuff
 
     /** Intialize intent preserving controller with the given model, intent and window */
     public static func initializeController(_ model: Model, _ intent: IntentSpec, _ window: UInt32 = 20) {
@@ -112,13 +196,10 @@ public func monitor
    initialization, and compute statistics for them. */
 internal class MeasuringDevice {
 
-    private var progress: UInt32 = 0
+    private var progress: UInt32 = 0 // possibly used by a sampling policy to choose when to sample
     private var windowSize: UInt32 = 20
     private var applicationMeasures: Array<String>
-    private var systemMeasures: Array<String> = ["energy", "time"]
     private var samplingPolicy: SamplingPolicy
-    private let energyMonitor: EnergyMonitor = CEnergyMonitor()
-    private var energy: UInt64 = 0
 
     private var stats = [String : Statistics]()
 
@@ -127,20 +208,9 @@ internal class MeasuringDevice {
         self.applicationMeasures = applicationMeasures
         self.samplingPolicy = samplingPolicy
         samplingPolicy.registerSampler(sample)
-        for m in applicationMeasures + systemMeasures {
+        let systemMeasures = Runtime.architecture?.systemMeasures
+        for m in applicationMeasures + (systemMeasures == nil ? [String]() : systemMeasures!) {
             stats[m] = Statistics(windowSize: Int(windowSize))
-        }
-        /* System measures */
-        energy = self.energyMonitor.read()
-        co {
-            while true {
-                let energyNow = self.energyMonitor.read()
-                let (deltaEnergy, _) = UInt64.subtractWithOverflow(energyNow, self.energy)
-                let _ = Runtime.measure("energy", Double(deltaEnergy))
-                self.energy = energyNow
-                let _ = Runtime.measure("time", NSDate().timeIntervalSince1970)
-                nap(for: 1.millisecond)
-            }
         }
     }
 
@@ -200,16 +270,19 @@ public func optimize
     
     if let intent = Runtime.intents[id] {
         let m = MeasuringDevice(samplingPolicy, windowSize, labels)
-        var progress: UInt32 = 0 // progress counter distinct from that used in ProgressSamplingPolicy
+        // FIXME what if the counter overflows
+        var iteration: UInt32 = 0 // iteration counter
         var schedule: Schedule = Schedule(constant: Runtime.controller.model.getInitialConfiguration()!.knobSettings)
         while true {
+            Runtime.measure("iteration", Double(iteration))
             executeAndReportProgress(m, routine)
-            progress += 1
-            if progress % windowSize == 0 {
+            iteration += 1
+            if iteration % windowSize == 0 {
                 schedule = Runtime.controller.getSchedule(intent, Runtime.measures)
             }
             // FIXME This should only apply when the schedule actually needs to change knobs
-            schedule[progress % windowSize].apply()
+            schedule[iteration % windowSize].apply()
+            Runtime.measure("iteration", Double(iteration))
         }
     } else {
         Log.warning("No intent defined for optimize scope \"\(id)\". Proceeding without adaptation.")
