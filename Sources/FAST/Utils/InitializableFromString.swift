@@ -18,6 +18,8 @@ public protocol InitializableFromString {
 //---------------------------------------
 /** Extensions to built-in SWIFT types */
 
+// TODO add ints, doubles, standard types
+
 /** Extension for String */
 extension String: InitializableFromString {
 
