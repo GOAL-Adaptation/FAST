@@ -39,7 +39,7 @@ class DatabaseKnobs: TextApiModule {
 
 }
 
-enum ReadingMode {
+enum ReadingMode: String {
   case Statistics
   case Tape
 }

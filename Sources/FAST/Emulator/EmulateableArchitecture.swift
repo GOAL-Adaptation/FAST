@@ -15,7 +15,7 @@
 /** Emulateable Architecture */
 
 /** Execution Mode for Emulateable Architectures */
-public enum ExecutionMode {
+public enum ExecutionMode: String {
   case Default
   case Emulated
 }

@@ -31,7 +31,7 @@ public protocol Architecture: TextApiModule {
 /** Scenario Knob-enriched Architecture */
 
 /** Resource Usage Policy for Scenario Knob-enriched Architectures */
-public enum ResourceUsagePolicy {
+public enum ResourceUsagePolicy: String {
   case Simple
   case Maintain
   case Maximal
