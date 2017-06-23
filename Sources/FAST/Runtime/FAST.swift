@@ -91,6 +91,19 @@ public class Runtime {
     internal static var architecture: Architecture? = nil
     internal static var application: Application? = nil
 
+    internal static var communicationChannel: CommunicationServer? = nil
+
+    static func shutdown() -> Void {
+        // TODO implement global exit, now only the server thread quits
+        exit(0)
+    }
+
+    static public func establishCommuncationChannel(port: Int) {
+
+        Runtime.communicationChannel = TcpSocketServer(port: port)
+        Runtime.communicationChannel!.run(MessageHandler())
+    }
+
     public class RuntimeApiModule: TextApiModule {
         public var subModules = [String : TextApiModule]()
         init() {}
