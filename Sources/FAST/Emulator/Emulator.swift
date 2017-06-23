@@ -18,8 +18,8 @@ import SQLite
 
 //-------------------------------
 
-// Environment prefix for initialization
-fileprivate let environmentPrefix = "proteus_pemu_emulator_"
+// Key prefix for initialization
+fileprivate let key = ["proteus", "emulator"]
 
 //-------------------------------
 
