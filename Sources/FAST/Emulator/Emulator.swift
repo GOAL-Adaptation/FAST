@@ -142,18 +142,23 @@ class Emulator: TextApiModule, ClockMonitor, EnergyMonitor {
       let systemConfigurationId        = self.architecture.getConfigurationId(database: self.database!)
 
       // Emulate system measures for each unemulated input
-      for i in self.numberOfProcessedInputs ... UInt64(recentNumberOfProcessedInpts) {
-
-        // Read Deltas based on Interpolation from profiled data in the Database
-        let (deltaTime, deltaEnergy) = readDelta(appCfg: applicationConfigurationId, appInp: self.applicationInputId, sysCfg: systemConfigurationId, processing: Int(i)) 
+      if self.numberOfProcessedInputs < UInt64(recentNumberOfProcessedInpts) {
         
-        // Increase the Global Counters
-        self.globalTime   += deltaTime
-        self.globalEnergy += deltaEnergy
-      }
+        let unemulatedInputs = (self.numberOfProcessedInputs + 1) ... UInt64(recentNumberOfProcessedInpts)
+        
+        for i in unemulatedInputs {
 
-      // Update the Counter of Processed Inputs
-      self.numberOfProcessedInputs = UInt64(recentNumberOfProcessedInpts)
+          // Read Deltas based on Interpolation from profiled data in the Database
+          let (deltaTime, deltaEnergy) = readDelta(appCfg: applicationConfigurationId, appInp: self.applicationInputId, sysCfg: systemConfigurationId, processing: Int(i)) 
+          
+          // Increase the Global Counters
+          self.globalTime   += deltaTime
+          self.globalEnergy += deltaEnergy
+        }
+
+        // Update the Counter of Processed Inputs
+        self.numberOfProcessedInputs = UInt64(recentNumberOfProcessedInpts)
+      }
     }
   }
 }
