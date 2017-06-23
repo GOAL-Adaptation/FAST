@@ -81,6 +81,53 @@ public class Knob<T> {
     }
 }
 
+//------ runtime interaction & initialization
+
+// Key prefix for initialization
+fileprivate let key = ["proteus","runtime"]
+
+enum InteractionMode: String {
+    case Default
+    case Scripted
+}
+
+extension InteractionMode: InitializableFromString {
+
+    init?(from text: String) {
+
+        switch text {
+
+        case "Default": 
+            self = InteractionMode.Default
+
+        case "Scripted": 
+            self = InteractionMode.Scripted
+
+        default:
+            return nil
+
+        }
+    }
+}
+
+extension InteractionMode: CustomStringConvertible {
+
+    var description: String {
+
+        switch self {
+
+        case InteractionMode.Default: 
+            return "Default"
+
+        case InteractionMode.Scripted: 
+            return "Scripted"
+        
+        }
+    }
+}
+
+//------ runtime interaction
+
 public class Runtime {
 
     private init() {}
@@ -112,10 +159,46 @@ public class Runtime {
         Runtime.communicationChannel!.run(MessageHandler())
     }
 
-    public class RuntimeApiModule: TextApiModule {
-        public var subModules = [String : TextApiModule]()
-        init() {}
+    class RuntimeKnobs: TextApiModule {
+
+        let name = "RuntimeKnobs"
+
+        var subModules = [String : TextApiModule]()
+
+        var interactionMode: Knob<InteractionMode>
+
+        init() {
+            self.interactionMode = Knob(name: "interactionMode", from: key, or: InteractionMode.Default)
+            
+            self.addSubModule(newModule: interactionMode)
+        }
     }
+
+    static var runtimeKnobs: RuntimeKnobs = RuntimeKnobs()
+
+    public class RuntimeApiModule: TextApiModule {
+        public let name = "Runtime"
+        public var subModules = [String : TextApiModule]()
+
+        public func internalTextApi(caller:            String, 
+                                    message:           Array<String>, 
+                                    progressIndicator: Int, 
+                                    verbosityLevel:    VerbosityLevel) -> String {
+
+            if message[progressIndicator] == "process" {
+                return "Ciao bello!"
+            } else {
+                return "Invalid message!"
+            }
+
+        }
+
+        init() {
+            self.addSubModule(newModule: runtimeKnobs)
+        }
+    }
+
+    static var scriptedCounter: UInt64 = 0
 
     public static var apiModule = RuntimeApiModule()
 
@@ -155,6 +238,7 @@ public class Runtime {
         if let application = self.application {
             apiModule.addSubModule(newModule: application)
         }
+        apiModule.addSubModule(newModule: self.runtimeKnobs)
     }
 //------------------- end of very new stuff
 
@@ -304,6 +388,9 @@ public func optimize
             // FIXME This should only apply when the schedule actually needs to change knobs
             schedule[iteration % windowSize].apply()
             Runtime.measure("iteration", Double(iteration))
+            // FIXME maybe stalling in scripted mode should not be done inside of optimize but somewhere else in an independent and better way
+            while (Runtime.runtimeKnobs.interactionMode.get() == InteractionMode.Scripted && 
+                   Runtime.scriptedCounter == 0) {}
         }
     } else {
         Log.warning("No intent defined for optimize scope \"\(id)\". Proceeding without adaptation.")
