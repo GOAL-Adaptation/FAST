@@ -121,6 +121,33 @@ public extension TextApiModule {
             // Valid reading of the message
             if let currentTerm = (message.count > progressIndicator ? message[progressIndicator] : nil) {
         
+                // get / set status
+                if message.count > progressIndicator + 1 {
+
+                    if message[progressIndicator + 1] == "status" {
+
+                        // get status
+                        if currentTerm == "get" {
+
+                            if let status = self.getStatus() {
+
+                                // TODO status is Dictionary [String : Any], the new custom types eventhough extend String are not recognized as Strings by the 
+                                // JSONSerializer (See Utils/JSON.swift), hence a JSON object cannot be created automatically. Find a way to hack it or use another library or custom implementation
+                                return String(describing: status)
+
+                            } else {
+
+                                return ""
+                            }
+
+                        // set status
+                        } else if currentTerm == "set" {
+                            // TODO join the rest of message (if exists) into one string, convert that to JSON and convert that to Dictionary, then issue the setStatus 
+                        }
+                    }
+                }
+                // get / set status issued a return by now, so the message is different
+
                 // Handling of a subModule
                 if self.subModules.keys.contains(currentTerm) {
 
@@ -131,7 +158,6 @@ public extension TextApiModule {
                 } else {
 
                     return self.internalTextApi(caller: caller, message: message, progressIndicator: progressIndicator, verbosityLevel: verbosityLevel)
-
                 }
 
             // Invalid reading of the message
