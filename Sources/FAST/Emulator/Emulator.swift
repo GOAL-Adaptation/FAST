@@ -31,7 +31,7 @@ class Emulator: TextApiModule, ClockMonitor, EnergyMonitor {
   let name = "Emulator"
 
   // Database containing the profiled data
-  var database = Database()
+  var database: Database
 
   // Emulation Identifiers
   var application: EmulateableApplication
@@ -57,6 +57,11 @@ class Emulator: TextApiModule, ClockMonitor, EnergyMonitor {
   
   // Initialization
   required init(application: EmulateableApplication, applicationInput: Int, architecture: EmulateableArchitecture) {
+      if let database = Database() {
+        self.database = database
+      } else {
+        fatalError("Could not initialize the Database")
+      }
       self.application = application
       self.applicationInputId = applicationInput
       self.architecture = architecture
@@ -64,7 +69,7 @@ class Emulator: TextApiModule, ClockMonitor, EnergyMonitor {
       self.globalEnergy = 0
       self.globalTime = 0
 
-      self.addSubModule(moduleName: "database", newModule: database!)
+      self.addSubModule(newModule: database)
   }
 
   // Deinit
@@ -82,8 +87,8 @@ class Emulator: TextApiModule, ClockMonitor, EnergyMonitor {
                     ->
                  (UInt64, UInt64) {
 
-    let referenceApplicationConfigurationID = self.database!.getReferenceApplicationConfigurationID(application: application.name)
-    let referenceSystemConfigurationID      = self.database!.getReferenceSystemConfigurationID(architecture: architecture.name)
+    let referenceApplicationConfigurationID = self.database.getReferenceApplicationConfigurationID(application: application.name)
+    let referenceSystemConfigurationID      = self.database.getReferenceSystemConfigurationID(architecture: architecture.name)
 
     var readDeltaTime: Int 
     var readDeltaEnergy: Int 
@@ -91,7 +96,7 @@ class Emulator: TextApiModule, ClockMonitor, EnergyMonitor {
     // Data is profiled
     if ((applicationConfigurationID == referenceApplicationConfigurationID) || (systemConfigurationID == referenceSystemConfigurationID)) {
 
-      (readDeltaTime, readDeltaEnergy) = self.database!.readDelta(application: application.name, architecture: architecture.name, appCfg: applicationConfigurationID, appInp: applicationInputID, sysCfg: systemConfigurationID, processing: progressCounter)
+      (readDeltaTime, readDeltaEnergy) = self.database.readDelta(application: application.name, architecture: architecture.name, appCfg: applicationConfigurationID, appInp: applicationInputID, sysCfg: systemConfigurationID, processing: progressCounter)
 
       // Convert to UInt64
       return (UInt64(readDeltaTime), UInt64(readDeltaEnergy))
@@ -108,17 +113,17 @@ class Emulator: TextApiModule, ClockMonitor, EnergyMonitor {
       var cumulativeDeltaEnergy: Double = 0.0
 
       // Value(appCfg0, sysCfg)
-      (readDeltaTime, readDeltaEnergy) = self.database!.readDelta(application: application.name, architecture: architecture.name, appCfg: referenceApplicationConfigurationID, appInp: applicationInputID, sysCfg: systemConfigurationID, processing: progressCounter)
+      (readDeltaTime, readDeltaEnergy) = self.database.readDelta(application: application.name, architecture: architecture.name, appCfg: referenceApplicationConfigurationID, appInp: applicationInputID, sysCfg: systemConfigurationID, processing: progressCounter)
       cumulativeDeltaTime   = Double(readDeltaTime)
       cumulativeDeltaEnergy = Double(readDeltaEnergy)
 
       // Value(appCfg0, sysCfg) / Value(appCfg0, sysCfg0)
-      (readDeltaTime, readDeltaEnergy) = self.database!.readDelta(application: application.name, architecture: architecture.name, appCfg: referenceApplicationConfigurationID, appInp: applicationInputID, sysCfg: referenceSystemConfigurationID, processing: progressCounter)
+      (readDeltaTime, readDeltaEnergy) = self.database.readDelta(application: application.name, architecture: architecture.name, appCfg: referenceApplicationConfigurationID, appInp: applicationInputID, sysCfg: referenceSystemConfigurationID, processing: progressCounter)
       cumulativeDeltaTime   = cumulativeDeltaTime   / Double(readDeltaTime)
       cumulativeDeltaEnergy = cumulativeDeltaEnergy / Double(readDeltaEnergy)
 
       // [ Value(appCfg0, sysCfg) / Value(appCfg0, sysCfg0) ] * Value(appCfg, sysCfg0)
-      (readDeltaTime, readDeltaEnergy) = self.database!.readDelta(application: application.name, architecture: architecture.name, appCfg: applicationConfigurationID, appInp: applicationInputID, sysCfg: referenceSystemConfigurationID, processing: progressCounter)
+      (readDeltaTime, readDeltaEnergy) = self.database.readDelta(application: application.name, architecture: architecture.name, appCfg: applicationConfigurationID, appInp: applicationInputID, sysCfg: referenceSystemConfigurationID, processing: progressCounter)
       cumulativeDeltaTime   = cumulativeDeltaTime   * Double(readDeltaTime)
       cumulativeDeltaEnergy = cumulativeDeltaEnergy * Double(readDeltaEnergy)
 
@@ -136,10 +141,10 @@ class Emulator: TextApiModule, ClockMonitor, EnergyMonitor {
     if let recentNumberOfProcessedInpts = Runtime.readMeasure("iteration") {
 
       // Obtain the Application State
-      let applicationConfigurationId   = self.application.getConfigurationId(database: self.database!)
+      let applicationConfigurationId   = self.application.getConfigurationId(database: self.database)
 
       // Obtain the System State
-      let systemConfigurationId        = self.architecture.getConfigurationId(database: self.database!)
+      let systemConfigurationId        = self.architecture.getConfigurationId(database: self.database)
 
       // Emulate system measures for each unemulated input
       if self.numberOfProcessedInputs < UInt64(recentNumberOfProcessedInpts) {
