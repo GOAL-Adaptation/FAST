@@ -18,6 +18,14 @@ public protocol InitializableFromString {
 //---------------------------------------
 /** Extensions to built-in SWIFT types */
 
+/** Extension for String */
+extension String: InitializableFromString {
+
+    public init?(from text: String) {
+        self = text
+    }
+}
+
 /** Extension for Int */
 extension Int: InitializableFromString {
 
