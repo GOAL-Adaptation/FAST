@@ -115,6 +115,7 @@ public class Database: TextApiModule {
   /** Create Statistical Views */
   func createStatisticalViews() {
     do {  
+
         var sqliteQuery: String
 
         // Loading extensions
@@ -124,7 +125,7 @@ public class Database: TextApiModule {
         if let extensionLocation = initialize(type: String.self, from: key.appended(with: "extensionLocation")) {
 
           sqliteQuery =
-              "SELECT load_extension('" + extensionLocation + "/libsqlitefunctions');"
+              "SELECT load_extension('" + extensionLocation + "');"
 
           try database.execute(statement: sqliteQuery)
         }
