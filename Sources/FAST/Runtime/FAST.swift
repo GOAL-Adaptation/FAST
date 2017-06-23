@@ -1,8 +1,16 @@
-/**
+/*
+ *  FAST: An implicit programing language based on SWIFT
+ *
+ *        Main File
+ *
+ *  author: Adam Duracz
+ *  author: Ferenc A Bartha
+ *
+ *  SWIFT implementation is based on the C library [pemu] implemented by
+ *  Ferenc A Bartha, Dung X Nguyen, Jason Miller, Adam Duracz
+ */
 
-  FAST: A library for implicit programming.
-
-*/
+//---------------------------------------
 
 import Foundation
 import Venice
@@ -302,3 +310,5 @@ public func optimize
     }   
 
 }
+
+//---------------------------------------
