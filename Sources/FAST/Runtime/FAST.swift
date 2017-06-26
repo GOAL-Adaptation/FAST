@@ -19,6 +19,8 @@ import HeliumLogger
 import LoggerAPI
 import CSwiftV
 
+import Nifty
+
 ///////////////////
 // Runtime State //
 ///////////////////
@@ -186,11 +188,82 @@ public class Runtime {
                                     verbosityLevel:    VerbosityLevel) -> String {
 
             if message[progressIndicator] == "process" {
-                return "Ciao bello!"
+
+                if Runtime.runtimeKnobs.interactionMode.get() == InteractionMode.Scripted {
+
+                    if message.count > progressIndicator + 1 {
+                
+                        let nextWord = message[progressIndicator + 1]
+                        var stepAmount: UInt64 = 0
+
+                        if nextWord == "random" {
+
+                            if message.count > progressIndicator + 3 {
+                                
+                                if  let loBound = Int(message[progressIndicator + 2]),
+                                    let hiBound = Int(message[progressIndicator + 3]) {
+                                        
+                                        stepAmount = UInt64(randi(1, 1, min: loBound, max: hiBound)[0, 0])
+                                }
+                            }
+
+                        } else if let stepNumber = UInt64(message[progressIndicator + 1]) {
+
+                            stepAmount = stepNumber
+                        }
+
+                        if stepAmount > 0 {
+
+                            Runtime.scriptedCounter += UInt64(stepAmount)
+
+                            switch verbosityLevel {
+
+                                case VerbosityLevel.Verbose:
+                                    return "Processing \(stepAmount) input(s)."
+                            
+                                default:
+                                    return ""
+                            }
+
+                        } else {
+
+                            switch verbosityLevel {
+
+                                case VerbosityLevel.Verbose:
+                                    return "Invalid step amount for process: ``" + message.joined(separator: " ") + "`` received from: \(caller)."
+                            
+                                default:
+                                    return ""
+                            }
+                        }
+                    }
+
+                } else {
+
+                    switch verbosityLevel {
+
+                        case VerbosityLevel.Verbose:
+                            return "Invalid process message: ``" + message.joined(separator: " ") + "`` received from: \(caller) as interactionMode is \(Runtime.runtimeKnobs.interactionMode.get())."
+                    
+                        default:
+                            return ""
+                    }
+                }
+
             } else {
-                return "Invalid message!"
+
+                switch verbosityLevel {
+                
+                    case VerbosityLevel.Verbose:
+                        return "Invalid message: ``" + message.joined(separator: " ") + "'' received from: \(caller)."
+                    
+                    default:
+                        return ""
+                }
             }
 
+            // TODO we should not get here
+            return "Alalala"
         }
 
         init() {
@@ -199,6 +272,18 @@ public class Runtime {
     }
 
     static var scriptedCounter: UInt64 = 0
+
+    static func reportProgress() {
+        if (Runtime.runtimeKnobs.interactionMode.get() == InteractionMode.Scripted) {
+
+            if Runtime.scriptedCounter > 0 {
+                Runtime.scriptedCounter -= 1
+            }
+
+            while (Runtime.runtimeKnobs.interactionMode.get() == InteractionMode.Scripted && 
+                Runtime.scriptedCounter == 0) {}
+        }
+    }
 
     public static var apiModule = RuntimeApiModule()
 
@@ -389,8 +474,7 @@ public func optimize
             schedule[iteration % windowSize].apply()
             Runtime.measure("iteration", Double(iteration))
             // FIXME maybe stalling in scripted mode should not be done inside of optimize but somewhere else in an independent and better way
-            while (Runtime.runtimeKnobs.interactionMode.get() == InteractionMode.Scripted && 
-                   Runtime.scriptedCounter == 0) {}
+            Runtime.reportProgress()
         }
     } else {
         Log.warning("No intent defined for optimize scope \"\(id)\". Proceeding without adaptation.")
