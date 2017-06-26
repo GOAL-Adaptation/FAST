@@ -170,13 +170,21 @@ public class Runtime {
         var interactionMode: Knob<InteractionMode>
 
         init() {
-            self.interactionMode = Knob(name: "interactionMode", from: key, or: InteractionMode.Default)
+            self.interactionMode = Knob(name: "interactionMode", from: key, or: InteractionMode.Default, preSetter: Runtime.changeInteractionMode)
             
             self.addSubModule(newModule: interactionMode)
         }
     }
 
     static var runtimeKnobs: RuntimeKnobs = RuntimeKnobs()
+
+    static func changeInteractionMode(oldMode: InteractionMode, newMode: InteractionMode) -> Void {
+
+        // Change applies only if the value has changed
+        if (oldMode != newMode) && (newMode == InteractionMode.Scripted) {
+            Runtime.scriptedCounter = 0
+        }
+    }
 
     public class RuntimeApiModule: TextApiModule {
         public let name = "Runtime"
