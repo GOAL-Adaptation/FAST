@@ -38,7 +38,7 @@ public enum VerbosityLevel {
 //---------------------------------------
 
 /** A TextApi module is an object that has a Text API and is a collection over other TextApi modules ~ subModules */
-public protocol TextApiModule: AnyObject {
+public protocol TextApiModule: class {
 
     // module's name
     var name: String { get }
