@@ -258,6 +258,17 @@ public class Runtime {
                     }
                 }
 
+            } else if message[progressIndicator] == "iteration" && message[progressIndicator + 1] == "get" {
+
+                switch verbosityLevel {
+                
+                    case VerbosityLevel.Verbose:
+                        return "Current iteration is: " + String(describing: Runtime.readMeasure("iteration")) + "."
+                    
+                    default:
+                        return String(describing: Runtime.readMeasure("iteration"))
+                }                
+
             } else {
 
                 switch verbosityLevel {
@@ -272,6 +283,11 @@ public class Runtime {
 
             // TODO we should not get here
             return "Alalala"
+        }
+
+        /** get status as a dictionary */
+        public func getInternalStatus() -> [String : Any]? {
+            return ["iteration" : UInt64(Runtime.readMeasure("iteration")!)] // TODO make sure iteration is always defined, some global init would be nice
         }
 
         init() {
