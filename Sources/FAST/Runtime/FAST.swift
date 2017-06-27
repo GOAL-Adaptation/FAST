@@ -319,6 +319,20 @@ public class Runtime {
                    Runtime.scriptedCounter == 0 &&
                    !Runtime.shouldTerminate) {}
         }
+
+        // FIXME PATs cannot be used here, i.e. cant write as? ScenarioKnobEnrichedArchitecture in Swift 3.1.1 so all guys are listed
+        if let currentArchitecture = Runtime.architecture as? ArmBigLittle {
+            currentArchitecture.enforceResourceUsageAndConsistency()
+        }
+        if let currentArchitecture = Runtime.architecture as? XilinxZcu {
+            currentArchitecture.enforceResourceUsageAndConsistency()
+        }
+
+        if let currentArchitecture = Runtime.architecture as? RealArchitecture {
+            if currentArchitecture.actuationPolicy.get() == ActuationPolicy.Actuate {
+                currentArchitecture.actuate()
+            }
+        }
     }
 
     public static var apiModule = RuntimeApiModule()

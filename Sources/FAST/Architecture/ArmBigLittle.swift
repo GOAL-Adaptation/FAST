@@ -91,6 +91,7 @@ class ArmBigLittleResourceUsagePolicyModule: TextApiModule {
 class ArmBigLittle: Architecture, 
                     ClockAndEnergyArchitecture, 
                     ScenarioKnobEnrichedArchitecture, 
+                    RealArchitecture, 
                     EmulateableArchitecture {
 
     let name = "ARM-big.LITTLE" // TODO in DB is "ARM-big.LITTLE"
@@ -112,6 +113,14 @@ class ArmBigLittle: Architecture,
     var resourceUsagePolicyModule = ResourceUsagePolicyModuleType()
 
     var executionMode: Knob<ExecutionMode>
+
+    var actuationPolicy = Knob(name: "actuationPolicy", from: key, or: ActuationPolicy.NoActuation)
+
+    func actuate() -> Void {
+
+        // TODO add system calls here
+
+    }
 
     /** Changing Execution Mode */
     public func changeExecutionMode(oldMode: ExecutionMode, newMode: ExecutionMode) -> Void {
@@ -149,7 +158,7 @@ class ArmBigLittle: Architecture,
             changeExecutionMode(oldMode: ExecutionMode.Default, newMode: ExecutionMode.Emulated)
         }
 
-        self.addSubModule(newModules: [scenarioKnobs, systemConfigurationKnobs, resourceUsagePolicyModule, executionMode])
+        self.addSubModule(newModules: [scenarioKnobs, systemConfigurationKnobs, resourceUsagePolicyModule, executionMode, actuationPolicy])
         self.registerSystemMeasures()
     }
 
@@ -414,19 +423,7 @@ class ArmBigLittle: Architecture,
         //
         // Some assertions that point to invalid configurations (won't happen during normal use)
         assert( ((systemConfigurationKnobs.utilizedBigCores.get() > 0) || (systemConfigurationKnobs.utilizedLittleCores.get() > 0)) && (!((systemConfigurationKnobs.utilizedBigCores.get() > 0) && (systemConfigurationKnobs.utilizedLittleCores.get() > 0))));
-
-        //-------------------------------
-        //
-        // Make system configuration settings effective if operating on real hardware
-
-        /*armBigLittleHooksConfigureSystem(systemConfigurationKnobs.utilizedBigCores,
-                                         systemConfigurationKnobs.utilizedLittleCores,
-                                         systemConfigurationKnobs.utilizedBigCoreFrequency,
-                                         systemConfigurationKnobs.utilizedLittleCoreFrequency);*/
-
-
     }
-
 }
 
 //-------------------------------
