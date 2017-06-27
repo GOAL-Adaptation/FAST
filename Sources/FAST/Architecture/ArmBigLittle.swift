@@ -155,7 +155,7 @@ class ArmBigLittle: Architecture,
 
     /** Internal text API for ARM bigLITTLE
      *  - Limited availablility knobs (available when utilizedBigCores > 0 OR utilizedLittleCores > 0) AND (utilizedBigCores == 0 OR utilizedLittleCores == 0)
-
+     *
      *    Scenario Knobs
      *    - availableCores
      *    - maximalCoreFrequency
@@ -169,6 +169,10 @@ class ArmBigLittle: Architecture,
      *   SystemConfiguration Knobs
      *   - utilizedCoreMask
      *   - utilizedCoreFrequencies
+     *
+     *  - System measures
+     *    - energy
+     *    - time
      */
     func internalTextApi(caller:            String, 
                          message:           Array<String>, 
@@ -244,10 +248,30 @@ class ArmBigLittle: Architecture,
 
                 }
 
+            // System measures
+            } else if message[progressIndicator] == "energy" && message[progressIndicator + 1] == "get" {
+
+                result = String(self.energyMonitor.readEnergy())
+
+                if verbosityLevel == VerbosityLevel.Verbose {
+                    result = "Energy counter is: " + result + " microjoules."
+                }
+
+            } else if message[progressIndicator] == "time" && message[progressIndicator + 1] == "get" {
+
+                result = String(self.clockMonitor.readClock())
+
+                if verbosityLevel == VerbosityLevel.Verbose {
+                    result = "Clock shows: " + result + "."
+                }
             }
              
             return result;
+    }
 
+    /** ARM bigLITTLE: get status as a dictionary */
+    public func getInternalStatus() -> [String : Any]? {
+        return ["energy" : self.energyMonitor.readEnergy(), "time" : self.clockMonitor.readClock()]
     }
 
     /** Enforce the active Resource Usage Policy and ensure Consistency between Scenario and System Configuration Knobs */

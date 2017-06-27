@@ -132,6 +132,44 @@ class XilinxZcu: Architecture,
         self.registerSystemMeasures()
     }
 
+    /** Internal text API for Xilinx ZCU 102
+     *  - System measures
+     *    - energy
+     *    - time
+     */
+    func internalTextApi(caller:            String, 
+                         message:           Array<String>, 
+                         progressIndicator: Int, 
+                         verbosityLevel:    VerbosityLevel) -> String {
+
+            var result: String = ""
+    
+            // System measures
+            if message[progressIndicator] == "energy" && message[progressIndicator + 1] == "get" {
+
+                result = String(self.energyMonitor.readEnergy())
+
+                if verbosityLevel == VerbosityLevel.Verbose {
+                    result = "Energy counter is: " + result + " microjoules."
+                }
+
+            } else if message[progressIndicator] == "time" && message[progressIndicator + 1] == "get" {
+
+                result = String(self.clockMonitor.readClock())
+
+                if verbosityLevel == VerbosityLevel.Verbose {
+                    result = "Clock shows: " + result + "."
+                }
+            }
+             
+            return result;
+    }
+
+    /**Xilinx ZCU 102: get status as a dictionary */
+    public func getInternalStatus() -> [String : Any]? {
+        return ["energy" : self.energyMonitor.readEnergy(), "time" : self.clockMonitor.readClock()]
+    }
+
     /** Enforce the active Resource Usage Policy and ensure Consistency between Scenario and System Configuration Knobs */
     func enforceResourceUsageAndConsistency() -> Void {
 
