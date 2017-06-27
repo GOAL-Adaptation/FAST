@@ -130,9 +130,15 @@ public class Database: TextApiModule {
           try database.execute(statement: sqliteQuery)
         }
 
+        // Increase cache size
+        sqliteQuery =
+            "PRAGMA cache_size = 10000;"
+
+        try database.execute(statement: sqliteQuery)
+
         // Turn on referential integrity
         sqliteQuery =
-            "PRAGMA foreign_keys=on;";
+            "PRAGMA foreign_keys=on;"
 
         try database.execute(statement: sqliteQuery)
 
