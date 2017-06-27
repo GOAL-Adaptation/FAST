@@ -46,6 +46,54 @@ class ArmBigLittleScenarioKnobs: TextApiModule {
     var maximalBigCoreFrequency    = Knob(name: "maximalBigCoreFrequency",    from: key, or: 2000000)
     var maximalLittleCoreFrequency = Knob(name: "maximalLittleCoreFrequency", from: key, or: 1400000)
 
+    /*
+     *  - Limited availablility Scenario Knobs (available when utilizedBigCores > 0 OR utilizedLittleCores > 0) AND (utilizedBigCores == 0 OR utilizedLittleCores == 0)
+     *
+     *    - availableCores
+     *    - maximalCoreFrequency
+     */
+    func internalTextApi(caller:            String, 
+                        message:           Array<String>, 
+                        progressIndicator: Int, 
+                        verbosityLevel:    VerbosityLevel) -> String {
+
+        var result: String = ""
+
+        if let currentArchitecture = Runtime.architecture as? ArmBigLittle {
+
+            if message[progressIndicator] == "availableCores" {
+
+                if (currentArchitecture.systemConfigurationKnobs.utilizedBigCores.get() > 0 && currentArchitecture.systemConfigurationKnobs.utilizedLittleCores.get() == 0) {
+
+                    result = availableBigCores.textApi(caller: caller, message: message, progressIndicator: progressIndicator + 1, verbosityLevel: verbosityLevel)
+
+                } else if (currentArchitecture.systemConfigurationKnobs.utilizedBigCores.get() == 0 && currentArchitecture.systemConfigurationKnobs.utilizedLittleCores.get() > 0) {
+
+                    result = availableLittleCores.textApi(caller: caller, message: message, progressIndicator: progressIndicator + 1, verbosityLevel: verbosityLevel)
+                }
+
+            } else if message[progressIndicator] == "maximalCoreFrequency" {
+
+                if (currentArchitecture.systemConfigurationKnobs.utilizedBigCores.get() > 0 && currentArchitecture.systemConfigurationKnobs.utilizedLittleCores.get() == 0) {
+
+                    result = maximalBigCoreFrequency.textApi(caller: caller, message: message, progressIndicator: progressIndicator + 1, verbosityLevel: verbosityLevel)
+
+                } else if (currentArchitecture.systemConfigurationKnobs.utilizedBigCores.get() == 0 && currentArchitecture.systemConfigurationKnobs.utilizedLittleCores.get() > 0) {
+
+                    result = maximalLittleCoreFrequency.textApi(caller: caller, message: message, progressIndicator: progressIndicator + 1, verbosityLevel: verbosityLevel)
+                }
+            } else {
+
+                // TODO add error msg based on verbosity level
+            }
+        } else {
+
+            // TODO add error msg based on verbosity level
+        }
+
+        return result
+    }
+
     init() {
         self.addSubModule(newModules: [availableBigCores, availableLittleCores, maximalBigCoreFrequency, maximalLittleCoreFrequency])
     }
@@ -62,6 +110,63 @@ class ArmBigLittleSystemConfigurationKnobs: TextApiModule {
     var utilizedLittleCores         = Knob(name: "utilizedLittleCores",         from: key, or:       0)
     var utilizedBigCoreFrequency    = Knob(name: "utilizedBigCoreFrequency",    from: key, or: 2000000)
     var utilizedLittleCoreFrequency = Knob(name: "utilizedLittleCoreFrequency", from: key, or:  200000)
+
+    /*
+     *  - Limited availablility & Derived System Configuration Knobs (available when utilizedBigCores > 0 OR utilizedLittleCores > 0) AND (utilizedBigCores == 0 OR utilizedLittleCores == 0)
+     *
+     *    Limited Availablility System Configuration Knobs
+     *    - utilizedCores
+     *    - utilizedCoreFrequency
+     *
+     *    Derived System Configuration Knobs
+     *    - utilizedCoreMask
+     *    - utilizedCoreFrequencies
+     */
+    func internalTextApi(caller:            String, 
+                        message:           Array<String>, 
+                        progressIndicator: Int, 
+                        verbosityLevel:    VerbosityLevel) -> String {
+
+        var result: String = ""
+
+        if message[progressIndicator + 1] == "utilizedCores" {
+
+            if (self.utilizedBigCores.get() > 0 && self.utilizedLittleCores.get() == 0) {
+
+                result = self.utilizedBigCores.textApi(caller: caller, message: message, progressIndicator: progressIndicator + 2, verbosityLevel: verbosityLevel)
+
+            } else if (self.utilizedBigCores.get() == 0 && self.utilizedLittleCores.get() > 0) {
+
+                result = self.utilizedLittleCores.textApi(caller: caller, message: message, progressIndicator: progressIndicator + 2, verbosityLevel: verbosityLevel)
+            }
+
+        } else if message[progressIndicator + 1] == "utilizedCoreFrequency" {
+
+            if (self.utilizedBigCores.get() > 0 && self.utilizedLittleCores.get() == 0) {
+
+                result = self.utilizedBigCoreFrequency.textApi(caller: caller, message: message, progressIndicator: progressIndicator + 2, verbosityLevel: verbosityLevel)
+
+            } else if (self.utilizedBigCores.get() == 0 && self.utilizedLittleCores.get() > 0) {
+
+                result = self.utilizedLittleCoreFrequency.textApi(caller: caller, message: message, progressIndicator: progressIndicator + 2, verbosityLevel: verbosityLevel)
+            }
+
+        // Derived System Configuration Knobs
+        } else if message[progressIndicator + 1] == "utilizedCoreMask" {
+
+            // TODO
+
+        } else if message[progressIndicator + 1] == "utilizedCoreFrequencies" {
+
+            // TODO
+
+        } else {
+
+                // TODO add error msg based on verbosity level
+        }
+
+        return result
+    }
 
     init() {
         self.addSubModule(newModules: [utilizedBigCores, utilizedLittleCores, utilizedBigCoreFrequency, utilizedLittleCoreFrequency])
@@ -225,21 +330,6 @@ class ArmBigLittle: Architecture,
     }
 
     /** Internal text API for ARM bigLITTLE
-     *  - Limited availablility knobs (available when utilizedBigCores > 0 OR utilizedLittleCores > 0) AND (utilizedBigCores == 0 OR utilizedLittleCores == 0)
-     *
-     *    Scenario Knobs
-     *    - availableCores
-     *    - maximalCoreFrequency
-     *
-     *    System Configuration Knobs
-     *    - utilizedCores
-     *    - utilizedCoreFrequency
-     *
-     * - Derived knobs
-     *
-     *   SystemConfiguration Knobs
-     *   - utilizedCoreMask
-     *   - utilizedCoreFrequencies
      *
      *  - System measures
      *    - energy
@@ -251,76 +341,9 @@ class ArmBigLittle: Architecture,
                          verbosityLevel:    VerbosityLevel) -> String {
 
             var result: String = ""
-    
-            // Limited availability Scenario Knobs
-            if message[progressIndicator] == "scenarioKnobs" {
-
-                if message[progressIndicator + 1] == "availableCores" {
-
-                    if (systemConfigurationKnobs.utilizedBigCores.get() > 0 && systemConfigurationKnobs.utilizedLittleCores.get() == 0) {
-
-                        result = scenarioKnobs.availableBigCores.textApi(caller: caller, message: message, progressIndicator: progressIndicator + 2, verbosityLevel: verbosityLevel)
-
-                    } else if (systemConfigurationKnobs.utilizedBigCores.get() == 0 && systemConfigurationKnobs.utilizedLittleCores.get() > 0) {
-
-                        result = scenarioKnobs.availableLittleCores.textApi(caller: caller, message: message, progressIndicator: progressIndicator + 2, verbosityLevel: verbosityLevel)
-
-                    }
-
-                } else if message[progressIndicator + 1] == "maximalCoreFrequency" {
-
-                    if (systemConfigurationKnobs.utilizedBigCores.get() > 0 && systemConfigurationKnobs.utilizedLittleCores.get() == 0) {
-
-                        result = scenarioKnobs.maximalBigCoreFrequency.textApi(caller: caller, message: message, progressIndicator: progressIndicator + 2, verbosityLevel: verbosityLevel)
-
-                    } else if (systemConfigurationKnobs.utilizedBigCores.get() == 0 && systemConfigurationKnobs.utilizedLittleCores.get() > 0) {
-
-                        result = scenarioKnobs.maximalLittleCoreFrequency.textApi(caller: caller, message: message, progressIndicator: progressIndicator + 2, verbosityLevel: verbosityLevel)
-
-                    }
-
-                }
-
-            // Limited availability System Configuration Knobs
-            } else if message[progressIndicator] == "systemConfigurationKnobs" {
-
-                if message[progressIndicator + 1] == "utilizedCores" {
-
-                    if (systemConfigurationKnobs.utilizedBigCores.get() > 0 && systemConfigurationKnobs.utilizedLittleCores.get() == 0) {
-
-                        result = scenarioKnobs.availableBigCores.textApi(caller: caller, message: message, progressIndicator: progressIndicator + 2, verbosityLevel: verbosityLevel)
-
-                    } else if (systemConfigurationKnobs.utilizedBigCores.get() == 0 && systemConfigurationKnobs.utilizedLittleCores.get() > 0) {
-
-                        result = scenarioKnobs.availableLittleCores.textApi(caller: caller, message: message, progressIndicator: progressIndicator + 2, verbosityLevel: verbosityLevel)
-
-                    }
-
-                } else if message[progressIndicator + 1] == "utilizedCoreFrequency" {
-
-                    if (systemConfigurationKnobs.utilizedBigCores.get() > 0 && systemConfigurationKnobs.utilizedLittleCores.get() == 0) {
-
-                        result = systemConfigurationKnobs.utilizedBigCoreFrequency.textApi(caller: caller, message: message, progressIndicator: progressIndicator + 2, verbosityLevel: verbosityLevel)
-
-                    } else if (systemConfigurationKnobs.utilizedBigCores.get() == 0 && systemConfigurationKnobs.utilizedLittleCores.get() > 0) {
-
-                        result = systemConfigurationKnobs.utilizedLittleCoreFrequency.textApi(caller: caller, message: message, progressIndicator: progressIndicator + 2, verbosityLevel: verbosityLevel)
-
-                    }
-
-                // Derived System Configuration Knobs
-                } else if message[progressIndicator + 1] == "utilizedCoreMask" {
-
-                    // TODO
-
-                } else if message[progressIndicator + 1] == "utilizedCoreFrequencies" {
-
-                    // TODO
-
-                }
 
             // System measures
-            } else if message[progressIndicator] == "energy" && message[progressIndicator + 1] == "get" {
+            if message[progressIndicator] == "energy" && message[progressIndicator + 1] == "get" {
 
                 result = String(self.energyMonitor.readEnergy())
 
@@ -335,6 +358,9 @@ class ArmBigLittle: Architecture,
                 if verbosityLevel == VerbosityLevel.Verbose {
                     result = "Clock shows: " + result + "."
                 }
+            } else {
+
+                // TODO add error msg based on verbosity level
             }
              
             return result;

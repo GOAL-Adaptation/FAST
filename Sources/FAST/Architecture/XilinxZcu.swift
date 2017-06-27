@@ -231,6 +231,9 @@ class XilinxZcu: Architecture,
                 if verbosityLevel == VerbosityLevel.Verbose {
                     result = "Clock shows: " + result + "."
                 }
+            } else {
+
+                // TODO add error msg based on verbosity level
             }
              
             return result;
