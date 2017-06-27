@@ -349,11 +349,17 @@ class ArmBigLittle: Architecture,
     func enforceResourceUsageAndConsistency() -> Void {
 
         // Store the requested state
-        let requestedState = ArmBigLittleSystemConfigurationKnobs()
-        requestedState.utilizedBigCores.set(                      systemConfigurationKnobs.utilizedBigCores.get())
-        requestedState.utilizedBigCoreFrequency.set(      systemConfigurationKnobs.utilizedBigCoreFrequency.get())
-        requestedState.utilizedLittleCores.set(                systemConfigurationKnobs.utilizedLittleCores.get())
-        requestedState.utilizedLittleCoreFrequency.set( systemConfigurationKnobs.utilizedLittleCoreFrequency.get())
+        struct RequestedState {
+            let utilizedBigCores: Int
+            let utilizedBigCoreFrequency: Int
+            let utilizedLittleCores: Int
+            let utilizedLittleCoreFrequency: Int
+        }
+
+        let requestedState = RequestedState(utilizedBigCores:            systemConfigurationKnobs.utilizedBigCores.get(),
+                                            utilizedBigCoreFrequency:    systemConfigurationKnobs.utilizedBigCoreFrequency.get(), 
+                                            utilizedLittleCores:         systemConfigurationKnobs.utilizedLittleCores.get(), 
+                                            utilizedLittleCoreFrequency: systemConfigurationKnobs.utilizedLittleCoreFrequency.get())
 
         //-------------------------------
         // Maximal Resource Usage Policy
@@ -378,10 +384,10 @@ class ArmBigLittle: Architecture,
             }
 
             // Report if policy was applied
-            if ((systemConfigurationKnobs.utilizedBigCores.get()            !=            requestedState.utilizedBigCores.get()) ||
-                (systemConfigurationKnobs.utilizedBigCoreFrequency.get()    !=    requestedState.utilizedBigCoreFrequency.get()) ||
-                (systemConfigurationKnobs.utilizedLittleCores.get()         !=         requestedState.utilizedLittleCores.get()) ||
-                (systemConfigurationKnobs.utilizedLittleCoreFrequency.get() != requestedState.utilizedLittleCoreFrequency.get()) ){
+            if ((systemConfigurationKnobs.utilizedBigCores.get()            !=            requestedState.utilizedBigCores) ||
+                (systemConfigurationKnobs.utilizedBigCoreFrequency.get()    !=    requestedState.utilizedBigCoreFrequency) ||
+                (systemConfigurationKnobs.utilizedLittleCores.get()         !=         requestedState.utilizedLittleCores) ||
+                (systemConfigurationKnobs.utilizedLittleCoreFrequency.get() != requestedState.utilizedLittleCoreFrequency) ){
 
                     // TODO: add
 
@@ -400,10 +406,10 @@ class ArmBigLittle: Architecture,
             systemConfigurationKnobs.utilizedLittleCoreFrequency.set(resourceUsagePolicyModule.maintainedState.utilizedLittleCoreFrequency.get())
 
             // Report if policy was applied
-            if ((systemConfigurationKnobs.utilizedBigCores.get()            !=            requestedState.utilizedBigCores.get()) ||
-                (systemConfigurationKnobs.utilizedBigCoreFrequency.get()    !=    requestedState.utilizedBigCoreFrequency.get()) ||
-                (systemConfigurationKnobs.utilizedLittleCores.get()         !=         requestedState.utilizedLittleCores.get()) ||
-                (systemConfigurationKnobs.utilizedLittleCoreFrequency.get() != requestedState.utilizedLittleCoreFrequency.get()) ){
+            if ((systemConfigurationKnobs.utilizedBigCores.get()            !=            requestedState.utilizedBigCores) ||
+                (systemConfigurationKnobs.utilizedBigCoreFrequency.get()    !=    requestedState.utilizedBigCoreFrequency) ||
+                (systemConfigurationKnobs.utilizedLittleCores.get()         !=         requestedState.utilizedLittleCores) ||
+                (systemConfigurationKnobs.utilizedLittleCoreFrequency.get() != requestedState.utilizedLittleCoreFrequency) ){
 
                     // TODO: add
 
@@ -453,14 +459,14 @@ class ArmBigLittle: Architecture,
 
             // schedule onto big cores
             if scenarioKnobs.availableBigCores.get() > 0 {
-               systemConfigurationKnobs.utilizedBigCores.set(           min(scenarioKnobs.availableBigCores.get(),       ((requestedState.utilizedBigCores.get() > 0) ? requestedState.utilizedBigCores.get()         : requestedState.utilizedLittleCores.get())))
-               systemConfigurationKnobs.utilizedBigCoreFrequency.set(   min(scenarioKnobs.maximalBigCoreFrequency.get(), ((requestedState.utilizedBigCores.get() > 0) ? requestedState.utilizedBigCoreFrequency.get() : requestedState.utilizedLittleCoreFrequency.get())))
+               systemConfigurationKnobs.utilizedBigCores.set(           min(scenarioKnobs.availableBigCores.get(),       ((requestedState.utilizedBigCores > 0) ? requestedState.utilizedBigCores         : requestedState.utilizedLittleCores)))
+               systemConfigurationKnobs.utilizedBigCoreFrequency.set(   min(scenarioKnobs.maximalBigCoreFrequency.get(), ((requestedState.utilizedBigCores > 0) ? requestedState.utilizedBigCoreFrequency : requestedState.utilizedLittleCoreFrequency)))
                systemConfigurationKnobs.utilizedLittleCoreFrequency.set(otherCoreFrequency )
 
             // schedule onto LITTLE cores
             } else {
-                systemConfigurationKnobs.utilizedLittleCores.set(        min(scenarioKnobs.availableLittleCores.get(),       ((requestedState.utilizedLittleCores.get() > 0) ? requestedState.utilizedLittleCores.get()         : requestedState.utilizedBigCores.get())))
-                systemConfigurationKnobs.utilizedLittleCoreFrequency.set(min(scenarioKnobs.maximalLittleCoreFrequency.get(), ((requestedState.utilizedLittleCores.get() > 0) ? requestedState.utilizedLittleCoreFrequency.get() : requestedState.utilizedBigCoreFrequency.get())))
+                systemConfigurationKnobs.utilizedLittleCores.set(        min(scenarioKnobs.availableLittleCores.get(),       ((requestedState.utilizedLittleCores > 0) ? requestedState.utilizedLittleCores         : requestedState.utilizedBigCores)))
+                systemConfigurationKnobs.utilizedLittleCoreFrequency.set(min(scenarioKnobs.maximalLittleCoreFrequency.get(), ((requestedState.utilizedLittleCores > 0) ? requestedState.utilizedLittleCoreFrequency : requestedState.utilizedBigCoreFrequency)))
                 systemConfigurationKnobs.utilizedBigCoreFrequency.set(   otherCoreFrequency )
 
             }

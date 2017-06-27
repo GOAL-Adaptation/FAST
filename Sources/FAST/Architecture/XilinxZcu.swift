@@ -245,9 +245,13 @@ class XilinxZcu: Architecture,
     func enforceResourceUsageAndConsistency() -> Void {
 
         // Store the requested state
-        let requestedState = XilinxZcuSystemConfigurationKnobs()
-        requestedState.utilizedCores.set(                      systemConfigurationKnobs.utilizedCores.get())
-        requestedState.utilizedCoreFrequency.set(      systemConfigurationKnobs.utilizedCoreFrequency.get())
+        struct RequestedState {
+            let utilizedCores: Int
+            let utilizedCoreFrequency: Int
+        }
+
+        let requestedState = RequestedState(utilizedCores:         systemConfigurationKnobs.utilizedCores.get(),
+                                            utilizedCoreFrequency: systemConfigurationKnobs.utilizedCoreFrequency.get())
 
         //-------------------------------
         // Maximal Resource Usage Policy
@@ -259,8 +263,8 @@ class XilinxZcu: Architecture,
             systemConfigurationKnobs.utilizedCoreFrequency.set(   scenarioKnobs.maximalCoreFrequency.get() )
 
             // Report if policy was applied
-            if ((systemConfigurationKnobs.utilizedCores.get()         !=         requestedState.utilizedCores.get()) ||
-                (systemConfigurationKnobs.utilizedCoreFrequency.get() != requestedState.utilizedCoreFrequency.get()) ){
+            if ((systemConfigurationKnobs.utilizedCores.get()         !=         requestedState.utilizedCores) ||
+                (systemConfigurationKnobs.utilizedCoreFrequency.get() != requestedState.utilizedCoreFrequency) ){
 
                     // TODO: add
 
@@ -277,8 +281,8 @@ class XilinxZcu: Architecture,
             systemConfigurationKnobs.utilizedCoreFrequency.set(      resourceUsagePolicyModule.maintainedState.utilizedCoreFrequency.get())
 
             // Report if policy was applied
-            if ((systemConfigurationKnobs.utilizedCores.get()         !=         requestedState.utilizedCores.get()) ||
-                (systemConfigurationKnobs.utilizedCoreFrequency.get() != requestedState.utilizedCoreFrequency.get()) ){
+            if ((systemConfigurationKnobs.utilizedCores.get()         !=         requestedState.utilizedCores) ||
+                (systemConfigurationKnobs.utilizedCoreFrequency.get() != requestedState.utilizedCoreFrequency) ){
 
                     // TODO: add
 
