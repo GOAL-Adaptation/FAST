@@ -281,7 +281,15 @@ public class Runtime {
 
     static var scriptedCounter: UInt64 = 0
 
+    static var shouldTerminate = false
+
     static func reportProgress() {
+
+        if Runtime.shouldTerminate {
+            print("FAST application terminating.")
+            exit(0)
+        }
+
         if (Runtime.runtimeKnobs.interactionMode.get() == InteractionMode.Scripted) {
 
             if Runtime.scriptedCounter > 0 {
