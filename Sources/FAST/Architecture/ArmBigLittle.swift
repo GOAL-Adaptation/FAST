@@ -118,7 +118,69 @@ class ArmBigLittle: Architecture,
 
     func actuate() -> Void {
 
-        // TODO add system calls here
+        // TODO add system calls here, the C code to be translated is included
+        //  or one might create a small C library implementing actuate platform actuation and that'd be coupled along as energymon
+
+/*
+            // Configure the Hardware to use the number of cores dictated by the system configuration knobs
+            static void configureCoreUtilization(uint64_t utilizedBigCores,
+                                                uint64_t utilizedLittleCores) {
+
+                int returnValueOfSysCall = 0;
+                char command[4096];
+
+                sprintf(command,
+                        "ps -eLf | awk '(/%d/) && (!/awk/) {print $4}' | xargs -n1 taskset -p %s > /dev/null",
+                        getpid(), armBigLittleKnob(SystemConfiguration, "utilizedCoreMask", "get", "", Simple));
+
+                printf("Applying core allocation: %s\n", command);
+
+                if (applySysCalls == 1) {
+
+                    returnValueOfSysCall = system(command);
+
+                    if (returnValueOfSysCall != 0) {
+                        fprintf(stderr, "ERROR running taskset: %d\n",
+                                returnValueOfSysCall);
+                    }
+                }
+            }
+
+            // Configure the Hardware to use the core frequencies dictated by the system configuration knobs 
+            static void configureCoreFrequencies(uint64_t utilizedBigCoreFrequency,
+                                                uint64_t utilizedLittleCoreFrequency) {
+
+                int returnValueOfSysCall = 0;
+                char command[4096];
+
+                unsigned int i = 0;
+                char* freqs = armBigLittleKnob(SystemConfiguration, "utilizedCoreFrequencies", "get", "", Simple);
+                char* freq = strtok(freqs, ",");
+                while (freq != NULL) {
+                    if (freq[0] != '-') {
+                        sprintf(command,
+                                "echo %lu > /sys/devices/system/cpu/cpu%u/cpufreq/%s",
+                                strtoul(freq, NULL, 0), i, dvfsFile);
+                        printf("Applying CPU frequency: %s\n", command);
+
+                        if (applySysCalls == 1) {
+
+                            returnValueOfSysCall = system(command);
+
+                            if (returnValueOfSysCall != 0) {
+                                fprintf(stderr, "ERROR setting frequencies: %d\n",
+                                        returnValueOfSysCall);
+                            }
+
+                        }
+
+                    }
+                    freq = strtok(NULL, ",");
+                    i++;
+                }
+                free(freqs);
+            }
+    */
 
     }
 
