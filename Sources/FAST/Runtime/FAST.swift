@@ -145,9 +145,12 @@ public class Runtime {
     private static var controllerLock = NSLock()
 
 //------------------- very new stuff
+
+    // The runtime registers the APIs of the platform and application 
     internal static var architecture: Architecture? = nil
     internal static var application: Application? = nil
 
+    // The runtime manages communcations e.g. TCP
     internal static var communicationChannel: CommunicationServer? = nil
 
     static func shutdown() -> Void {
@@ -161,6 +164,7 @@ public class Runtime {
         Runtime.communicationChannel!.run(MessageHandler())
     }
 
+    // These knobs control the interaction mode, e.g. scripted
     class RuntimeKnobs: TextApiModule {
 
         let name = "RuntimeKnobs"
@@ -186,6 +190,7 @@ public class Runtime {
         }
     }
 
+    // The runtime API this where the channel connects
     public class RuntimeApiModule: TextApiModule {
         public let name = "Runtime"
         public var subModules = [String : TextApiModule]()
@@ -195,6 +200,7 @@ public class Runtime {
                                     progressIndicator: Int, 
                                     verbosityLevel:    VerbosityLevel) -> String {
 
+            // the internal runtime API handles the process command
             if message[progressIndicator] == "process" {
 
                 if Runtime.runtimeKnobs.interactionMode.get() == InteractionMode.Scripted {
@@ -261,6 +267,7 @@ public class Runtime {
                     }
                 }
 
+            // the runtime keeps track of the iteration measure
             } else if message[progressIndicator] == "iteration" && message[progressIndicator + 1] == "get" {
 
                 switch verbosityLevel {
@@ -272,6 +279,7 @@ public class Runtime {
                         return String(describing: Runtime.readMeasure("iteration"))
                 }                
 
+            // invalid message
             } else {
 
                 switch verbosityLevel {
@@ -298,10 +306,13 @@ public class Runtime {
         }
     }
 
+    // for the scripted mode
     static var scriptedCounter: UInt64 = 0
 
+    // shared var to sense quit command over communcation channel
     static var shouldTerminate = false
 
+    // generic function to handle the event that an input has been processed in an optimize loop
     static func reportProgress() {
 
         if Runtime.shouldTerminate {
@@ -309,6 +320,7 @@ public class Runtime {
             exit(0)
         }
 
+        // keeps track of the counter and blocks the application in scripted mode
         if (Runtime.runtimeKnobs.interactionMode.get() == InteractionMode.Scripted) {
 
             if Runtime.scriptedCounter > 0 {
@@ -328,6 +340,7 @@ public class Runtime {
             currentArchitecture.enforceResourceUsageAndConsistency()
         }
 
+        // actuate system configuration on the hardware
         if let currentArchitecture = Runtime.architecture as? RealArchitecture {
             if currentArchitecture.actuationPolicy.get() == ActuationPolicy.Actuate {
                 currentArchitecture.actuate()
@@ -335,8 +348,10 @@ public class Runtime {
         }
     }
 
+    // the instance of the runtime api
     public static var apiModule = RuntimeApiModule()
 
+    // architecture initialization, right now it comes from the application, this needs to be thought through
     public static func initializeArchitecture(name architectureName: String) {
         switch architectureName {
             case "ArmBigLittle": 
@@ -358,6 +373,7 @@ public class Runtime {
         reregisterSubModules()
     }
 
+    // application initialization
     public static func registerApplication(application: Application) {
 
         self.application = application
@@ -365,6 +381,7 @@ public class Runtime {
         reregisterSubModules()
     }
 
+    // application and architecture might be initialized in various orders, this makes sure everything is current
     static func reregisterSubModules() -> Void {
         apiModule.subModules = [String : TextApiModule]()
         if let architecture = self.architecture {
