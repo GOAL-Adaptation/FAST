@@ -224,10 +224,13 @@ public class Runtime {
 
                             Runtime.scriptedCounter += UInt64(stepAmount)
 
+                            while (Runtime.runtimeKnobs.interactionMode.get() == InteractionMode.Scripted && 
+                                   Runtime.scriptedCounter > 0) {}
+
                             switch verbosityLevel {
 
                                 case VerbosityLevel.Verbose:
-                                    return "Processing \(stepAmount) input(s)."
+                                    return "Processed \(stepAmount) input(s)."
                             
                                 default:
                                     return ""
@@ -313,7 +316,8 @@ public class Runtime {
             }
 
             while (Runtime.runtimeKnobs.interactionMode.get() == InteractionMode.Scripted && 
-                Runtime.scriptedCounter == 0) {}
+                   Runtime.scriptedCounter == 0 &&
+                   !Runtime.shouldTerminate) {}
         }
     }
 
