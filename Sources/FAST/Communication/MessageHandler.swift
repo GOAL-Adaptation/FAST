@@ -18,7 +18,7 @@ class MessageHandler {
     let shutdownMessage = "FAST Application is shutting down."
 
     let quitCommand = "close"
-    let shutdownCommand = "exit"
+    let shutdownCommand = "quit"
 
     //-------------------------------
 
