@@ -18,7 +18,7 @@ class MessageHandler {
     let shutdownMessage = "FAST Application is shutting down."
 
     let quitCommand = "close"
-    let shutdownCommand = "exit"
+    let shutdownCommand = "quit"
 
     //-------------------------------
 
@@ -43,6 +43,7 @@ class MessageHandler {
                 server.continueRunning = false
 
                 // TODO finalizing logs and shutting down other units is to be initiated from here
+                Runtime.shouldTerminate = true
 
                 return self.shutdownMessage
 

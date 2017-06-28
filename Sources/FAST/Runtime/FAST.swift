@@ -19,6 +19,8 @@ import HeliumLogger
 import LoggerAPI
 import CSwiftV
 
+import Nifty
+
 ///////////////////
 // Runtime State //
 ///////////////////
@@ -143,9 +145,12 @@ public class Runtime {
     private static var controllerLock = NSLock()
 
 //------------------- very new stuff
+
+    // The runtime registers the APIs of the platform and application 
     internal static var architecture: Architecture? = nil
     internal static var application: Application? = nil
 
+    // The runtime manages communcations e.g. TCP
     internal static var communicationChannel: CommunicationServer? = nil
 
     static func shutdown() -> Void {
@@ -159,6 +164,7 @@ public class Runtime {
         Runtime.communicationChannel!.run(MessageHandler())
     }
 
+    // These knobs control the interaction mode, e.g. scripted
     class RuntimeKnobs: TextApiModule {
 
         let name = "RuntimeKnobs"
@@ -168,7 +174,7 @@ public class Runtime {
         var interactionMode: Knob<InteractionMode>
 
         init() {
-            self.interactionMode = Knob(name: "interactionMode", from: key, or: InteractionMode.Default)
+            self.interactionMode = Knob(name: "interactionMode", from: key, or: InteractionMode.Default, preSetter: Runtime.changeInteractionMode)
             
             self.addSubModule(newModule: interactionMode)
         }
@@ -176,6 +182,15 @@ public class Runtime {
 
     static var runtimeKnobs: RuntimeKnobs = RuntimeKnobs()
 
+    static func changeInteractionMode(oldMode: InteractionMode, newMode: InteractionMode) -> Void {
+
+        // Change applies only if the value has changed
+        if (oldMode != newMode) && (newMode == InteractionMode.Scripted) {
+            Runtime.scriptedCounter = 0
+        }
+    }
+
+    // The runtime API this where the channel connects
     public class RuntimeApiModule: TextApiModule {
         public let name = "Runtime"
         public var subModules = [String : TextApiModule]()
@@ -185,12 +200,105 @@ public class Runtime {
                                     progressIndicator: Int, 
                                     verbosityLevel:    VerbosityLevel) -> String {
 
+            // the internal runtime API handles the process command
             if message[progressIndicator] == "process" {
-                return "Ciao bello!"
+
+                if Runtime.runtimeKnobs.interactionMode.get() == InteractionMode.Scripted {
+
+                    if message.count > progressIndicator + 1 {
+                
+                        let nextWord = message[progressIndicator + 1]
+                        var stepAmount: UInt64 = 0
+
+                        if nextWord == "random" {
+
+                            if message.count > progressIndicator + 3 {
+                                
+                                if  let loBound = Int(message[progressIndicator + 2]),
+                                    let hiBound = Int(message[progressIndicator + 3]) {
+                                        
+                                        stepAmount = UInt64(randi(1, 1, min: loBound, max: hiBound)[0, 0])
+                                }
+                            }
+
+                        } else if let stepNumber = UInt64(message[progressIndicator + 1]) {
+
+                            stepAmount = stepNumber
+                        }
+
+                        if stepAmount > 0 {
+
+                            Runtime.scriptedCounter += UInt64(stepAmount)
+
+                            while (Runtime.runtimeKnobs.interactionMode.get() == InteractionMode.Scripted && 
+                                   Runtime.scriptedCounter > 0) {}
+
+                            switch verbosityLevel {
+
+                                case VerbosityLevel.Verbose:
+                                    return "Processed \(stepAmount) input(s)."
+                            
+                                default:
+                                    return ""
+                            }
+
+                        } else {
+
+                            switch verbosityLevel {
+
+                                case VerbosityLevel.Verbose:
+                                    return "Invalid step amount for process: ``" + message.joined(separator: " ") + "`` received from: \(caller)."
+                            
+                                default:
+                                    return ""
+                            }
+                        }
+                    }
+
+                } else {
+
+                    switch verbosityLevel {
+
+                        case VerbosityLevel.Verbose:
+                            return "Invalid process message: ``" + message.joined(separator: " ") + "`` received from: \(caller) as interactionMode is \(Runtime.runtimeKnobs.interactionMode.get())."
+                    
+                        default:
+                            return ""
+                    }
+                }
+
+            // the runtime keeps track of the iteration measure
+            } else if message[progressIndicator] == "iteration" && message[progressIndicator + 1] == "get" {
+
+                switch verbosityLevel {
+                
+                    case VerbosityLevel.Verbose:
+                        return "Current iteration is: " + String(describing: Runtime.readMeasure("iteration")) + "."
+                    
+                    default:
+                        return String(describing: Runtime.readMeasure("iteration"))
+                }                
+
+            // invalid message
             } else {
-                return "Invalid message!"
+
+                switch verbosityLevel {
+                
+                    case VerbosityLevel.Verbose:
+                        return "Invalid message: ``" + message.joined(separator: " ") + "'' received from: \(caller)."
+                    
+                    default:
+                        return ""
+                }
             }
 
+            // TODO we should not get here
+            return "Alalala"
+        }
+
+        /** get status as a dictionary */
+        public func getInternalStatus() -> [String : Any]? {
+            return ["iteration" : UInt64(Runtime.readMeasure("iteration")!)] // TODO make sure iteration is always defined, some global init would be nice
         }
 
         init() {
@@ -198,10 +306,52 @@ public class Runtime {
         }
     }
 
+    // for the scripted mode
     static var scriptedCounter: UInt64 = 0
 
+    // shared var to sense quit command over communcation channel
+    static var shouldTerminate = false
+
+    // generic function to handle the event that an input has been processed in an optimize loop
+    static func reportProgress() {
+
+        if Runtime.shouldTerminate {
+            print("FAST application terminating.")
+            exit(0)
+        }
+
+        // keeps track of the counter and blocks the application in scripted mode
+        if (Runtime.runtimeKnobs.interactionMode.get() == InteractionMode.Scripted) {
+
+            if Runtime.scriptedCounter > 0 {
+                Runtime.scriptedCounter -= 1
+            }
+
+            while (Runtime.runtimeKnobs.interactionMode.get() == InteractionMode.Scripted && 
+                   Runtime.scriptedCounter == 0 &&
+                   !Runtime.shouldTerminate) {}
+        }
+
+        // FIXME PATs cannot be used here, i.e. cant write as? ScenarioKnobEnrichedArchitecture in Swift 3.1.1 so all guys are listed
+        if let currentArchitecture = Runtime.architecture as? ArmBigLittle {
+            currentArchitecture.enforceResourceUsageAndConsistency()
+        }
+        if let currentArchitecture = Runtime.architecture as? XilinxZcu {
+            currentArchitecture.enforceResourceUsageAndConsistency()
+        }
+
+        // actuate system configuration on the hardware
+        if let currentArchitecture = Runtime.architecture as? RealArchitecture {
+            if currentArchitecture.actuationPolicy.get() == ActuationPolicy.Actuate {
+                currentArchitecture.actuate()
+            }
+        }
+    }
+
+    // the instance of the runtime api
     public static var apiModule = RuntimeApiModule()
 
+    // architecture initialization, right now it comes from the application, this needs to be thought through
     public static func initializeArchitecture(name architectureName: String) {
         switch architectureName {
             case "ArmBigLittle": 
@@ -223,6 +373,7 @@ public class Runtime {
         reregisterSubModules()
     }
 
+    // application initialization
     public static func registerApplication(application: Application) {
 
         self.application = application
@@ -230,6 +381,7 @@ public class Runtime {
         reregisterSubModules()
     }
 
+    // application and architecture might be initialized in various orders, this makes sure everything is current
     static func reregisterSubModules() -> Void {
         apiModule.subModules = [String : TextApiModule]()
         if let architecture = self.architecture {
@@ -389,8 +541,7 @@ public func optimize
             schedule[iteration % windowSize].apply()
             Runtime.measure("iteration", Double(iteration))
             // FIXME maybe stalling in scripted mode should not be done inside of optimize but somewhere else in an independent and better way
-            while (Runtime.runtimeKnobs.interactionMode.get() == InteractionMode.Scripted && 
-                   Runtime.scriptedCounter == 0) {}
+            Runtime.reportProgress()
         }
     } else {
         Log.warning("No intent defined for optimize scope \"\(id)\". Proceeding without adaptation.")

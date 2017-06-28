@@ -46,6 +46,54 @@ class ArmBigLittleScenarioKnobs: TextApiModule {
     var maximalBigCoreFrequency    = Knob(name: "maximalBigCoreFrequency",    from: key, or: 2000000)
     var maximalLittleCoreFrequency = Knob(name: "maximalLittleCoreFrequency", from: key, or: 1400000)
 
+    /*
+     *  - Limited availablility Scenario Knobs (available when utilizedBigCores > 0 OR utilizedLittleCores > 0) AND (utilizedBigCores == 0 OR utilizedLittleCores == 0)
+     *
+     *    - availableCores
+     *    - maximalCoreFrequency
+     */
+    func internalTextApi(caller:            String, 
+                        message:           Array<String>, 
+                        progressIndicator: Int, 
+                        verbosityLevel:    VerbosityLevel) -> String {
+
+        var result: String = ""
+
+        if let currentArchitecture = Runtime.architecture as? ArmBigLittle {
+
+            if message[progressIndicator] == "availableCores" {
+
+                if (currentArchitecture.systemConfigurationKnobs.utilizedBigCores.get() > 0 && currentArchitecture.systemConfigurationKnobs.utilizedLittleCores.get() == 0) {
+
+                    result = availableBigCores.textApi(caller: caller, message: message, progressIndicator: progressIndicator + 1, verbosityLevel: verbosityLevel)
+
+                } else if (currentArchitecture.systemConfigurationKnobs.utilizedBigCores.get() == 0 && currentArchitecture.systemConfigurationKnobs.utilizedLittleCores.get() > 0) {
+
+                    result = availableLittleCores.textApi(caller: caller, message: message, progressIndicator: progressIndicator + 1, verbosityLevel: verbosityLevel)
+                }
+
+            } else if message[progressIndicator] == "maximalCoreFrequency" {
+
+                if (currentArchitecture.systemConfigurationKnobs.utilizedBigCores.get() > 0 && currentArchitecture.systemConfigurationKnobs.utilizedLittleCores.get() == 0) {
+
+                    result = maximalBigCoreFrequency.textApi(caller: caller, message: message, progressIndicator: progressIndicator + 1, verbosityLevel: verbosityLevel)
+
+                } else if (currentArchitecture.systemConfigurationKnobs.utilizedBigCores.get() == 0 && currentArchitecture.systemConfigurationKnobs.utilizedLittleCores.get() > 0) {
+
+                    result = maximalLittleCoreFrequency.textApi(caller: caller, message: message, progressIndicator: progressIndicator + 1, verbosityLevel: verbosityLevel)
+                }
+            } else {
+
+                // TODO add error msg based on verbosity level
+            }
+        } else {
+
+            // TODO add error msg based on verbosity level
+        }
+
+        return result
+    }
+
     init() {
         self.addSubModule(newModules: [availableBigCores, availableLittleCores, maximalBigCoreFrequency, maximalLittleCoreFrequency])
     }
@@ -62,6 +110,63 @@ class ArmBigLittleSystemConfigurationKnobs: TextApiModule {
     var utilizedLittleCores         = Knob(name: "utilizedLittleCores",         from: key, or:       0)
     var utilizedBigCoreFrequency    = Knob(name: "utilizedBigCoreFrequency",    from: key, or: 2000000)
     var utilizedLittleCoreFrequency = Knob(name: "utilizedLittleCoreFrequency", from: key, or:  200000)
+
+    /*
+     *  - Limited availablility & Derived System Configuration Knobs (available when utilizedBigCores > 0 OR utilizedLittleCores > 0) AND (utilizedBigCores == 0 OR utilizedLittleCores == 0)
+     *
+     *    Limited Availablility System Configuration Knobs
+     *    - utilizedCores
+     *    - utilizedCoreFrequency
+     *
+     *    Derived System Configuration Knobs
+     *    - utilizedCoreMask
+     *    - utilizedCoreFrequencies
+     */
+    func internalTextApi(caller:            String, 
+                        message:           Array<String>, 
+                        progressIndicator: Int, 
+                        verbosityLevel:    VerbosityLevel) -> String {
+
+        var result: String = ""
+
+        if message[progressIndicator + 1] == "utilizedCores" {
+
+            if (self.utilizedBigCores.get() > 0 && self.utilizedLittleCores.get() == 0) {
+
+                result = self.utilizedBigCores.textApi(caller: caller, message: message, progressIndicator: progressIndicator + 2, verbosityLevel: verbosityLevel)
+
+            } else if (self.utilizedBigCores.get() == 0 && self.utilizedLittleCores.get() > 0) {
+
+                result = self.utilizedLittleCores.textApi(caller: caller, message: message, progressIndicator: progressIndicator + 2, verbosityLevel: verbosityLevel)
+            }
+
+        } else if message[progressIndicator + 1] == "utilizedCoreFrequency" {
+
+            if (self.utilizedBigCores.get() > 0 && self.utilizedLittleCores.get() == 0) {
+
+                result = self.utilizedBigCoreFrequency.textApi(caller: caller, message: message, progressIndicator: progressIndicator + 2, verbosityLevel: verbosityLevel)
+
+            } else if (self.utilizedBigCores.get() == 0 && self.utilizedLittleCores.get() > 0) {
+
+                result = self.utilizedLittleCoreFrequency.textApi(caller: caller, message: message, progressIndicator: progressIndicator + 2, verbosityLevel: verbosityLevel)
+            }
+
+        // Derived System Configuration Knobs
+        } else if message[progressIndicator + 1] == "utilizedCoreMask" {
+
+            // TODO
+
+        } else if message[progressIndicator + 1] == "utilizedCoreFrequencies" {
+
+            // TODO
+
+        } else {
+
+                // TODO add error msg based on verbosity level
+        }
+
+        return result
+    }
 
     init() {
         self.addSubModule(newModules: [utilizedBigCores, utilizedLittleCores, utilizedBigCoreFrequency, utilizedLittleCoreFrequency])
@@ -91,6 +196,7 @@ class ArmBigLittleResourceUsagePolicyModule: TextApiModule {
 class ArmBigLittle: Architecture, 
                     ClockAndEnergyArchitecture, 
                     ScenarioKnobEnrichedArchitecture, 
+                    RealArchitecture, 
                     EmulateableArchitecture {
 
     let name = "ARM-big.LITTLE" // TODO in DB is "ARM-big.LITTLE"
@@ -112,6 +218,76 @@ class ArmBigLittle: Architecture,
     var resourceUsagePolicyModule = ResourceUsagePolicyModuleType()
 
     var executionMode: Knob<ExecutionMode>
+
+    var actuationPolicy = Knob(name: "actuationPolicy", from: key, or: ActuationPolicy.NoActuation)
+
+    func actuate() -> Void {
+
+        // TODO add system calls here, the C code to be translated is included
+        //  or one might create a small C library implementing actuate platform actuation and that'd be coupled along as energymon
+
+/*
+            // Configure the Hardware to use the number of cores dictated by the system configuration knobs
+            static void configureCoreUtilization(uint64_t utilizedBigCores,
+                                                uint64_t utilizedLittleCores) {
+
+                int returnValueOfSysCall = 0;
+                char command[4096];
+
+                sprintf(command,
+                        "ps -eLf | awk '(/%d/) && (!/awk/) {print $4}' | xargs -n1 taskset -p %s > /dev/null",
+                        getpid(), armBigLittleKnob(SystemConfiguration, "utilizedCoreMask", "get", "", Simple));
+
+                printf("Applying core allocation: %s\n", command);
+
+                if (applySysCalls == 1) {
+
+                    returnValueOfSysCall = system(command);
+
+                    if (returnValueOfSysCall != 0) {
+                        fprintf(stderr, "ERROR running taskset: %d\n",
+                                returnValueOfSysCall);
+                    }
+                }
+            }
+
+            // Configure the Hardware to use the core frequencies dictated by the system configuration knobs 
+            static void configureCoreFrequencies(uint64_t utilizedBigCoreFrequency,
+                                                uint64_t utilizedLittleCoreFrequency) {
+
+                int returnValueOfSysCall = 0;
+                char command[4096];
+
+                unsigned int i = 0;
+                char* freqs = armBigLittleKnob(SystemConfiguration, "utilizedCoreFrequencies", "get", "", Simple);
+                char* freq = strtok(freqs, ",");
+                while (freq != NULL) {
+                    if (freq[0] != '-') {
+                        sprintf(command,
+                                "echo %lu > /sys/devices/system/cpu/cpu%u/cpufreq/%s",
+                                strtoul(freq, NULL, 0), i, dvfsFile);
+                        printf("Applying CPU frequency: %s\n", command);
+
+                        if (applySysCalls == 1) {
+
+                            returnValueOfSysCall = system(command);
+
+                            if (returnValueOfSysCall != 0) {
+                                fprintf(stderr, "ERROR setting frequencies: %d\n",
+                                        returnValueOfSysCall);
+                            }
+
+                        }
+
+                    }
+                    freq = strtok(NULL, ",");
+                    i++;
+                }
+                free(freqs);
+            }
+    */
+
+    }
 
     /** Changing Execution Mode */
     public func changeExecutionMode(oldMode: ExecutionMode, newMode: ExecutionMode) -> Void {
@@ -149,26 +325,15 @@ class ArmBigLittle: Architecture,
             changeExecutionMode(oldMode: ExecutionMode.Default, newMode: ExecutionMode.Emulated)
         }
 
-        self.addSubModule(newModules: [scenarioKnobs, systemConfigurationKnobs, resourceUsagePolicyModule, executionMode])
+        self.addSubModule(newModules: [scenarioKnobs, systemConfigurationKnobs, resourceUsagePolicyModule, executionMode, actuationPolicy])
         self.registerSystemMeasures()
     }
 
     /** Internal text API for ARM bigLITTLE
-     *  - Limited availablility knobs (available when utilizedBigCores > 0 OR utilizedLittleCores > 0) AND (utilizedBigCores == 0 OR utilizedLittleCores == 0)
-
-     *    Scenario Knobs
-     *    - availableCores
-     *    - maximalCoreFrequency
      *
-     *    System Configuration Knobs
-     *    - utilizedCores
-     *    - utilizedCoreFrequency
-     *
-     * - Derived knobs
-     *
-     *   SystemConfiguration Knobs
-     *   - utilizedCoreMask
-     *   - utilizedCoreFrequencies
+     *  - System measures
+     *    - energy
+     *    - time
      */
     func internalTextApi(caller:            String, 
                          message:           Array<String>, 
@@ -176,89 +341,51 @@ class ArmBigLittle: Architecture,
                          verbosityLevel:    VerbosityLevel) -> String {
 
             var result: String = ""
-    
-            // Limited availability Scenario Knobs
-            if message[progressIndicator] == "scenarioKnobs" {
 
-                if message[progressIndicator + 1] == "availableCores" {
+            // System measures
+            if message[progressIndicator] == "energy" && message[progressIndicator + 1] == "get" {
 
-                    if (systemConfigurationKnobs.utilizedBigCores.get() > 0 && systemConfigurationKnobs.utilizedLittleCores.get() == 0) {
+                result = String(self.energyMonitor.readEnergy())
 
-                        result = scenarioKnobs.availableBigCores.textApi(caller: caller, message: message, progressIndicator: progressIndicator + 2, verbosityLevel: verbosityLevel)
-
-                    } else if (systemConfigurationKnobs.utilizedBigCores.get() == 0 && systemConfigurationKnobs.utilizedLittleCores.get() > 0) {
-
-                        result = scenarioKnobs.availableLittleCores.textApi(caller: caller, message: message, progressIndicator: progressIndicator + 2, verbosityLevel: verbosityLevel)
-
-                    }
-
-                } else if message[progressIndicator + 1] == "maximalCoreFrequency" {
-
-                    if (systemConfigurationKnobs.utilizedBigCores.get() > 0 && systemConfigurationKnobs.utilizedLittleCores.get() == 0) {
-
-                        result = scenarioKnobs.maximalBigCoreFrequency.textApi(caller: caller, message: message, progressIndicator: progressIndicator + 2, verbosityLevel: verbosityLevel)
-
-                    } else if (systemConfigurationKnobs.utilizedBigCores.get() == 0 && systemConfigurationKnobs.utilizedLittleCores.get() > 0) {
-
-                        result = scenarioKnobs.maximalLittleCoreFrequency.textApi(caller: caller, message: message, progressIndicator: progressIndicator + 2, verbosityLevel: verbosityLevel)
-
-                    }
-
+                if verbosityLevel == VerbosityLevel.Verbose {
+                    result = "Energy counter is: " + result + " microjoules."
                 }
 
-            // Limited availability System Configuration Knobs
-            } else if message[progressIndicator] == "systemConfigurationKnobs" {
+            } else if message[progressIndicator] == "time" && message[progressIndicator + 1] == "get" {
 
-                if message[progressIndicator + 1] == "utilizedCores" {
+                result = String(self.clockMonitor.readClock())
 
-                    if (systemConfigurationKnobs.utilizedBigCores.get() > 0 && systemConfigurationKnobs.utilizedLittleCores.get() == 0) {
-
-                        result = scenarioKnobs.availableBigCores.textApi(caller: caller, message: message, progressIndicator: progressIndicator + 2, verbosityLevel: verbosityLevel)
-
-                    } else if (systemConfigurationKnobs.utilizedBigCores.get() == 0 && systemConfigurationKnobs.utilizedLittleCores.get() > 0) {
-
-                        result = scenarioKnobs.availableLittleCores.textApi(caller: caller, message: message, progressIndicator: progressIndicator + 2, verbosityLevel: verbosityLevel)
-
-                    }
-
-                } else if message[progressIndicator + 1] == "utilizedCoreFrequency" {
-
-                    if (systemConfigurationKnobs.utilizedBigCores.get() > 0 && systemConfigurationKnobs.utilizedLittleCores.get() == 0) {
-
-                        result = systemConfigurationKnobs.utilizedBigCoreFrequency.textApi(caller: caller, message: message, progressIndicator: progressIndicator + 2, verbosityLevel: verbosityLevel)
-
-                    } else if (systemConfigurationKnobs.utilizedBigCores.get() == 0 && systemConfigurationKnobs.utilizedLittleCores.get() > 0) {
-
-                        result = systemConfigurationKnobs.utilizedLittleCoreFrequency.textApi(caller: caller, message: message, progressIndicator: progressIndicator + 2, verbosityLevel: verbosityLevel)
-
-                    }
-
-                // Derived System Configuration Knobs
-                } else if message[progressIndicator + 1] == "utilizedCoreMask" {
-
-                    // TODO
-
-                } else if message[progressIndicator + 1] == "utilizedCoreFrequencies" {
-
-                    // TODO
-
+                if verbosityLevel == VerbosityLevel.Verbose {
+                    result = "Clock shows: " + result + "."
                 }
+            } else {
 
+                // TODO add error msg based on verbosity level
             }
              
             return result;
+    }
 
+    /** ARM bigLITTLE: get status as a dictionary */
+    public func getInternalStatus() -> [String : Any]? {
+        return ["energy" : self.energyMonitor.readEnergy(), "time" : self.clockMonitor.readClock()]
     }
 
     /** Enforce the active Resource Usage Policy and ensure Consistency between Scenario and System Configuration Knobs */
     func enforceResourceUsageAndConsistency() -> Void {
 
         // Store the requested state
-        let requestedState = ArmBigLittleSystemConfigurationKnobs()
-        requestedState.utilizedBigCores.set(                      systemConfigurationKnobs.utilizedBigCores.get())
-        requestedState.utilizedBigCoreFrequency.set(      systemConfigurationKnobs.utilizedBigCoreFrequency.get())
-        requestedState.utilizedLittleCores.set(                systemConfigurationKnobs.utilizedLittleCores.get())
-        requestedState.utilizedLittleCoreFrequency.set( systemConfigurationKnobs.utilizedLittleCoreFrequency.get())
+        struct RequestedState {
+            let utilizedBigCores: Int
+            let utilizedBigCoreFrequency: Int
+            let utilizedLittleCores: Int
+            let utilizedLittleCoreFrequency: Int
+        }
+
+        let requestedState = RequestedState(utilizedBigCores:            systemConfigurationKnobs.utilizedBigCores.get(),
+                                            utilizedBigCoreFrequency:    systemConfigurationKnobs.utilizedBigCoreFrequency.get(), 
+                                            utilizedLittleCores:         systemConfigurationKnobs.utilizedLittleCores.get(), 
+                                            utilizedLittleCoreFrequency: systemConfigurationKnobs.utilizedLittleCoreFrequency.get())
 
         //-------------------------------
         // Maximal Resource Usage Policy
@@ -283,10 +410,10 @@ class ArmBigLittle: Architecture,
             }
 
             // Report if policy was applied
-            if ((systemConfigurationKnobs.utilizedBigCores.get()            !=            requestedState.utilizedBigCores.get()) ||
-                (systemConfigurationKnobs.utilizedBigCoreFrequency.get()    !=    requestedState.utilizedBigCoreFrequency.get()) ||
-                (systemConfigurationKnobs.utilizedLittleCores.get()         !=         requestedState.utilizedLittleCores.get()) ||
-                (systemConfigurationKnobs.utilizedLittleCoreFrequency.get() != requestedState.utilizedLittleCoreFrequency.get()) ){
+            if ((systemConfigurationKnobs.utilizedBigCores.get()            !=            requestedState.utilizedBigCores) ||
+                (systemConfigurationKnobs.utilizedBigCoreFrequency.get()    !=    requestedState.utilizedBigCoreFrequency) ||
+                (systemConfigurationKnobs.utilizedLittleCores.get()         !=         requestedState.utilizedLittleCores) ||
+                (systemConfigurationKnobs.utilizedLittleCoreFrequency.get() != requestedState.utilizedLittleCoreFrequency) ){
 
                     // TODO: add
 
@@ -305,10 +432,10 @@ class ArmBigLittle: Architecture,
             systemConfigurationKnobs.utilizedLittleCoreFrequency.set(resourceUsagePolicyModule.maintainedState.utilizedLittleCoreFrequency.get())
 
             // Report if policy was applied
-            if ((systemConfigurationKnobs.utilizedBigCores.get()            !=            requestedState.utilizedBigCores.get()) ||
-                (systemConfigurationKnobs.utilizedBigCoreFrequency.get()    !=    requestedState.utilizedBigCoreFrequency.get()) ||
-                (systemConfigurationKnobs.utilizedLittleCores.get()         !=         requestedState.utilizedLittleCores.get()) ||
-                (systemConfigurationKnobs.utilizedLittleCoreFrequency.get() != requestedState.utilizedLittleCoreFrequency.get()) ){
+            if ((systemConfigurationKnobs.utilizedBigCores.get()            !=            requestedState.utilizedBigCores) ||
+                (systemConfigurationKnobs.utilizedBigCoreFrequency.get()    !=    requestedState.utilizedBigCoreFrequency) ||
+                (systemConfigurationKnobs.utilizedLittleCores.get()         !=         requestedState.utilizedLittleCores) ||
+                (systemConfigurationKnobs.utilizedLittleCoreFrequency.get() != requestedState.utilizedLittleCoreFrequency) ){
 
                     // TODO: add
 
@@ -358,14 +485,14 @@ class ArmBigLittle: Architecture,
 
             // schedule onto big cores
             if scenarioKnobs.availableBigCores.get() > 0 {
-               systemConfigurationKnobs.utilizedBigCores.set(           min(scenarioKnobs.availableBigCores.get(),       ((requestedState.utilizedBigCores.get() > 0) ? requestedState.utilizedBigCores.get()         : requestedState.utilizedLittleCores.get())))
-               systemConfigurationKnobs.utilizedBigCoreFrequency.set(   min(scenarioKnobs.maximalBigCoreFrequency.get(), ((requestedState.utilizedBigCores.get() > 0) ? requestedState.utilizedBigCoreFrequency.get() : requestedState.utilizedLittleCoreFrequency.get())))
+               systemConfigurationKnobs.utilizedBigCores.set(           min(scenarioKnobs.availableBigCores.get(),       ((requestedState.utilizedBigCores > 0) ? requestedState.utilizedBigCores         : requestedState.utilizedLittleCores)))
+               systemConfigurationKnobs.utilizedBigCoreFrequency.set(   min(scenarioKnobs.maximalBigCoreFrequency.get(), ((requestedState.utilizedBigCores > 0) ? requestedState.utilizedBigCoreFrequency : requestedState.utilizedLittleCoreFrequency)))
                systemConfigurationKnobs.utilizedLittleCoreFrequency.set(otherCoreFrequency )
 
             // schedule onto LITTLE cores
             } else {
-                systemConfigurationKnobs.utilizedLittleCores.set(        min(scenarioKnobs.availableLittleCores.get(),       ((requestedState.utilizedLittleCores.get() > 0) ? requestedState.utilizedLittleCores.get()         : requestedState.utilizedBigCores.get())))
-                systemConfigurationKnobs.utilizedLittleCoreFrequency.set(min(scenarioKnobs.maximalLittleCoreFrequency.get(), ((requestedState.utilizedLittleCores.get() > 0) ? requestedState.utilizedLittleCoreFrequency.get() : requestedState.utilizedBigCoreFrequency.get())))
+                systemConfigurationKnobs.utilizedLittleCores.set(        min(scenarioKnobs.availableLittleCores.get(),       ((requestedState.utilizedLittleCores > 0) ? requestedState.utilizedLittleCores         : requestedState.utilizedBigCores)))
+                systemConfigurationKnobs.utilizedLittleCoreFrequency.set(min(scenarioKnobs.maximalLittleCoreFrequency.get(), ((requestedState.utilizedLittleCores > 0) ? requestedState.utilizedLittleCoreFrequency : requestedState.utilizedBigCoreFrequency)))
                 systemConfigurationKnobs.utilizedBigCoreFrequency.set(   otherCoreFrequency )
 
             }
@@ -390,19 +517,7 @@ class ArmBigLittle: Architecture,
         //
         // Some assertions that point to invalid configurations (won't happen during normal use)
         assert( ((systemConfigurationKnobs.utilizedBigCores.get() > 0) || (systemConfigurationKnobs.utilizedLittleCores.get() > 0)) && (!((systemConfigurationKnobs.utilizedBigCores.get() > 0) && (systemConfigurationKnobs.utilizedLittleCores.get() > 0))));
-
-        //-------------------------------
-        //
-        // Make system configuration settings effective if operating on real hardware
-
-        /*armBigLittleHooksConfigureSystem(systemConfigurationKnobs.utilizedBigCores,
-                                         systemConfigurationKnobs.utilizedLittleCores,
-                                         systemConfigurationKnobs.utilizedBigCoreFrequency,
-                                         systemConfigurationKnobs.utilizedLittleCoreFrequency);*/
-
-
     }
-
 }
 
 //-------------------------------

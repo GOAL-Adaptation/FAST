@@ -73,6 +73,7 @@ class XilinxZcuResourceUsagePolicyModule: TextApiModule {
 class XilinxZcu: Architecture, 
                  ClockAndEnergyArchitecture, 
                  ScenarioKnobEnrichedArchitecture, 
+                 RealArchitecture, 
                  EmulateableArchitecture {
 
     let name = "XilinxZcu"
@@ -92,6 +93,76 @@ class XilinxZcu: Architecture,
     var resourceUsagePolicyModule = ResourceUsagePolicyModuleType()
 
     var executionMode: Knob<ExecutionMode>
+
+    var actuationPolicy = Knob(name: "actuationPolicy", from: key, or: ActuationPolicy.NoActuation)
+
+    func actuate() -> Void {
+
+        // TODO add system calls here, the C code to be translated is included
+        //  or one might create a small C library implementing actuate platform actuation and that'd be coupled along as energymon
+
+/*
+        // Configure the Hardware to use the number of cores dictated by the system configuration knobs
+        static void configureCoreUtilization(uint64_t utilizedCores) {
+
+            int returnValueOfSysCall = 0;
+            char command[4096];
+
+            char * coreMask;
+
+            switch(utilizedCores) {
+                case 1:
+                    coreMask = "0"; break;
+                case 2:
+                    coreMask = "0,1"; break;
+                case 3:
+                    coreMask = "0,1,2"; break;
+                case 4:
+                    coreMask = "0,1,2,3"; break;
+            }
+
+            sprintf(command,
+                    "ps -eLf | awk '(/%d/) && (!/awk/) {print $4}' | xargs -n1 taskset -c -p %s > /dev/null",
+                    getpid(), coreMask);
+
+            printf("Applying core allocation: %s\n", command);
+
+            if (applySysCalls == 1) {
+
+                returnValueOfSysCall = system(command);
+
+                if (returnValueOfSysCall != 0) {
+                    fprintf(stderr, "ERROR running taskset: %d\n",
+                            returnValueOfSysCall);
+                }
+            }
+        }
+
+        // Configure the Hardware to use the core frequencies dictated by the system configuration knobs
+        static void configureCoreFrequencies(uint64_t utilizedCoreFrequency) {
+
+            int returnValueOfSysCall = 0;
+            char command[4096];
+
+            // NOTE: All cores share a clock so if we set cpu0, the other 3 change too.
+            sprintf(command,
+                    "echo %" PEMU_UINT64_T_PRINT " > /sys/devices/system/cpu/cpu0/cpufreq/%s",
+                    utilizedCoreFrequency, dvfsFile);
+            printf("Applying CPU frequency: %s\n", command);
+            
+            if (applySysCalls == 1) {
+                
+                returnValueOfSysCall = system(command);
+                
+                if (returnValueOfSysCall != 0) {
+                    fprintf(stderr, "ERROR setting frequencies: %d\n",
+                        returnValueOfSysCall);
+                }             
+            }
+        }
+*/
+
+    }
 
     /** Changing Execution Mode */
     public func changeExecutionMode(oldMode: ExecutionMode, newMode: ExecutionMode) -> Void {
@@ -128,17 +199,62 @@ class XilinxZcu: Architecture,
         if executionMode.get() == ExecutionMode.Emulated {
             changeExecutionMode(oldMode: ExecutionMode.Default, newMode: ExecutionMode.Emulated)
         }
-        self.addSubModule(newModules: [scenarioKnobs, systemConfigurationKnobs, resourceUsagePolicyModule, executionMode])
+        self.addSubModule(newModules: [scenarioKnobs, systemConfigurationKnobs, resourceUsagePolicyModule, executionMode, actuationPolicy])
         self.registerSystemMeasures()
+    }
+
+    /** Internal text API for Xilinx ZCU 102
+     *  - System measures
+     *    - energy
+     *    - time
+     */
+    func internalTextApi(caller:            String, 
+                         message:           Array<String>, 
+                         progressIndicator: Int, 
+                         verbosityLevel:    VerbosityLevel) -> String {
+
+            var result: String = ""
+    
+            // System measures
+            if message[progressIndicator] == "energy" && message[progressIndicator + 1] == "get" {
+
+                result = String(self.energyMonitor.readEnergy())
+
+                if verbosityLevel == VerbosityLevel.Verbose {
+                    result = "Energy counter is: " + result + " microjoules."
+                }
+
+            } else if message[progressIndicator] == "time" && message[progressIndicator + 1] == "get" {
+
+                result = String(self.clockMonitor.readClock())
+
+                if verbosityLevel == VerbosityLevel.Verbose {
+                    result = "Clock shows: " + result + "."
+                }
+            } else {
+
+                // TODO add error msg based on verbosity level
+            }
+             
+            return result;
+    }
+
+    /**Xilinx ZCU 102: get status as a dictionary */
+    public func getInternalStatus() -> [String : Any]? {
+        return ["energy" : self.energyMonitor.readEnergy(), "time" : self.clockMonitor.readClock()]
     }
 
     /** Enforce the active Resource Usage Policy and ensure Consistency between Scenario and System Configuration Knobs */
     func enforceResourceUsageAndConsistency() -> Void {
 
         // Store the requested state
-        let requestedState = XilinxZcuSystemConfigurationKnobs()
-        requestedState.utilizedCores.set(                      systemConfigurationKnobs.utilizedCores.get())
-        requestedState.utilizedCoreFrequency.set(      systemConfigurationKnobs.utilizedCoreFrequency.get())
+        struct RequestedState {
+            let utilizedCores: Int
+            let utilizedCoreFrequency: Int
+        }
+
+        let requestedState = RequestedState(utilizedCores:         systemConfigurationKnobs.utilizedCores.get(),
+                                            utilizedCoreFrequency: systemConfigurationKnobs.utilizedCoreFrequency.get())
 
         //-------------------------------
         // Maximal Resource Usage Policy
@@ -150,8 +266,8 @@ class XilinxZcu: Architecture,
             systemConfigurationKnobs.utilizedCoreFrequency.set(   scenarioKnobs.maximalCoreFrequency.get() )
 
             // Report if policy was applied
-            if ((systemConfigurationKnobs.utilizedCores.get()         !=         requestedState.utilizedCores.get()) ||
-                (systemConfigurationKnobs.utilizedCoreFrequency.get() != requestedState.utilizedCoreFrequency.get()) ){
+            if ((systemConfigurationKnobs.utilizedCores.get()         !=         requestedState.utilizedCores) ||
+                (systemConfigurationKnobs.utilizedCoreFrequency.get() != requestedState.utilizedCoreFrequency) ){
 
                     // TODO: add
 
@@ -168,8 +284,8 @@ class XilinxZcu: Architecture,
             systemConfigurationKnobs.utilizedCoreFrequency.set(      resourceUsagePolicyModule.maintainedState.utilizedCoreFrequency.get())
 
             // Report if policy was applied
-            if ((systemConfigurationKnobs.utilizedCores.get()         !=         requestedState.utilizedCores.get()) ||
-                (systemConfigurationKnobs.utilizedCoreFrequency.get() != requestedState.utilizedCoreFrequency.get()) ){
+            if ((systemConfigurationKnobs.utilizedCores.get()         !=         requestedState.utilizedCores) ||
+                (systemConfigurationKnobs.utilizedCoreFrequency.get() != requestedState.utilizedCoreFrequency) ){
 
                     // TODO: add
 
@@ -202,19 +318,7 @@ class XilinxZcu: Architecture,
         //
         // Some assertions that point to invalid configurations (won't happen during normal use)
         assert( systemConfigurationKnobs.utilizedCores.get() > 0 );
-
-        //-------------------------------
-        //
-        // Make system configuration settings effective if operating on real hardware
-
-        /*armBigLittleHooksConfigureSystem(systemConfigurationKnobs.utilizedBigCores,
-                                         systemConfigurationKnobs.utilizedLittleCores,
-                                         systemConfigurationKnobs.utilizedBigCoreFrequency,
-                                         systemConfigurationKnobs.utilizedLittleCoreFrequency);*/
-
-
     }
-
 }
 
 //-------------------------------

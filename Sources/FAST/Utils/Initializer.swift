@@ -20,6 +20,7 @@ func initialize<T>(type: T.Type, from key: [String]) -> T? {
 
     // TODO add readings from other places(xml,json,cfg,etc)
     // TODO log initialization in verbose mode 
+    print("Initializing: \(key.joined(separator: "_"))") // this is just to showcase the possibility
 
     var newValue: T?
 

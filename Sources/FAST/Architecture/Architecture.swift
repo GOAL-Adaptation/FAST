@@ -144,3 +144,59 @@ extension ClockAndEnergyArchitecture {
 }
 
 //---------------------------------------
+/** Real Architecture */
+
+/** Actuation Policy for Real Architectures */
+public enum ActuationPolicy: String {
+  case Actuate
+  case NoActuation
+}
+
+// Actuation Policy is initializable from a String
+extension ActuationPolicy: InitializableFromString {
+
+  public init?(from text: String) {
+
+    switch text {
+
+      case "Actuate": 
+        self = ActuationPolicy.Actuate
+
+      case "NoActuation": 
+        self = ActuationPolicy.NoActuation
+
+      default:
+        return nil
+
+    }
+  }
+}
+
+// Converting ActuationPolicy to String
+extension ActuationPolicy: CustomStringConvertible {
+
+  public var description: String {
+
+    switch self {
+
+      case ActuationPolicy.Actuate: 
+        return "Actuate"
+
+      case ActuationPolicy.NoActuation: 
+        return "NoActuation"
+       
+    }
+  }
+}
+
+/** Generic Interface for a Real Architecture */
+public protocol RealArchitecture: Architecture {
+
+  // Architecture has Actuation Policy
+  var actuationPolicy: Knob<ActuationPolicy> { get }
+
+  // Actuate System Configuration on Real Hardware
+  func actuate() -> Void
+}
+
+//---------------------------------------
