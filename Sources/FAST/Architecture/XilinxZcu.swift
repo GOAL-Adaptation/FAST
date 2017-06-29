@@ -42,10 +42,20 @@ class XilinxZcuSystemConfigurationKnobs: TextApiModule {
     var subModules = [String : TextApiModule]()
 
     // System Configuration Knobs
-    var utilizedCores         = Knob(name: "utilizedCores",         from: key, or: 4)
-    var utilizedCoreFrequency = Knob(name: "utilizedCoreFrequency", from: key, or: 1199999)
+    var utilizedCores         : Knob<Int>
+    var utilizedCoreFrequency : Knob<Int>
 
     init() {
+        utilizedCores         = Knob(name: "utilizedCores",         from: key, or:       4)
+        utilizedCoreFrequency = Knob(name: "utilizedCoreFrequency", from: key, or: 1199999)
+
+        self.addSubModule(newModules: [utilizedCores, utilizedCoreFrequency])
+    }
+
+    init(maintainedState: XilinxZcuSystemConfigurationKnobs) {
+        utilizedCores         = Knob(name: "utilizedCores",         from: key, or:        4, preSetter: {_, newValue in maintainedState.utilizedCores.set(newValue)})
+        utilizedCoreFrequency = Knob(name: "utilizedCoreFrequency", from: key, or:  1199999, preSetter: {_, newValue in maintainedState.utilizedCoreFrequency.set(newValue)})
+
         self.addSubModule(newModules: [utilizedCores, utilizedCoreFrequency])
     }
 }
@@ -89,7 +99,7 @@ class XilinxZcu: Architecture,
     typealias ResourceUsagePolicyModuleType = XilinxZcuResourceUsagePolicyModule
 
     var scenarioKnobs             = ScenarioKnobsType()
-    var systemConfigurationKnobs  = SystemConfigurationKnobsType()
+    var systemConfigurationKnobs  : SystemConfigurationKnobsType
     var resourceUsagePolicyModule = ResourceUsagePolicyModuleType()
 
     var executionMode: Knob<ExecutionMode>
@@ -193,7 +203,10 @@ class XilinxZcu: Architecture,
     required init() {
         // FIXME initialize exectuionMode so that the callback function can be passed. This is very stupid
         self.executionMode = Knob(name: "executionMode", from: key, or: ExecutionMode.Default)
+        // FIXME this is ugly too for maintained state
+        self.systemConfigurationKnobs  = SystemConfigurationKnobsType()
         // This is the real init
+        self.systemConfigurationKnobs  = SystemConfigurationKnobsType(maintainedState: self.resourceUsagePolicyModule.maintainedState)
         self.executionMode = Knob(name: "executionMode", from: key, or: ExecutionMode.Default, preSetter: self.changeExecutionMode)
         // This is stupid too
         if executionMode.get() == ExecutionMode.Emulated {
@@ -262,8 +275,8 @@ class XilinxZcu: Architecture,
         // Maxes out system utilization on one type of cores, primarily on big
         if resourceUsagePolicyModule.policy.get() == ResourceUsagePolicy.Maximal {
         
-            systemConfigurationKnobs.utilizedCores.set(                 scenarioKnobs.availableCores.get() )
-            systemConfigurationKnobs.utilizedCoreFrequency.set(   scenarioKnobs.maximalCoreFrequency.get() )
+            systemConfigurationKnobs.utilizedCores.set(                 scenarioKnobs.availableCores.get(), setters: false)
+            systemConfigurationKnobs.utilizedCoreFrequency.set(   scenarioKnobs.maximalCoreFrequency.get(), setters: false)
 
             // Report if policy was applied
             if ((systemConfigurationKnobs.utilizedCores.get()         !=         requestedState.utilizedCores) ||
@@ -280,8 +293,8 @@ class XilinxZcu: Architecture,
         } else if resourceUsagePolicyModule.policy.get() == ResourceUsagePolicy.Maintain {
 
             // Enforce the `maintained state`
-            systemConfigurationKnobs.utilizedCores.set(                      resourceUsagePolicyModule.maintainedState.utilizedCores.get())
-            systemConfigurationKnobs.utilizedCoreFrequency.set(      resourceUsagePolicyModule.maintainedState.utilizedCoreFrequency.get())
+            systemConfigurationKnobs.utilizedCores.set(                      resourceUsagePolicyModule.maintainedState.utilizedCores.get(), setters: false)
+            systemConfigurationKnobs.utilizedCoreFrequency.set(      resourceUsagePolicyModule.maintainedState.utilizedCoreFrequency.get(), setters: false)
 
             // Report if policy was applied
             if ((systemConfigurationKnobs.utilizedCores.get()         !=         requestedState.utilizedCores) ||
@@ -304,13 +317,13 @@ class XilinxZcu: Architecture,
         // Establish consistency if exists systemConfigurationKnob that violates its constraining scenarioKnob
 
         if (systemConfigurationKnobs.utilizedCores.get() > scenarioKnobs.availableCores.get()) {
-            systemConfigurationKnobs.utilizedCores.set(   scenarioKnobs.availableCores.get())
+            systemConfigurationKnobs.utilizedCores.set(   scenarioKnobs.availableCores.get(), setters: false)
 
         }
 
 
         if (systemConfigurationKnobs.utilizedCoreFrequency.get() > scenarioKnobs.maximalCoreFrequency.get()) {
-            systemConfigurationKnobs.utilizedCoreFrequency.set(   scenarioKnobs.maximalCoreFrequency.get())
+            systemConfigurationKnobs.utilizedCoreFrequency.set(   scenarioKnobs.maximalCoreFrequency.get(), setters: false)
 
         }
 
