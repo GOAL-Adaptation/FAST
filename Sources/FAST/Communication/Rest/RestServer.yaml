@@ -1,0 +1,351 @@
+swagger: "2.0"
+info:
+  description: "This is the FAST REST API. It can be used to query or perturb the state of a running application."
+  version: "1.0.0"
+  title: "FAST"
+basePath: "/v1"
+schemes:
+  - http
+consumes:
+  - application/json
+produces:
+  - application/json
+paths:
+  /alive:
+    get:
+      description: "Queries the liveliness of the application."
+      produces: 
+        - application/json
+      responses:
+        "200":
+          description: "The application is alive."
+        "503":
+          description: "The application is not alive."
+          schema:
+            $ref: '#/definitions/Error'
+  /perturb:
+    post:
+      description: "Modify scenario knobs."
+      parameters: 
+        - in: body
+          name: perturbation
+          ref: '#/definitions/Perturbation'
+      responses:
+        200:
+          description: "Perturbation successful."
+        500:
+          description: "Perturbation unsuccessful."
+          ref: '#/definitions/Error'
+  /query:
+    get:
+      description: "Query the current internal state of the application."
+      responses:
+        200:
+          description: "Current internal state of the application."
+          ref: '#/definitions/State'
+    
+definitions:
+  Error:
+    type: object
+    required: 
+      - id
+      - description
+    properties:
+      id:
+        type: integer
+      description:
+        type: string
+  Perturbation:
+    type: object
+    properties:
+      missionIntent:
+        description: "Intent expressed in the FAST Intent Specification Langauge."
+        type: string
+      availableCores:
+        description: "Number of CPU cores on which the application is running."
+        type: integer
+        enum: [1, 2, 3, 4]
+      availableCoreFrequency:
+        description: "Operating frequency of the CPU on which the application is running."
+        type: integer
+        enum: [300, 400, 600, 1200]
+      missionLength:
+        description: "Mission length in minutes. Affects the maximum permitted energy usage."
+        type: integer
+        minimum: 0
+        maximum: 1000
+      sceneObfuscation:
+        description: "Amount of additive noise applied to input. Used to model conditions such as fog that affect how informative the input signal is."
+        type: number
+        minimum: 0
+        maximum: 1
+  
+  # Common
+  
+  DoubleKnob:
+    type: object
+    required:
+    - type
+    - value
+    properties:
+      type:
+        enum: ["Swift.Double"]
+      value:
+        type: number
+  
+  Int32Knob:
+    type: object
+    required:
+    - type
+    - value
+    properties:
+      type:
+        enum: ["Swift.Int32"]
+      value:
+        type: integer
+        format: int32
+  
+  Int64Knob:
+    type: object
+    required:
+    - type
+    - value
+    properties:
+      type:
+        enum: ["Swift.Int64"]
+      value:
+        type: integer
+        format: int64
+
+  StringKnob:
+    type: object
+    required:
+    - type
+    - value
+    properties:
+      type:
+        enum: ["Swift.String"]
+      value:
+        type: number  
+  
+  ExecutionMode:
+    type: object
+    required:
+    - type
+    - value   
+    properties:
+      type:
+        enum: ["FAST.ExecutionMode"]
+      value:
+        enum: ["Default", "Emulated"]
+  ResourceUsagePolicy:
+    type: object
+    required:
+    - type
+    - value
+    properties:
+      type:
+        enum: ["FAST.ResourceUsagePolicy"]
+      value:
+        enum: ["Simple", "Maintain", "Maximal"]
+        
+  ActuationPolicy:
+    type: object
+    required:
+    - type
+    - value
+    properties:
+      type:
+        enum: ["FAST.ActuationPolicy"]
+      value:
+        enum: ["Actuate", "NoActuation"]
+        
+  InteractionMode:
+    type: object
+    required:
+    - type
+    - value
+    properties:
+      type:
+        enum: ["FAST.InteractionMode"]
+      value:
+        enum: ["Default", "Scripted"]
+        
+  Cores:
+    type: object
+    required:
+    - type
+    - value
+    properties:
+      type:
+        enum: ["Swift.Int"]
+      value:
+        enum: [1,2,3,4]  
+  
+  # Xlilinx ZCU
+  
+  XilinxCoreFrequency:
+    type: object
+    required:
+    - type
+    - value
+    properties:
+      type:
+        enum: ["Swift.Int"]
+      value:
+        enum:
+          [300, 400, 600, 1200]
+  
+  # ODROID
+  
+  OdroidLittleCoreFrequency:
+    type: object
+    required:
+    - type
+    - value
+    properties:
+      type:
+        enum: ["Swift.Int"]
+      value:
+        enum:
+          [ 200000, 300000, 400000, 500000
+          , 600000, 700000, 800000, 900000
+          , 1000000, 1100000, 1200000, 1300000
+          , 1400000
+          ]
+
+  OdroidBigCoreFrequency:
+    type: object
+    required:
+      - type
+      - value
+    properties:
+      type:
+        enum: ["Swift.Int"]
+      value:
+        enum:
+          [ 200000, 300000, 400000, 500000
+          , 600000, 700000, 800000, 900000
+          , 1000000, 1100000, 1200000, 1300000
+          , 1400000, 1500000, 1600000, 1700000
+          , 1800000, 1900000, 2000000
+          ]
+
+  OdroidUtilizedSystemConfiguration:
+    type: object
+    required:
+    - utilizedLittleCores
+    - utilizedLittleCoreFrequency
+    - utilizedBigCores
+    - utilizedBigCoreFrequency
+    properties:
+      utilizedLittleCores:
+        schema:
+          $ref: '#/definitions/Cores'
+      utilizedLittleCoreFrequency:
+        schema:
+          $ref: '#/definitions/OdroidLittleCoreFrequency'
+      utilizedBigCores:
+        schema:
+          $ref: '#/definitions/Cores'
+      utilizedBigCoreFrequency:
+        schema:
+          $ref: '#/definitions/OdroidBigCoreFrequency'
+
+  OdroidAvailableSystemConfiguration:
+    type: object
+    required:
+    - availableLittleCores
+    - maximalLittleCoreFrequency
+    - availableBigCores
+    - maximalBigCoreFrequency
+    properties:
+      availableLittleCores:
+        schema:
+          $ref: '#/definitions/Cores'
+      maximalLittleCoreFrequency:
+        schema:
+          $ref: '#/definitions/OdroidLittleCoreFrequency'
+      availableBigCores:
+        schema:
+          $ref: '#/definitions/Cores'
+      maximalBigCoreFrequency:
+        schema:
+          $ref: '#/definitions/OdroidBigCoreFrequency'
+  
+  OdroidArchitecture:
+    type: object
+    required:
+    - energy
+    - systemConfigurationKnobs
+    - resourceUsagePolicyModule
+    - scenarioKnobs
+    - executionMode
+    - actuationPolicy
+    - time
+    properties:
+      energy:
+        type: integer
+        format: int64
+        minimum: 0
+      systemConfigurationKnobs:
+        schema:
+          $ref: '#/definitions/OdroidUtilizedSystemConfiguration'
+      resourceUsagePolicyModule:
+        type: object
+        required:
+        - maintainedState
+        - policy
+        properties:
+          maintainedState:
+            schema:
+              $ref: '#/definitions/OdroidUtilizedSystemConfiguration'
+          policy:
+            schema:
+              $ref: '#/definitions/ResourceUsagePolicy'
+      scenarioKnobs:
+        schema:
+          $ref: '#/definitions/OdroidAvailableSystemConfiguration'
+      executionMode:
+        schema:
+          $ref: '#/definitions/ExecutionMode'
+      actuationPolicy:
+        schema:
+          $ref: '#/definitions/ActuationPolicy'
+      time:
+        type: number
+        minimum: 0
+  
+  # Status
+  State:
+    type: object
+    required: 
+      - iteration
+    properties:
+      iteration:
+        type: integer
+        minimum: 0
+      ARM-big.LITTLE:
+        schema:
+          $ref: '#/definitions/OdroidArchitecture'
+      RADAR:
+        type: object
+        required:
+        - applicationKnobs
+        properties:
+          applicationKnobs:
+            type: object
+            required:
+            - maxAge
+            properties:
+              maxAge:
+                schema:
+                  $ref: "#/definitions/DoubleKnob" 
+      RuntimeKnobs:
+        type: object
+        required:
+        - interactionMode
+        properties:
+          interactionMode:
+            schema:
+              $ref: '#/definitions/InteractionMode'
