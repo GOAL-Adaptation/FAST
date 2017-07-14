@@ -25,8 +25,6 @@ import Nifty
 // Runtime State //
 ///////////////////
 
-let logger = HeliumLogger()
-
 /* Wrapper for a value that can be read freely, but can only be changed by the runtime. */
 public class Knob<T> {
 
