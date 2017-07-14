@@ -148,8 +148,63 @@ public class Runtime {
     private static var knobSettersLock = NSLock()
 
     fileprivate static var intents: [String : IntentSpec] = [:]
+    fileprivate static var models: [String : Model] = [:]
     fileprivate static var controller: Controller = ConstantController()
     private static var controllerLock = NSLock()
+
+    private static let intentCompiler = Compiler()
+
+    /** 
+     * Fetch an intent from the cache, or, if it has not been accessed previously, 
+     * load it from the file system. The intent will be loaded from a file whose
+     * name is <APPLICATION_PATH>/<ID>.intent, where <APPLICATION_PATH> is the 
+     * location of the application and <ID> is the value of the id parameter. 
+     */
+    public static func loadIntent(_ id: String) -> IntentSpec? {
+        if let intent = intents[id] {
+            return intent
+        }
+        else {
+            Log.debug("About to compile intent '\(id)'.")
+            let intent = intentCompiler.compileIntentSpec(from: id + ".intent")
+            Log.debug("Compiled intent '\(id)'.")
+            synchronized(controllerLock) {
+                intents[id] = intent
+            }
+            Log.debug("Intent '\(id)' loaded.")
+            return intent
+        }
+    }
+
+    /** 
+     * Fetch a model from the cache, or, if it has not been accessed previously, 
+     * load it from the file system. The model will be loaded from two files whose
+     * names are <APPLICATION_PATH>/<ID>.knobtable, and 
+     * <APPLICATION_PATH>/<ID>.measuretable where <APPLICATION_PATH> is the 
+     * location of the application and <ID> is the value of the id parameter. 
+     */
+    public static func loadModel(_ id: String, _ initialConfigurationIndex: Int = 0) -> Model? {
+        if let model = models[id] {
+            return model
+        }
+        else {
+            if let knobCSV = readFile(withName: id, ofType: "knobtable") {
+                if let measureCSV = readFile(withName: id, ofType: "measuretable") {
+                    let model = Model(knobCSV, measureCSV, initialConfigurationIndex)
+                    synchronized(controllerLock) {
+                        models[id] = model
+                    }
+                    return model   
+                }
+                else {
+                    return nil
+                }    
+            }
+            else {
+                return nil
+            }
+        }
+    }
 
 //------------------- very new stuff
 
@@ -404,7 +459,6 @@ public class Runtime {
     /** Intialize intent preserving controller with the given model, intent and window */
     public static func initializeController(_ model: Model, _ intent: IntentSpec, _ window: UInt32 = 20) {
         synchronized(controllerLock) {
-            intents[intent.name] = intent
             controller = IntentPreservingController(model, intent, window)
         }
     }
@@ -532,27 +586,34 @@ public func optimize
     , _ labels: [String]
     , _ routine: (Void) -> Void) {
     
-    if let intent = Runtime.intents[id] {
-        let m = MeasuringDevice(samplingPolicy, windowSize, labels)
-        // FIXME what if the counter overflows
-        var iteration: UInt32 = 0 // iteration counter
-        var schedule: Schedule = Schedule(constant: Runtime.controller.model.getInitialConfiguration()!.knobSettings)
-        while true {
-            Runtime.measure("iteration", Double(iteration))
-            executeAndReportProgress(m, routine)
-            iteration += 1
-            if iteration % windowSize == 0 {
-                schedule = Runtime.controller.getSchedule(intent, Runtime.measures)
-            }
-            // FIXME This should only apply when the schedule actually needs to change knobs
-            schedule[iteration % windowSize].apply()
-            Runtime.measure("iteration", Double(iteration))
-            // FIXME maybe stalling in scripted mode should not be done inside of optimize but somewhere else in an independent and better way
-            Runtime.reportProgress()
-        }
+    if let intent = Runtime.loadIntent(id) {
+        if let model = Runtime.loadModel(id) {
+            // Initialize the controller with the knob-to-mesure model, intent and window size
+            Runtime.initializeController(model, intent, windowSize)
+            // Initialize measuring device, that will update measures based on the samplingPolicy
+            let m = MeasuringDevice(samplingPolicy, windowSize, labels)
+            // FIXME what if the counter overflows
+            var iteration: UInt32 = 0 // iteration counter
+            var schedule: Schedule = Schedule(constant: Runtime.controller.model.getInitialConfiguration()!.knobSettings)
+            while true {
+                Runtime.measure("iteration", Double(iteration))
+                executeAndReportProgress(m, routine)
+                iteration += 1
+                if iteration % windowSize == 0 {
+                    schedule = Runtime.controller.getSchedule(intent, Runtime.measures)
+                }
+                // FIXME This should only apply when the schedule actually needs to change knobs
+                schedule[iteration % windowSize].apply()
+                Runtime.measure("iteration", Double(iteration))
+                // FIXME maybe stalling in scripted mode should not be done inside of optimize but somewhere else in an independent and better way
+                Runtime.reportProgress()
+            }  
+        } else {
+            Log.warning("No model loaded for optimize scope '\(id)'. Proceeding without adaptation.")
+        }        
     } else {
-        Log.warning("No intent defined for optimize scope \"\(id)\". Proceeding without adaptation.")
-    }   
+        Log.warning("No intent loaded for optimize scope '\(id)'. Proceeding without adaptation.")
+    }
 
 }
 

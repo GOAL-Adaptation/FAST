@@ -1,5 +1,6 @@
 import FASTController
 import CSwiftV
+import LoggerAPI
 
 struct Configuration {
     public let id: Int // FIXME: Eliminate this by making Configuration Equatable
@@ -74,6 +75,7 @@ open class Model {
         }
         self.configurations = configurations
         self.initialConfigurationIndex = initialConfigurationIndex
+        Log.exit("Initialized model.")
     }
 
     internal init(_ configurations: [Configuration], _ initialConfigurationIndex: Int) {
