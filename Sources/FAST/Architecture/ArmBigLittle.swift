@@ -319,6 +319,9 @@ class ArmBigLittle: Architecture,
                     self.clockMonitor  = DefaultClockMonitor()
                     self.energyMonitor = CEnergyMonitor()
 
+                    self.subModules = [:]
+                    self.addSubModule(newModules: [self.scenarioKnobs, self.systemConfigurationKnobs, self.resourceUsagePolicyModule, self.executionMode, self.actuationPolicy])
+
                 // Use emulated system Measures
                 case ExecutionMode.Emulated:
                     // Create an emulator
@@ -328,6 +331,9 @@ class ArmBigLittle: Architecture,
                     // Assign it as monitors (Reference Counting will keep it alive as long as this is not changed)
                     self.clockMonitor  = emulator
                     self.energyMonitor = emulator
+
+                    self.subModules = [:]
+                    self.addSubModule(newModules: [self.scenarioKnobs, self.systemConfigurationKnobs, self.resourceUsagePolicyModule, self.executionMode, self.actuationPolicy, emulator])
             }
         }
     }   
@@ -344,6 +350,8 @@ class ArmBigLittle: Architecture,
         // This is stupid too
         if executionMode.get() == ExecutionMode.Emulated {
             changeExecutionMode(oldMode: ExecutionMode.Default, newMode: ExecutionMode.Emulated)
+        } else {
+            changeExecutionMode(oldMode: ExecutionMode.Emulated, newMode: ExecutionMode.Default)
         }
 
         self.addSubModule(newModules: [scenarioKnobs, systemConfigurationKnobs, resourceUsagePolicyModule, executionMode, actuationPolicy])
