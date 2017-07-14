@@ -61,13 +61,20 @@ public class Knob<T> {
         return self.value
     }
 
-    internal func set(_ newValue: T) {
-        // for the postSetter
-        let oldValue = self.value
+    internal func set(_ newValue: T, setters: Bool = true) {
 
-        self.preSetter(oldValue, newValue)
-        self.value = newValue
-        self.postSetter(oldValue, newValue)
+        if setters {
+            // for the postSetter
+            let oldValue = self.value
+
+            self.preSetter(oldValue, newValue)
+            self.value = newValue
+            self.postSetter(oldValue, newValue)
+
+        } else {
+            
+            self.value = newValue
+        }
     }
 
     internal func setter(_ newValue: Any) -> Void {
