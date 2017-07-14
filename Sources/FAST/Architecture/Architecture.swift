@@ -32,8 +32,12 @@ public protocol Architecture: TextApiModule {
 
 /** Resource Usage Policy for Scenario Knob-enriched Architectures */
 public enum ResourceUsagePolicy: String {
+  // No additional action from FAST
   case Simple
+  // Continuously apply the current knob settings, in case they
+  // were modified elsewhere
   case Maintain
+  // Continuously apply the maximal knob settings
   case Maximal
 }
 
