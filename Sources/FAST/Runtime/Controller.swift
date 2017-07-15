@@ -29,7 +29,7 @@ class IntentPreservingController : Controller {
          _ intent: IntentSpec,
          _ window: UInt32) {
         self.model = model.sorted(by: intent.constraintName)
-        let constraintMeasureIdx = model.measureNames!.index(of: intent.constraintName)! // FIXME Add error handling
+        let constraintMeasureIdx = model.measureNames.index(of: intent.constraintName)! // FIXME Add error handling
         self.fastController = 
             FASTController( model: model.getFASTControllerModel()
                           , constraint: intent.constraint
@@ -42,7 +42,7 @@ class IntentPreservingController : Controller {
     }
 
     func getSchedule(_ intent: IntentSpec, _ measureValues: [String : Double]) -> Schedule {
-        let values = model.measureNames!.map{ measureValues[$0]! } // FIXME Replace global measure store with custom ordered collection that avoids this conversion
+        let values = model.measureNames.map{ measureValues[$0]! } // FIXME Replace global measure store with custom ordered collection that avoids this conversion
         let s = fastController.computeSchedule(tag: 0, measures: values) // FIXME Pass meaningful tag for logging
         return Schedule({ (i: UInt32) -> KnobSettings in 
             return self.model[Int(i) < s.nLowerIterations ? s.idLower : s.idUpper].knobSettings

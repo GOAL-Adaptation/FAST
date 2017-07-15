@@ -32,7 +32,7 @@ open class Model {
 
     private let configurations: [Configuration]
     public let initialConfigurationIndex: Int?
-    public let measureNames: [String]?
+    public let measureNames: [String]
 
     public var isEmpty: Bool {
         get {
@@ -43,7 +43,7 @@ open class Model {
     init() {
         configurations = []
         initialConfigurationIndex = nil
-        measureNames = nil
+        measureNames = []
     }
 
     /** Loads a model, consisting of two tables for knob- and measure values.
@@ -69,7 +69,7 @@ open class Model {
         for configId in 0 ..< knobTable.rows.count {
             let knobNameValuePairs = Array(zip(knobNames, knobTable.rows[configId].dropFirst().map{ parseKnobSetting($0) }))
             let knobSettings = KnobSettings([String:Any](elements: knobNameValuePairs))
-            let measureNameValuePairs = Array(zip(measureNames!, measureTable.rows[configId].dropFirst().map{ Double($0)! })) // FIXME Add error handling
+            let measureNameValuePairs = Array(zip(measureNames, measureTable.rows[configId].dropFirst().map{ Double($0)! })) // FIXME Add error handling
             let measures = [String:Double](elements: measureNameValuePairs)
             configurations.append(Configuration(configId, knobSettings, measures))
         }
@@ -84,10 +84,10 @@ open class Model {
         self.configurations = configurations
         assert(0 <= initialConfigurationIndex && initialConfigurationIndex < configurations.count, "0  <= initialCondigurationIndex < |configurations|")
         self.initialConfigurationIndex = initialConfigurationIndex
-        assert(configurations.reduce(true, { $0 && self.measureNames! == $1.measureNames }), "measure names must be the same for all configurations")
+        assert(configurations.reduce(true, { $0 && self.measureNames == $1.measureNames }), "measure names must be the same for all configurations")
     }
 
-    private init(_ configurations: [Configuration], _ initialConfigurationIndex: Int?, _ measureNames: [String]?) {
+    private init(_ configurations: [Configuration], _ initialConfigurationIndex: Int?, _ measureNames: [String]) {
         self.configurations = configurations
         self.initialConfigurationIndex = initialConfigurationIndex
         self.measureNames = measureNames
@@ -112,8 +112,8 @@ open class Model {
         if self.isEmpty {
             return self
         }
-        assert(measureNames!.contains(measureName), "invalid measure name \"\(measureName)\"")
-        let measureIndex = measureNames!.index(of: measureName)!
+        assert(measureNames.contains(measureName), "invalid measure name \"\(measureName)\"")
+        let measureIndex = measureNames.index(of: measureName)!
         let sortedConfigurations = configurations.sorted(by: { (l: Configuration, r: Configuration) in 
             l.measureValues[measureIndex] < r.measureValues[measureIndex] 
         })
