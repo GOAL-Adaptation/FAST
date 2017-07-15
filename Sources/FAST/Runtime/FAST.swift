@@ -163,9 +163,7 @@ public class Runtime {
             return intent
         }
         else {
-            Log.debug("About to compile intent '\(id)'.")
             let intent = intentCompiler.compileIntentSpec(from: id + ".intent")
-            Log.debug("Compiled intent '\(id)'.")
             synchronized(controllerLock) {
                 intents[id] = intent
             }
