@@ -42,7 +42,16 @@ class IntentPreservingController : Controller {
     }
 
     func getSchedule(_ intent: IntentSpec, _ measureValues: [String : Double]) -> Schedule {
-        let values = model.measureNames.map{ measureValues[$0]! } // FIXME Replace global measure store with custom ordered collection that avoids this conversion
+        // FIXME Replace global measure store with custom ordered collection that avoids this conversion
+        var values = [Double]()
+        for measureName in model.measureNames {
+            if let v = measureValues[measureName] {
+                values.append(v)
+            }
+            else {
+                fatalError("Measure '\(measureName)', present in model, has not been registered in the application.") 
+            }
+        }
         let s = fastController.computeSchedule(tag: 0, measures: values) // FIXME Pass meaningful tag for logging
         return Schedule({ (i: UInt32) -> KnobSettings in 
             return self.model[Int(i) < s.nLowerIterations ? s.idLower : s.idUpper].knobSettings

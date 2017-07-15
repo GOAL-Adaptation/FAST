@@ -205,7 +205,7 @@ public class Runtime {
 //------------------- very new stuff
 
     // The runtime registers the APIs of the platform and application 
-    internal static var architecture: Architecture? = nil
+    internal static var architecture: Architecture? = DefaultArchitecture()
     internal static var application: Application? = nil
 
     // The runtime manages communcations e.g. TCP
