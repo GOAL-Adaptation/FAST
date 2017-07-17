@@ -43,18 +43,18 @@ public class Compiler {
      * Parse an intent specification from a file at filePath,
      * then compile its expressions into executable SWIFT code.
      */
-    public func compileIntentSpec(from filePath: String) -> IntentSpec {
+    public func compileIntentSpec(from filePath: String) -> IntentSpec? {
         guard let sourceFile = try? SourceReader.read(at: filePath) else {
-            print("Unable to read file, please double check the file path is correct.")
-            exit(-1)
+            Log.warning("Unable to read intent specification file '\(filePath)'.")
+            return nil
         }
         let diagnosticConsumer = StdoutDiagnosticConsumer()
         let parser = IntentParser(source: sourceFile)
         guard let topLevelDecl = try? parser.parse(),
                     let firstStatement = topLevelDecl.statements.first else {
             DiagnosticPool.shared.report(withConsumer: diagnosticConsumer)
-            print("Failed to parse '\(filePath)'.")
-            exit(-2)
+            Log.warning("Failed to parse '\(filePath)'.")
+            return nil
         }
         
         DiagnosticPool.shared.report(withConsumer: diagnosticConsumer)
@@ -78,7 +78,8 @@ public class Compiler {
 
         }
         else {
-            fatalError("Could not parse intent specification.")
+            Log.warning("Could not parse intent specification: \(firstStatement).")
+            return nil
         }
     }
 

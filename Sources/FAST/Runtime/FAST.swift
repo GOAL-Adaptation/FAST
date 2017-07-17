@@ -164,10 +164,12 @@ public class Runtime {
         }
         else {
             let intent = intentCompiler.compileIntentSpec(from: id + ".intent")
-            synchronized(controllerLock) {
-                intents[id] = intent
+            if intent != nil {
+                synchronized(controllerLock) {
+                    intents[id] = intent
+                }
+                Log.debug("Intent '\(id)' loaded.")
             }
-            Log.debug("Intent '\(id)' loaded.")
             return intent
         }
     }
@@ -373,11 +375,6 @@ public class Runtime {
     // generic function to handle the event that an input has been processed in an optimize loop
     static func reportProgress() {
 
-        if Runtime.shouldTerminate {
-            print("FAST application terminating.")
-            exit(0)
-        }
-
         // keeps track of the counter and blocks the application in scripted mode
         if (Runtime.runtimeKnobs.interactionMode.get() == InteractionMode.Scripted) {
 
@@ -577,10 +574,16 @@ public class Schedule {
 /* Defines an optimization scope. Replaces a loop in a pure Swift program. */
 public func optimize
     ( _ id: String
-    , across windowSize: UInt32
+    , across windowSize: UInt32 = 20
     , samplingPolicy: SamplingPolicy = TimingSamplingPolicy(100.millisecond)
     , _ labels: [String]
-    , _ routine: (Void) -> Void) {
+    , _ routine: (Void) -> Void ) {
+
+    let loop = { (body: (Void) -> Void) in
+        while !Runtime.shouldTerminate {
+            body()
+        }
+    }
     
     if let intent = Runtime.loadIntent(id) {
         if let model = Runtime.loadModel(id) {
@@ -591,7 +594,7 @@ public func optimize
             // FIXME what if the counter overflows
             var iteration: UInt32 = 0 // iteration counter
             var schedule: Schedule = Schedule(constant: Runtime.controller.model.getInitialConfiguration()!.knobSettings)
-            while true {
+            loop {
                 Runtime.measure("iteration", Double(iteration))
                 executeAndReportProgress(m, routine)
                 iteration += 1
@@ -604,12 +607,17 @@ public func optimize
                 // FIXME maybe stalling in scripted mode should not be done inside of optimize but somewhere else in an independent and better way
                 Runtime.reportProgress()
             }  
+            
         } else {
             Log.warning("No model loaded for optimize scope '\(id)'. Proceeding without adaptation.")
+            loop(routine)
         }        
     } else {
         Log.warning("No intent loaded for optimize scope '\(id)'. Proceeding without adaptation.")
+        loop(routine)
     }
+
+    print("FAST application terminating.")
 
 }
 
