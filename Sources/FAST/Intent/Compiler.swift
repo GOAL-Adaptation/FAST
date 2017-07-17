@@ -30,11 +30,10 @@ public class Compiler {
 
     public init() {}
 
-    struct StdoutDiagnosticConsumer : DiagnosticConsumer {
+    struct HeliumLoggerDiagnosticConsumer : DiagnosticConsumer {
         func consume(diagnostics: [Diagnostic]) {
             for d in diagnostics {
-                print("\(d.location) \(d.level): \(d.kind.diagnosticMessage)")
-                print()
+                Log.verbose("\(d.location) \(d.level): \(d.kind.diagnosticMessage)")
             }
         }
     }
@@ -48,7 +47,7 @@ public class Compiler {
             Log.warning("Unable to read intent specification file '\(filePath)'.")
             return nil
         }
-        let diagnosticConsumer = StdoutDiagnosticConsumer()
+        let diagnosticConsumer = HeliumLoggerDiagnosticConsumer()
         let parser = IntentParser(source: sourceFile)
         guard let topLevelDecl = try? parser.parse(),
                     let firstStatement = topLevelDecl.statements.first else {
