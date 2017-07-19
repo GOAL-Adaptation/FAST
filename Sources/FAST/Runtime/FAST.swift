@@ -195,10 +195,12 @@ public class Runtime {
                     return model   
                 }
                 else {
+                    Log.verbose("Unable to load measure table \(id).measuretable.")
                     return nil
                 }    
             }
             else {
+                Log.verbose("Unable to load knob table \(id).knobtable.")
                 return nil
             }
         }
