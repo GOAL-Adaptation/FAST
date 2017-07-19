@@ -7,8 +7,9 @@ func synchronized<L: NSLocking>(_ lock: L, routine: () -> ()) {
     lock.unlock()
 }
 
-func readFile(withName name: String, ofType type: String) -> String? {
-    if let path = Bundle.main.path(forResource: name, ofType: type) {       
+func readFile( withName name: String, ofType type: String
+             , fromBundle bundle: Bundle = Bundle.main ) -> String? {
+    if let path = bundle.path(forResource: name, ofType: type) {       
         do {
             let contents = try String(contentsOfFile: path, encoding: String.Encoding.utf8)
             Log.debug("Loaded file '\(name).\(type)'.")

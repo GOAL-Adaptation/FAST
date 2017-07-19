@@ -158,17 +158,19 @@ public class Runtime {
      * name is <APPLICATION_PATH>/<ID>.intent, where <APPLICATION_PATH> is the 
      * location of the application and <ID> is the value of the id parameter. 
      */
-    public static func loadIntent(_ id: String) -> IntentSpec? {
+    public static func loadIntent(_ id: String, fromDirectory: String? = nil) -> IntentSpec? {
         if let intent = intents[id] {
             return intent
         }
         else {
-            let intent = intentCompiler.compileIntentSpec(from: id + ".intent")
+            let pathToExecutable = (CommandLine.arguments[0] as NSString).deletingLastPathComponent
+            let absoluteFilePath = pathToExecutable + "/" + id + ".intent"
+            let intent = intentCompiler.compileIntentSpec(from: fromDirectory ?? absoluteFilePath)
             if intent != nil {
                 synchronized(controllerLock) {
                     intents[id] = intent
                 }
-                Log.debug("Intent '\(id)' loaded.")
+                Log.debug("Intent '\(absoluteFilePath)' loaded.")
             }
             return intent
         }
