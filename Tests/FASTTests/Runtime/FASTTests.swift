@@ -11,9 +11,9 @@
 import XCTest
 @testable import FAST
 
-class FASTTests: XCTestCase {
+//---------------------------------------
 
-    //---------------------------------------
+class FASTTests: XCTestCase {
 
     /** 
      * If FAST is unable to load the intent or model files, an optimize should 
