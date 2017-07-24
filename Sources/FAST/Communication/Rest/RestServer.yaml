@@ -33,7 +33,7 @@ paths:
       responses:
         200:
           description: "Perturbation successful."
-        500:
+        406:
           description: "Perturbation unsuccessful."
           ref: '#/definitions/Error'
   /query:
