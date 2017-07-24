@@ -21,7 +21,6 @@ test: copy-resources-test
 	  -Xlinker -F/Library/Frameworks -Xlinker -framework -Xlinker IntelPowerGadget
 
 copy-resources-build:
-	echo $(RESOURCE_TARGET_PATH)
 	mkdir -p $(RESOURCE_TARGET_PATH)
 	cp $(RESOURCE_PATH)/incrementer.* $(RESOURCE_TARGET_PATH)
 	
