@@ -2,6 +2,10 @@ import PackageDescription
 
 let package = Package(
     name: "FAST",
+    targets: [
+      Target(name: "FAST", dependencies: []),
+      Target(name: "ExampleIncrementer", dependencies: ["FAST"])
+    ],
     dependencies: [
       .Package(url: "https://github.com/Zewo/Venice", majorVersion: 0, minor: 14),
       .Package(url: "https://github.com/IBM-Swift/HeliumLogger", majorVersion: 1, minor: 7),
