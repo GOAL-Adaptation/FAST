@@ -24,9 +24,8 @@ class CompilerTests: XCTestCase {
         
         let compiler = Compiler()
 
-        let intentPath = "\(Bundle(for: type(of: self)).resourcePath!)/incrementer.intent"
-
-        if let intentSpec = compiler.compileIntentSpec(from: intentPath) {
+        if let intentFileContent = readFile(withName: "incrementer", ofType: "intent", fromBundle: Bundle(for: type(of: self))),
+           let intentSpec = compiler.compileIntentSpec(source: intentFileContent) {
             XCTAssertEqual("incrementer", intentSpec.name)
             
             /* Knobs */
@@ -57,7 +56,7 @@ class CompilerTests: XCTestCase {
 
         }
         else {
-            XCTFail("Failed to parse intent at '\(intentPath)'.")
+            XCTFail("Failed to parse intent at 'incrementer.intent'.")
         }
 
     }

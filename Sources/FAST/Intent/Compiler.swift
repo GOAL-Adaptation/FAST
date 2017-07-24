@@ -39,20 +39,16 @@ public class Compiler {
     }
 
     /** 
-     * Parse an intent specification from a file at filePath,
+     * Parse an intent specification from a String `source`,
      * then compile its expressions into executable SWIFT code.
      */
-    public func compileIntentSpec(from filePath: String) -> IntentSpec? {
-        guard let sourceFile = try? SourceReader.read(at: filePath) else {
-            Log.warning("Unable to read intent specification file '\(filePath)'.")
-            return nil
-        }
+    public func compileIntentSpec(source fileContent: String) -> IntentSpec? {
         let diagnosticConsumer = HeliumLoggerDiagnosticConsumer()
-        let parser = IntentParser(source: sourceFile)
+        let parser = IntentParser(source: SourceFile(content: fileContent))
         guard let topLevelDecl = try? parser.parse(),
                     let firstStatement = topLevelDecl.statements.first else {
             DiagnosticPool.shared.report(withConsumer: diagnosticConsumer)
-            Log.warning("Failed to parse '\(filePath)'.")
+            Log.warning("Failed to parse intent: \(fileContent).")
             return nil
         }
         
