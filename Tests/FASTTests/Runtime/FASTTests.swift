@@ -51,6 +51,7 @@ class FASTTests: XCTestCase {
      *    https://github.com/apple/swift/blob/master/test/stdlib/Mirror.swift#L235
      */
     func testSR221() {
+
         class B : CustomReflectable {
             var b: String = "two"
             var customMirror: Mirror {
@@ -65,6 +66,8 @@ class FASTTests: XCTestCase {
         XCTAssertEqual(1, b.children.count)
         XCTAssertEqual("bee", b.children.first!.label)
         XCTAssertEqual("two", b.children.first!.value as? String)
+
     }
+
 }
 
