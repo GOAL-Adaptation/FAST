@@ -11,6 +11,7 @@ let package = Package(
       .Package(url: "https://github.com/adamduracz/Nifty.git", majorVersion: 99),
       .Package(url: "https://github.com/barfer/Perfect-SQLite.git", majorVersion: 2),
       .Package(url: "https://github.com/IBM-Swift/BlueSocket", majorVersion: 0),
+      .Package(url: "https://github.com/PerfectlySoft/Perfect-HTTPServer", majorVersion: 2),
       .Package(url: "../swift-ast", majorVersion: 1)
     ]
 )

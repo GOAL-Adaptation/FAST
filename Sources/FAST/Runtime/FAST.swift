@@ -149,7 +149,7 @@ public class Runtime {
     fileprivate static var controller: Controller = ConstantController()
     private static var controllerLock = NSLock()
 
-    private static let intentCompiler = Compiler()
+    internal static let intentCompiler = Compiler()
 
     /** 
      * Fetch an intent from the cache, or, if it has not been accessed previously, 
@@ -157,21 +157,24 @@ public class Runtime {
      * name is <APPLICATION_PATH>/<ID>.intent, where <APPLICATION_PATH> is the 
      * location of the application and <ID> is the value of the id parameter. 
      */
-    public static func loadIntent(_ id: String, fromDirectory: String? = nil) -> IntentSpec? {
-        if let intent = intents[id] {
+    public static func loadIntent(_ id: String) -> IntentSpec? {
+        if let intentFileContent = readFile(withName: id, ofType: "intent") {
+            let intent = intentCompiler.compileIntentSpec(source: intentFileContent)
+            if let i = intent { 
+                setIntent(i)
+            }
             return intent
         }
         else {
-            let pathToExecutable = (CommandLine.arguments[0] as NSString).deletingLastPathComponent
-            let absoluteFilePath = pathToExecutable + "/" + id + ".intent"
-            let intent = intentCompiler.compileIntentSpec(from: fromDirectory ?? absoluteFilePath)
-            if intent != nil {
-                synchronized(controllerLock) {
-                    intents[id] = intent
-                }
-                Log.debug("Intent '\(absoluteFilePath)' loaded.")
-            }
-            return intent
+            Log.debug("Unable to load intent '\(id)'.")
+            return nil
+        }
+    }
+
+    internal static func setIntent(_ spec: IntentSpec) {
+        synchronized(controllerLock) {
+            intents[spec.name] = spec
+            Log.info("Changed intent '\(spec.name)' to: \(spec)")
         }
     }
 
@@ -459,6 +462,13 @@ public class Runtime {
         }
     }
 
+    /** Intialize intent preserving controller with the intent, keeping the previous model and window */
+    public static func reinitializeController(_ spec: IntentSpec) {
+        setIntent(spec)
+        // FIXME Check that the model and updated intent are consistent (that measure and knob sets coincide)
+        initializeController(Runtime.controller.model, spec, Runtime.controller.window)
+    }
+
     /** Update the value of name in the global measure store and return that value */
     @discardableResult public static func measure(_ name: String, _ value: Double) -> Double {
         synchronized(measuresLock) {
@@ -581,6 +591,11 @@ public func optimize
     , samplingPolicy: SamplingPolicy = TimingSamplingPolicy(100.millisecond)
     , _ labels: [String]
     , _ routine: (Void) -> Void ) {
+
+    // Start the REST server in a low-priority background thread
+    DispatchQueue.global(qos: .utility).async {
+        RestServer()
+    }
 
     let loop = { (body: (Void) -> Void) in
         while !Runtime.shouldTerminate {
