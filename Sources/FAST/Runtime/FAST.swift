@@ -13,6 +13,7 @@
 //---------------------------------------
 
 import Foundation
+import Dispatch
 import Venice
 import HeliumLogger
 import LoggerAPI
