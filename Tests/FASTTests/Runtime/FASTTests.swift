@@ -69,5 +69,10 @@ class FASTTests: XCTestCase {
 
     }
 
+    static var allTests = [
+        ("testOptimizeWithoutIntentAndModel", testOptimizeWithoutIntentAndModel),
+        ("testSR221", testSR221)
+    ]
+
 }
 

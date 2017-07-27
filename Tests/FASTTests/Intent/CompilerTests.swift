@@ -67,4 +67,8 @@ class CompilerTests: XCTestCase {
 
     }
 
+    static var allTests = [
+        ("testCompileIntentSpec", testCompileIntentSpec)
+    ]
+
 }
