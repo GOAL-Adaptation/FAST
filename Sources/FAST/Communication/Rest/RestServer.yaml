@@ -23,6 +23,19 @@ paths:
           description: "The application is not alive."
           schema:
             $ref: '#/definitions/Error'
+  /process:
+    post:
+      description: "Process a number of inputs."
+      parameters: 
+        - in: body
+          name: workOrder
+          ref: '#/definitions/WorkOrder'
+      responses:
+        200:
+          description: "Work order accepted."
+        406:
+          description: "Work order not accepted."
+          ref: '#/definitions/Error'
   /perturb:
     post:
       description: "Modify scenario knobs."
@@ -55,6 +68,13 @@ definitions:
         type: integer
       description:
         type: string
+  WorkOrder:
+    type: object
+    required:
+      - inputs
+    properties:
+      inputs: integer
+      minimum: 1
   Perturbation:
     type: object
     properties:
