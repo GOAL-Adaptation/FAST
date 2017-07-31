@@ -56,7 +56,20 @@ paths:
         200:
           description: "Current internal state of the application."
           ref: '#/definitions/State'
-    
+  /enable:
+    post:
+      description: "Enable or disable adaptation."
+      parameters: 
+        - in: body
+          name: applicationExecutionMode
+          ref: '#/definitions/ApplicationExecutionMode'
+      responses:
+        200:
+          description: "Application execution mode change successful."
+        406:
+          description: "Application execution mode change unsuccessful."
+          ref: '#/definitions/Error'
+  
 definitions:
   Error:
     type: object
@@ -99,6 +112,12 @@ definitions:
         type: number
         minimum: 0
         maximum: 1
+  ApplicationExecutionMode:
+    type: object
+    properties:
+      adaptive:
+        description: "When true, the system will adapt with respect to the active intent. Otherwise execution will proceed without adaptation."
+        type: boolean
   
   # Common
   
