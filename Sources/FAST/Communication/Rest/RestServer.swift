@@ -1,7 +1,7 @@
 /*
  *  FAST: An implicit programing language based on SWIFT
  *
- *        Intent Specification Compiler
+ *        RESTful API to FAST
  *
  *  author: Adam Duracz
  *
@@ -17,7 +17,6 @@ import PerfectHTTPServer
 
 //---------------------------------------
 
-/**  */
 class RestServer {
 
     let server = HTTPServer()
@@ -93,7 +92,7 @@ class RestServer {
         } catch let err {
             Log.warning("Error thrown while starting REST server: \(err).")
         }
-
+        
     }
 
 }
