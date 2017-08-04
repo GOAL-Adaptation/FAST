@@ -68,9 +68,9 @@ open class Model {
         var configurations: [Configuration] = []      
         for configId in 0 ..< knobTable.rows.count {
             let knobNameValuePairs = Array(zip(knobNames, knobTable.rows[configId].dropFirst().map{ parseKnobSetting($0) }))
-            let knobSettings = KnobSettings([String:Any](elements: knobNameValuePairs))
+            let knobSettings = KnobSettings([String:Any](knobNameValuePairs))
             let measureNameValuePairs = Array(zip(measureNames, measureTable.rows[configId].dropFirst().map{ Double($0)! })) // FIXME Add error handling
-            let measures = [String:Double](elements: measureNameValuePairs)
+            let measures = [String:Double](measureNameValuePairs)
             configurations.append(Configuration(configId, knobSettings, measures))
         }
         self.configurations = configurations

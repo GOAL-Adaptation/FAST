@@ -98,6 +98,24 @@ enum InteractionMode: String {
     case Scripted
 }
 
+enum ApplicationExecutionMode {
+    // Run application with adaptation.
+    case Adaptive
+    // Run application without adaptation.
+    case NonAdaptive
+}
+extension ApplicationExecutionMode: Equatable {}
+func ==(lhs: ApplicationExecutionMode, rhs: ApplicationExecutionMode) -> Bool {
+    switch (lhs, rhs) {
+    case (.Adaptive, .Adaptive): 
+        return true
+    case (.NonAdaptive, .NonAdaptive): 
+        return true
+    default:
+        return false
+    }
+}
+
 extension InteractionMode: InitializableFromString {
 
     init?(from text: String) {
@@ -231,7 +249,7 @@ public class Runtime {
         Runtime.communicationChannel!.run(MessageHandler())
     }
 
-    // These knobs control the interaction mode, e.g. scripted
+    // These knobs control the interaction mode (e.g. scripted) and application execution mode (e.g. profiling)
     class RuntimeKnobs: TextApiModule {
 
         let name = "RuntimeKnobs"
@@ -240,10 +258,13 @@ public class Runtime {
 
         var interactionMode: Knob<InteractionMode>
 
+        var applicationExecutionMode: Knob<ApplicationExecutionMode>
+
         init() {
             self.interactionMode = Knob(name: "interactionMode", from: key, or: InteractionMode.Default, preSetter: Runtime.changeInteractionMode)
-            
+            self.applicationExecutionMode = Knob(name: "applicationExecutionMode", from: key, or: ApplicationExecutionMode.Adaptive)
             self.addSubModule(newModule: interactionMode)
+            self.addSubModule(newModule: applicationExecutionMode)
         }
     }
 
@@ -526,7 +547,7 @@ internal class MeasuringDevice {
     private var applicationMeasures: Array<String>
     private var samplingPolicy: SamplingPolicy
 
-    private var stats = [String : Statistics]()
+    internal var stats = [String : Statistics]()
 
     init(_ samplingPolicy: SamplingPolicy, _ windowSize: UInt32, _ applicationMeasures: [String]) {
         self.windowSize = windowSize
@@ -588,45 +609,68 @@ public class Schedule {
 /* Defines an optimization scope. Replaces a loop in a pure Swift program. */
 public func optimize
     ( _ id: String
+    , until shouldTerminate: @escaping @autoclosure () -> Bool = false
     , across windowSize: UInt32 = 20
     , samplingPolicy: SamplingPolicy = TimingSamplingPolicy(100.millisecond)
     , _ labels: [String]
-    , _ routine: (Void) -> Void ) {
+    , _ routine: @escaping (Void) -> Void ) {
 
     // Start the REST server in a low-priority background thread
     DispatchQueue.global(qos: .utility).async {
         RestServer()
     }
 
-    let loop = { (body: (Void) -> Void) in
-        while !Runtime.shouldTerminate {
-            body()
+    /** Loop body for a given number of iterations (or infinitely, if iterations == nil) */
+    func loop(iterations: UInt32? = nil, _ body: (Void) -> Void) {
+        if let i = iterations {
+            var localIteration: UInt32 = 0
+            while localIteration < i && !shouldTerminate() && !Runtime.shouldTerminate {
+                body()
+                localIteration += 1
+            }
+        } else {
+            while !shouldTerminate() && !Runtime.shouldTerminate {
+                body()
+            }
         }
     }
     
     if let intent = Runtime.loadIntent(id) {
         if let model = Runtime.loadModel(id) {
-            // Initialize the controller with the knob-to-mesure model, intent and window size
-            Runtime.initializeController(model, intent, windowSize)
+
             // Initialize measuring device, that will update measures based on the samplingPolicy
             let m = MeasuringDevice(samplingPolicy, windowSize, labels)
-            // FIXME what if the counter overflows
-            var iteration: UInt32 = 0 // iteration counter
-            var schedule: Schedule = Schedule(constant: Runtime.controller.model.getInitialConfiguration()!.knobSettings)
-            loop {
-                Runtime.measure("iteration", Double(iteration))
-                executeAndReportProgress(m, routine)
-                iteration += 1
-                if iteration % windowSize == 0 {
-                    schedule = Runtime.controller.getSchedule(intent, Runtime.measures)
-                }
-                // FIXME This should only apply when the schedule actually needs to change knobs
-                schedule[iteration % windowSize].apply()
-                Runtime.measure("iteration", Double(iteration))
-                // FIXME maybe stalling in scripted mode should not be done inside of optimize but somewhere else in an independent and better way
-                Runtime.reportProgress()
-            }  
             
+            func runOnce() {
+                // Initialize the controller with the knob-to-mesure model, intent and window size
+                Runtime.initializeController(model, intent, windowSize)
+                // FIXME what if the counter overflows
+                var iteration: UInt32 = 0 // iteration counter
+                var schedule: Schedule = Schedule(constant: Runtime.controller.model.getInitialConfiguration()!.knobSettings)
+                loop {
+                    Runtime.measure("iteration", Double(iteration))
+                    executeAndReportProgress(m, routine)
+                    iteration += 1
+                    if iteration % windowSize == 0 {
+                        let measureWindowAverages = Dictionary(m.stats.map{ (n,s) in (n, s.windowAverage) })
+                        schedule = Runtime.controller.getSchedule(intent, measureWindowAverages)
+                    }
+                    if Runtime.runtimeKnobs.applicationExecutionMode.get() == ApplicationExecutionMode.Adaptive {
+                        // FIXME This should only apply when the schedule actually needs to change knobs
+                        schedule[iteration % windowSize].apply()
+                    }
+                    Runtime.measure("iteration", Double(iteration))
+                    // FIXME maybe stalling in scripted mode should not be done inside of optimize but somewhere else in an independent and better way
+                    Runtime.reportProgress()
+                }  
+            }
+
+            Log.info("Application executing in \(Runtime.runtimeKnobs.applicationExecutionMode.get()) mode.")
+            switch Runtime.runtimeKnobs.applicationExecutionMode.get() {
+                default: // .Adaptive and .NonAdaptive
+                    runOnce()
+            }
+
         } else {
             Log.warning("No model loaded for optimize scope '\(id)'. Proceeding without adaptation.")
             loop(routine)

@@ -79,6 +79,23 @@ class RestServer {
             }
             response.completed()
         })
+        routes.add(method: .post, uri: "/enable", handler: {
+            _, response in
+            let currentApplicationExecutionMode = Runtime.runtimeKnobs.applicationExecutionMode.get()
+            switch currentApplicationExecutionMode {
+                case .Adaptive:
+                    Runtime.runtimeKnobs.applicationExecutionMode.set(.NonAdaptive)
+                    Log.info("Successfully received request on /enable REST endpoint. Adaptation turned off.")
+                case .NonAdaptive:
+                    Runtime.runtimeKnobs.applicationExecutionMode.set(.Adaptive)
+                    Log.info("Successfully received request on /enable REST endpoint. Adaptation turned on.")
+                default:
+                    Log.warning("Current application execution mode (\(currentApplicationExecutionMode)) is not one of {.Adaptive, .NonAdaptive}.")
+                    Runtime.runtimeKnobs.applicationExecutionMode.set(.Adaptive)
+                    Log.info("Successfully received request on /enable REST endpoint. Adaptation turned on.")
+            }
+            response.completed()
+        })
         routes.add(method: .post, uri: "/terminate", handler: {
             _, response in
             Runtime.shouldTerminate = true
