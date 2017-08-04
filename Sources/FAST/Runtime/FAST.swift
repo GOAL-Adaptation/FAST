@@ -606,6 +606,13 @@ public class Schedule {
     }
 }
 
+/** Start the REST server in a low-priority background thread */
+private func startRestServer() {
+    DispatchQueue.global(qos: .utility).async {
+        RestServer()
+    }
+}
+
 /* Defines an optimization scope. Replaces a loop in a pure Swift program. */
 public func optimize
     ( _ id: String
@@ -615,10 +622,7 @@ public func optimize
     , _ labels: [String]
     , _ routine: @escaping (Void) -> Void ) {
 
-    // Start the REST server in a low-priority background thread
-    DispatchQueue.global(qos: .utility).async {
-        RestServer()
-    }
+    startRestServer()
 
     /** Loop body for a given number of iterations (or infinitely, if iterations == nil) */
     func loop(iterations: UInt32? = nil, _ body: (Void) -> Void) {
