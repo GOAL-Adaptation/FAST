@@ -138,7 +138,7 @@ class Emulator: TextApiModule, ClockMonitor, EnergyMonitor {
   func updateGlobalCounters() {
 
     // Obtain the current progress of the application
-    if let recentNumberOfProcessedInpts = Runtime.readMeasure("iteration") {
+    if let recentNumberOfProcessedInpts = Runtime.getMeasure("iteration") {
 
       // Obtain the Application State
       let applicationConfigurationId   = self.application.getConfigurationId(database: self.database)

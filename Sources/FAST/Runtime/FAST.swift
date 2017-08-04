@@ -340,10 +340,10 @@ public class Runtime {
                 switch verbosityLevel {
                 
                     case VerbosityLevel.Verbose:
-                        return "Current iteration is: " + String(describing: Runtime.readMeasure("iteration")) + "."
+                        return "Current iteration is: " + String(describing: Runtime.getMeasure("iteration")) + "."
                     
                     default:
-                        return String(describing: Runtime.readMeasure("iteration"))
+                        return String(describing: Runtime.getMeasure("iteration"))
                 }                
 
             // invalid message
@@ -365,7 +365,7 @@ public class Runtime {
 
         /** get status as a dictionary */
         public func getInternalStatus() -> [String : Any]? {
-            return ["iteration" : UInt64(Runtime.readMeasure("iteration")!)] // TODO make sure iteration is always defined, some global init would be nice
+            return ["iteration" : UInt64(Runtime.getMeasure("iteration")!)] // TODO make sure iteration is always defined, some global init would be nice
         }
 
         init() {
@@ -479,8 +479,8 @@ public class Runtime {
         return value
     }
 
-    /** Read the current value of a measure */
-    public static func readMeasure(_ name: String) -> Double? {
+    /** Get the current value of a measure */
+    internal static func getMeasure(_ name: String) -> Double? {
         return measures[name]
     }
 
