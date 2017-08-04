@@ -61,6 +61,8 @@ class RestServer {
 
                         response.status = .ok // HTTP 202, which is default, but setting it for clarity
 
+                        Log.info("Successfully received request on /perturb REST endpoint.")
+
                     } catch let err {
                         Log.error("POST body sent to /perturb REST endpoint does not contain valid JSON: \(postBodyString). \(err)")
                         response.status = .notAcceptable // HTTP 406
