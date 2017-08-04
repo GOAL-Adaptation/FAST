@@ -1,9 +1,6 @@
 UNAME := $(shell uname)
 SPM_FLAGS_ALL := \
   -Xlinker -L/usr/local/lib \
-  -Xlinker -L/usr/local/opt/lapack/lib \
-  -Xlinker -L/usr/local/opt/openblas/lib \
-  -Xlinker -L/usr/local/opt/sqlite/lib \
   -Xlinker -lenergymon-default
 RESOURCE_PATH := Sources/ExampleIncrementer
 RESOURCE_TARGET_PATH := .build/debug
@@ -14,6 +11,9 @@ TEST_RESOURCE_TARGET_PATH := $(RESOURCE_TARGET_PATH)
 endif
 ifeq ($(UNAME), Darwin)
 SPM_FLAGS := $(SPM_FLAGS_ALL) \
+  -Xlinker -L/usr/local/opt/lapack/lib \
+  -Xlinker -L/usr/local/opt/openblas/lib \
+  -Xlinker -L/usr/local/opt/sqlite/lib \
 	-Xlinker -F/Library/Frameworks -Xlinker -framework -Xlinker IntelPowerGadget
 TEST_RESOURCE_TARGET_PATH := $(RESOURCE_TARGET_PATH)/FASTPackageTests.xctest/Contents/Resources
 endif
