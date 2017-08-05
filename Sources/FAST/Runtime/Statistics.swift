@@ -5,6 +5,7 @@
 */
 
 import Foundation
+import LoggerAPI
 
 /**
     Computes total and window statistics for a single quantity,
@@ -15,6 +16,8 @@ import Foundation
       where N is the windowSize passed to init().
 */
 internal class Statistics {
+
+    private var measure: String
 
     private var _totalAverage: Double = 0
     private var totalCount: Int = 0
@@ -37,7 +40,8 @@ internal class Statistics {
         get { return windowIsComplete ? _windowAverage : Double.nan }
     }
 
-    init(windowSize: Int) {
+    init(measure: String, windowSize: Int) {
+        self.measure = measure
         precondition(windowSize > 0, "Window size must be positive")
         window = Array(repeating: Double.nan, count: windowSize)
     }
@@ -83,6 +87,7 @@ internal class Statistics {
             window[windowHead] = value
             windowHead = (windowHead + 1) % windowSize
         }
+        Log.verbose("Statistics for \(measure). Total average: \(totalAverage), window average: \(windowAverage).")
         return value
     }
 

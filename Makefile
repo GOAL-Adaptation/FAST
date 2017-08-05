@@ -1,3 +1,10 @@
+# FAST: An implicit programing language based on SWIFT
+#
+#       Build script
+#
+# author: Adam Duracz
+#
+
 UNAME := $(shell uname)
 SPM_FLAGS_ALL := \
   -Xlinker -L/usr/local/lib \
@@ -38,9 +45,14 @@ clean:
 
 rebuild: clean build
 
+run: proteus_runtime_applicationExecutionMode := Adaptive
 run:
 	.build/debug/ExampleIncrementer
 
 go: build run
-
+	
 all: rebuild run
+
+profile: export proteus_runtime_applicationExecutionMode := ExhaustiveProfiling
+profile: export proteus_runtime_profileSize := $(if $(TEST),$(TEST),1000)
+profile: build run ## To select number of inputs to process when profiling: make size=<NUMBER_OF_RUNS> profile

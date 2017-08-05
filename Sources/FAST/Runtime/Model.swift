@@ -1,7 +1,40 @@
+/*
+ *  FAST: An implicit programing language based on SWIFT
+ *
+ *        Model used by controller to compute schedules.
+ *
+ *        Relates knob values with measure values. When the FASTController 
+ *        is initialized, this is converted into a FASTControllerModel that,
+ *        in contrast, relates knob values with a cost-or-value quantity 
+ *        (computed from knobs using the objective function of the active 
+ *        intent) and a constraint quantity.
+ *
+ *  author: Adam Duracz
+ */
+
+//---------------------------------------
+
 import FASTController
 import CSwiftV
 import LoggerAPI
 
+//---------------------------------------
+
+/* A collection of knob values that can be applied to control the system. */
+class KnobSettings {
+    let settings: [String : Any]
+    init(_ settings: [String : Any]) {
+        self.settings = settings
+    }
+    func apply() {
+        for (name, value) in settings {
+            Runtime.setKnob(name, to: value)
+        }
+        Log.debug("Applied knob settings.")
+    }
+}
+
+/* A combination of a collection of knob values and corresponding measure values. */
 struct Configuration {
     public let id: Int // FIXME: Eliminate this by making Configuration Equatable
     public let knobSettings: KnobSettings
@@ -26,25 +59,15 @@ struct Configuration {
     func with(newId: Int) -> Configuration {
         return Configuration(newId, knobSettings, measureValues, measureNames)
     }
+
 }
 
+/* A list of configurations. */
 open class Model {
 
     private let configurations: [Configuration]
     public let initialConfigurationIndex: Int?
     public let measureNames: [String]
-
-    public var isEmpty: Bool {
-        get {
-            return configurations.isEmpty
-        }
-    }
-
-    init() {
-        configurations = []
-        initialConfigurationIndex = nil
-        measureNames = []
-    }
 
     /** Loads a model, consisting of two tables for knob- and measure values.
         The entries in these tables are assumed to be connected by an "id" column,
@@ -109,9 +132,6 @@ open class Model {
 
     /** Make a Model based on this one, but whose configurations are sorted by their values for the given measure. */
     func sorted(by measureName: String) -> Model {
-        if self.isEmpty {
-            return self
-        }
         assert(measureNames.contains(measureName), "invalid measure name \"\(measureName)\"")
         let measureIndex = measureNames.index(of: measureName)!
         let sortedConfigurations = configurations.sorted(by: { (l: Configuration, r: Configuration) in 

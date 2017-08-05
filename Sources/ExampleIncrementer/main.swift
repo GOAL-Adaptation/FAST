@@ -29,7 +29,7 @@ let step = Knob("step", 1)
 
 var x = 0
 
-optimize("incrementer", across: window, ["latency"]) {
+optimize("incrementer", across: window, ["latency", "operations"]) {
     let start = NSDate().timeIntervalSince1970
     var operations = 0.0
     while(x < threshold.get()) {

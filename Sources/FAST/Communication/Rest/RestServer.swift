@@ -42,10 +42,12 @@ class RestServer {
                         // FIXME Use (definitions section of) Swagger specification to validate the input,
                         //       to make indexing and casts fail there instead, with detailed error information.
                         let missionIntent          = json["missionIntent"]!          as! String
+                        print(type(of: json["availableCores"]!))
+                        exit(1)
                         let availableCores         = json["availableCores"]!         as! Int
-                        let availableCoreFrequency = json["availableCoreFrequency"]! as! Int
-                        let missionLength          = json["missionLength"]!          as! Int
-                        let sceneObfuscation       = json["sceneObfuscation"]!       as! Double
+                        // let availableCoreFrequency = json["availableCoreFrequency"]! as! Int
+                        // let missionLength          = json["missionLength"]!          as! Int
+                        // let sceneObfuscation       = json["sceneObfuscation"]!       as! Double
 
                         // Change intent
                         // TODO Figure out if it is better to delay intent change/controller re-init until the end of the window

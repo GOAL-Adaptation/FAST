@@ -18,8 +18,9 @@ import Venice
 import HeliumLogger
 import LoggerAPI
 import CSwiftV
-
 import Nifty
+
+//---------------------------------------
 
 ///////////////////
 // Runtime State //
@@ -103,16 +104,27 @@ enum ApplicationExecutionMode {
     case Adaptive
     // Run application without adaptation.
     case NonAdaptive
+    // Run application, without adaptation, once for every configuration in the intent specification.
+    case ExhaustiveProfiling
+    // Run application, without adaptation, for a percentage of the configurations in the intent 
+    // specification. The default is to profile all (100%) of the configurations. When only part
+    // of the configurations are profiled, the extremeValues parameter selects whether the extreme 
+    // values of ordered knob ranges should be included (the remaining percentage is distributed 
+    // uniformly across ranges).
+    case SelectiveProfiling(percentage: Int, extremeValues: Bool)
 }
-extension ApplicationExecutionMode: Equatable {}
 func ==(lhs: ApplicationExecutionMode, rhs: ApplicationExecutionMode) -> Bool {
     switch (lhs, rhs) {
-    case (.Adaptive, .Adaptive): 
-        return true
-    case (.NonAdaptive, .NonAdaptive): 
-        return true
-    default:
-        return false
+        case (.Adaptive, .Adaptive): 
+            return true
+        case (.NonAdaptive, .NonAdaptive): 
+            return true
+        case (.ExhaustiveProfiling, .ExhaustiveProfiling): 
+            return true
+        case (let .SelectiveProfiling(pl, el), let .SelectiveProfiling(pr, er)):
+            return pl == pr && el == er
+        default:
+            return false
     }
 }
 
@@ -157,16 +169,16 @@ public class Runtime {
 
     private init() {}
 
-    fileprivate static var measures: [String : Double] = [:]
-    private static var measuresLock = NSLock()
+    internal static var measures: [String : Double] = [:]
+    internal static var measuresLock = NSLock()
 
-    fileprivate static var knobSetters: [String : (Any) -> Void] = [:]
-    private static var knobSettersLock = NSLock()
+    internal static var knobSetters: [String : (Any) -> Void] = [:]
+    internal static var knobSettersLock = NSLock()
 
-    fileprivate static var intents: [String : IntentSpec] = [:]
-    fileprivate static var models: [String : Model] = [:]
-    fileprivate static var controller: Controller = ConstantController()
-    private static var controllerLock = NSLock()
+    internal static var intents: [String : IntentSpec] = [:]
+    internal static var models: [String : Model] = [:]
+    internal static var controller: Controller = ConstantController()
+    internal static var controllerLock = NSLock()
 
     internal static let intentCompiler = Compiler()
 
@@ -218,12 +230,12 @@ public class Runtime {
                     return model   
                 }
                 else {
-                    Log.verbose("Unable to load measure table \(id).measuretable.")
+                    Log.error("Unable to load measure table \(id).measuretable.")
                     return nil
                 }    
             }
             else {
-                Log.verbose("Unable to load knob table \(id).knobtable.")
+                Log.error("Unable to load knob table \(id).knobtable.")
                 return nil
             }
         }
@@ -477,18 +489,29 @@ public class Runtime {
     }
 //------------------- end of very new stuff
 
-    /** Intialize intent preserving controller with the given model, intent and window */
+    /** Intialize intent preserving controller with the given model, intent and window. */
     public static func initializeController(_ model: Model, _ intent: IntentSpec, _ window: UInt32 = 20) {
         synchronized(controllerLock) {
-            controller = IntentPreservingController(model, intent, window)
+            if let c = IntentPreservingController(model, intent, window) {
+                controller = c
+                Log.info("Controller initialized.")
+            } 
+            else {
+                Log.warning("Controller failed to initialize.")
+            }
         }
     }
 
     /** Intialize intent preserving controller with the intent, keeping the previous model and window */
     public static func reinitializeController(_ spec: IntentSpec) {
         setIntent(spec)
-        // FIXME Check that the model and updated intent are consistent (that measure and knob sets coincide)
-        initializeController(Runtime.controller.model, spec, Runtime.controller.window)
+        if let model = Runtime.controller.model {
+            // FIXME Check that the model and updated intent are consistent (that measure and knob sets coincide)
+            initializeController(model, spec, Runtime.controller.window)
+        }
+        else {
+            Log.error("Attempt to reinitialize controller based on a controller with an undefined model.")
+        }
     }
 
     /** Update the value of name in the global measure store and return that value */
@@ -496,7 +519,7 @@ public class Runtime {
         synchronized(measuresLock) {
             measures[name] = value
         }
-        Log.verbose("Registered value \(value) for measure \(name).")
+        Log.debug("Registered value \(value) for measure \(name).")
         return value
     }
 
@@ -527,17 +550,6 @@ internal func executeAndReportProgress(_ m: MeasuringDevice, _ routine: (Void) -
     m.reportProgress()
 }
 
-public func monitor
-    ( across windowSize: UInt32
-    , samplingPolicy: SamplingPolicy = TimingSamplingPolicy(100.millisecond)
-    , _ labels: [String]
-    , _ routine: (Void) -> Void) {
-    let m = MeasuringDevice(samplingPolicy, windowSize, labels)
-    while true {
-        executeAndReportProgress(m, routine)
-    }
-}
-
 /* Periodically sample measures, according to the samplingPolicy passed at 
    initialization, and compute statistics for them. */
 internal class MeasuringDevice {
@@ -556,7 +568,7 @@ internal class MeasuringDevice {
         samplingPolicy.registerSampler(sample)
         let systemMeasures = Runtime.architecture?.systemMeasures
         for m in applicationMeasures + (systemMeasures == nil ? [String]() : systemMeasures!) {
-            stats[m] = Statistics(windowSize: Int(windowSize))
+            stats[m] = Statistics(measure: m, windowSize: Int(windowSize))
         }
     }
 
@@ -568,123 +580,6 @@ internal class MeasuringDevice {
         progress += 1
         samplingPolicy.reportProgress(progress)
     }
-
-}
-
-//////////////////
-// Optimization //
-//////////////////
-
-/* A collection of knob values that can be applied to control the system. */
-class KnobSettings {
-    let settings: [String : Any]
-    init(_ settings: [String : Any]) {
-        self.settings = settings
-    }
-    func apply() {
-        for (name, value) in settings {
-            Runtime.setKnob(name, to: value)
-        }
-        Log.verbose("Applied knob settings.")
-    }
-}
-
-/* A strategy for switching between KnobSettings, based on the input index. */
-public class Schedule {
-    let schedule: (_ progress: UInt32) -> KnobSettings
-    init(_ schedule: @escaping (_ progress: UInt32) -> KnobSettings) {
-        self.schedule = schedule
-    }
-    init(constant:  KnobSettings) {
-        schedule = { (_: UInt32) in constant }
-    }
-    subscript(index: UInt32) -> KnobSettings {
-        get {
-            Log.verbose("Querying schedule at index \(index)")
-            return schedule(index)
-        }
-    }
-}
-
-/** Start the REST server in a low-priority background thread */
-private func startRestServer() {
-    DispatchQueue.global(qos: .utility).async {
-        RestServer()
-    }
-}
-
-/* Defines an optimization scope. Replaces a loop in a pure Swift program. */
-public func optimize
-    ( _ id: String
-    , until shouldTerminate: @escaping @autoclosure () -> Bool = false
-    , across windowSize: UInt32 = 20
-    , samplingPolicy: SamplingPolicy = TimingSamplingPolicy(100.millisecond)
-    , _ labels: [String]
-    , _ routine: @escaping (Void) -> Void ) {
-
-    startRestServer()
-
-    /** Loop body for a given number of iterations (or infinitely, if iterations == nil) */
-    func loop(iterations: UInt32? = nil, _ body: (Void) -> Void) {
-        if let i = iterations {
-            var localIteration: UInt32 = 0
-            while localIteration < i && !shouldTerminate() && !Runtime.shouldTerminate {
-                body()
-                localIteration += 1
-            }
-        } else {
-            while !shouldTerminate() && !Runtime.shouldTerminate {
-                body()
-            }
-        }
-    }
-    
-    if let intent = Runtime.loadIntent(id) {
-        if let model = Runtime.loadModel(id) {
-
-            // Initialize measuring device, that will update measures based on the samplingPolicy
-            let m = MeasuringDevice(samplingPolicy, windowSize, labels)
-            
-            func runOnce() {
-                // Initialize the controller with the knob-to-mesure model, intent and window size
-                Runtime.initializeController(model, intent, windowSize)
-                // FIXME what if the counter overflows
-                var iteration: UInt32 = 0 // iteration counter
-                var schedule: Schedule = Schedule(constant: Runtime.controller.model.getInitialConfiguration()!.knobSettings)
-                loop {
-                    Runtime.measure("iteration", Double(iteration))
-                    executeAndReportProgress(m, routine)
-                    iteration += 1
-                    if iteration % windowSize == 0 {
-                        let measureWindowAverages = Dictionary(m.stats.map{ (n,s) in (n, s.windowAverage) })
-                        schedule = Runtime.controller.getSchedule(intent, measureWindowAverages)
-                    }
-                    if Runtime.runtimeKnobs.applicationExecutionMode.get() == ApplicationExecutionMode.Adaptive {
-                        // FIXME This should only apply when the schedule actually needs to change knobs
-                        schedule[iteration % windowSize].apply()
-                    }
-                    Runtime.measure("iteration", Double(iteration))
-                    // FIXME maybe stalling in scripted mode should not be done inside of optimize but somewhere else in an independent and better way
-                    Runtime.reportProgress()
-                }  
-            }
-
-            Log.info("Application executing in \(Runtime.runtimeKnobs.applicationExecutionMode.get()) mode.")
-            switch Runtime.runtimeKnobs.applicationExecutionMode.get() {
-                default: // .Adaptive and .NonAdaptive
-                    runOnce()
-            }
-
-        } else {
-            Log.warning("No model loaded for optimize scope '\(id)'. Proceeding without adaptation.")
-            loop(routine)
-        }        
-    } else {
-        Log.warning("No intent loaded for optimize scope '\(id)'. Proceeding without adaptation.")
-        loop(routine)
-    }
-
-    print("FAST application terminating.")
 
 }
 

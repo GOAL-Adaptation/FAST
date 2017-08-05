@@ -32,14 +32,14 @@ class CompilerTests: XCTestCase {
 
             let (stepRange, stepReference) = intentSpec.knobs["step"]!
             XCTAssertEqual(1, stepReference as! Int)
-            let stepRangeExpected = [0,1,2,3,4,5]
+            let stepRangeExpected = [1,2,3,4]
             for i in 0 ..< stepRangeExpected.count {
                 XCTAssertEqual(stepRangeExpected[i], stepRange[i] as! Int)
             }
 
             let (thresholdRange, thresholdReference) = intentSpec.knobs["threshold"]!
             XCTAssertEqual(10000000, thresholdReference as! Int)
-            let thresholdRangeExpected = [0,2000000,4000000,6000000,8000000,10000000]
+            let thresholdRangeExpected = [2000000,4000000,6000000,8000000,10000000]
             for i in 0 ..< thresholdRangeExpected.count {
                 XCTAssertEqual(thresholdRangeExpected[i], thresholdRange[i] as! Int)
             }

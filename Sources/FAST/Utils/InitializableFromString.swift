@@ -3,8 +3,12 @@
  *
  *  Types that are (fallibly) initializable from a String
  *
- *  author: Ferenc A Bartha
+ *  authors: Ferenc A Bartha, Adam Duracz
  */
+
+//---------------------------------------
+
+import LoggerAPI
 
 //---------------------------------------
 
@@ -26,6 +30,7 @@ extension String: InitializableFromString {
     public init?(from text: String) {
         self = text
     }
+
 }
 
 /** Extension for Int */
@@ -35,9 +40,64 @@ extension Int: InitializableFromString {
         if let value = Int(text) {
             self = value
         } else {
+            failedToInitialize("Int", from: text)
             return nil
         }
     }
+
+}
+
+/** Extension for UInt16 */
+extension UInt16: InitializableFromString {
+
+    public init?(from text: String) {
+        if let value = UInt16(text) {
+            self = value
+        } else {
+            failedToInitialize("UInt16", from: text)
+            return nil
+        }
+    }
+
+}
+
+/** Extension for UInt32 */
+extension UInt32: InitializableFromString {
+
+    public init?(from text: String) {
+        if let value = UInt32(text) {
+            self = value
+        } else {
+            failedToInitialize("UInt32", from: text)
+            return nil
+        }
+    }
+
+}
+
+/** Extension for ApplicationExecutionMode */
+extension ApplicationExecutionMode: InitializableFromString {
+
+    public init?(from text: String) {
+        switch text {
+            case "Adaptive": 
+                self = .Adaptive
+            case "NonAdaptive": 
+                self = .NonAdaptive
+            case "ExhaustiveProfiling": 
+                self = .ExhaustiveProfiling
+            default:
+                failedToInitialize("ApplicationExecutionMode", from: text)
+                return nil
+        }
+    }
+
+}
+
+//---------------------------------------
+
+fileprivate func failedToInitialize(_ typeString: String, from text: String) {
+    Log.warning("Failed to initialize \(typeString) from string '\(text)'.")
 }
 
 //---------------------------------------

@@ -1,8 +1,23 @@
+/*
+ *  FAST: An implicit programing language based on SWIFT
+ *
+ *        API to controllers.
+ *
+ *  author: Adam Duracz
+ *
+ */
+
+//---------------------------------------
+
+import Foundation
+import LoggerAPI
 import FASTController
+
+//---------------------------------------
 
 protocol Controller {
 
-    var model: Model { get }
+    var model: Model? { get }
     var window: UInt32 { get }
 
     func getSchedule(_ intent: IntentSpec, _ measureValues: [String : Double]) -> Schedule
@@ -11,7 +26,7 @@ protocol Controller {
 
 class ConstantController : Controller {
 
-    let model = Model()
+    let model: Model? = nil
 
     let window: UInt32 = 1
 
@@ -25,31 +40,38 @@ class ConstantController : Controller {
 
 class IntentPreservingController : Controller {
 
-    let model: Model
+    let model: Model? // Always defined for this Controller 
     let window: UInt32
     let fastController: FASTController
 
-    init(_ model: Model,
-         _ intent: IntentSpec,
-         _ window: UInt32) {
-        self.model = model.sorted(by: intent.constraintName)
+    init?(_ model: Model,
+          _ intent: IntentSpec,
+          _ window: UInt32) {
+        let sortedModel = model.sorted(by: intent.constraintName)
+        self.model = sortedModel
         self.window = window
-        let constraintMeasureIdx = model.measureNames.index(of: intent.constraintName)! // FIXME Add error handling
-        self.fastController = 
-            FASTController( model: model.getFASTControllerModel()
-                          , constraint: intent.constraint
-                          , constraintMeasureIdx: constraintMeasureIdx
-                          , window: window
-                          , optType: intent.optimizationType
-                          , ocb: intent.costOrValue
-                          , initialModelEntryIdx: model.initialConfigurationIndex!
-                          )
+        if let constraintMeasureIdx = sortedModel.measureNames.index(of: intent.constraintName) {
+            self.fastController = 
+                FASTController( model: sortedModel.getFASTControllerModel()
+                              , constraint: intent.constraint
+                              , constraintMeasureIdx: constraintMeasureIdx
+                              , window: window
+                              , optType: intent.optimizationType
+                              , ocb: intent.costOrValue
+                              , initialModelEntryIdx: sortedModel.initialConfigurationIndex!
+                              )
+        }
+        else {
+            Log.error("Intent inconsistent with active model: could not match constraint name '\(intent.constraintName)' stated in intent with a measure name in the active model, whose measures are: \(model.measureNames). ")
+            exit(1)
+            return nil
+        }
     }
 
     func getSchedule(_ intent: IntentSpec, _ measureValues: [String : Double]) -> Schedule {
         // FIXME Replace global measure store with custom ordered collection that avoids this conversion
         var values = [Double]()
-        for measureName in model.measureNames {
+        for measureName in self.model!.measureNames {
             if let v = measureValues[measureName] {
                 values.append(v)
             }
@@ -59,7 +81,7 @@ class IntentPreservingController : Controller {
         }
         let s = fastController.computeSchedule(tag: 0, measures: values) // FIXME Pass meaningful tag for logging
         return Schedule({ (i: UInt32) -> KnobSettings in 
-            return self.model[Int(i) < s.nLowerIterations ? s.idLower : s.idUpper].knobSettings
+            return self.model![Int(i) < s.nLowerIterations ? s.idLower : s.idUpper].knobSettings
         })
     }
 

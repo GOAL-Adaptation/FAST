@@ -27,3 +27,20 @@ func readFile( withName name: String, ofType type: String
     }
 
 }
+
+func withOpenFile( atPath path: String
+                 , append: Bool = false
+                 , _ body: (OutputStream) -> () ) {
+    if let outputStream = OutputStream(toFileAtPath: path, append: append) {
+        outputStream.open()
+        body(outputStream)
+        outputStream.close()
+    } else {
+        Log.error("Unable to open file '\(path)'")
+    }
+}
+
+func delay(_ delay: Double, closure: @escaping () -> ()) {
+    let when = DispatchTime.now() + delay
+    DispatchQueue.main.asyncAfter(deadline: when, execute: closure)
+}
