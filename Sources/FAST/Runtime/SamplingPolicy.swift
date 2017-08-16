@@ -5,6 +5,7 @@
 
 */
 
+import Dispatch
 import Venice
 
 public protocol SamplingPolicy {
@@ -18,21 +19,21 @@ public protocol SamplingPolicy {
 
 }
 
-/** Sample once per N seconds, where N is the samplingRate passed to init(). */
+/** Sample once per N seconds, where N is the samplingPeriod passed to init(). */
 public class TimingSamplingPolicy : SamplingPolicy {
 
-    let samplingRate: Double
+    let samplingPeriod: Double
 
-    init(_ samplingRate: Double) {
-        self.samplingRate = samplingRate
+    init(_ samplingPeriod: Double) {
+        self.samplingPeriod = samplingPeriod
     }
 
-    /** Runs sample() once per N seconds, where N is the samplingRate passed to init(). */
+    /** Runs sample() once per N seconds, where N is the samplingPeriod passed to init(). */
     public func registerSampler(_ sample: @escaping () -> Void) -> Void {
-        co {
+        DispatchQueue.global(qos: .utility).async {
             while true {
                 sample()
-                nap(for: self.samplingRate)
+                usleep(UInt32(1000000.0 * self.samplingPeriod))
             }
         }
     }
