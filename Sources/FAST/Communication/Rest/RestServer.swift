@@ -44,30 +44,32 @@ class RestServer {
                         
                         // FIXME Use (definitions section of) Swagger specification to validate the input,
                         //       to make indexing and casts fail there instead, with detailed error information.
-                        let missionIntent          = json["missionIntent"]!          as! String
-                        print(type(of: json["availableCores"]!))
-                        exit(1)
-                        let availableCores         = json["availableCores"]!         as! Int
-                        // let availableCoreFrequency = json["availableCoreFrequency"]! as! Int
-                        // let missionLength          = json["missionLength"]!          as! Int
-                        // let sceneObfuscation       = json["sceneObfuscation"]!       as! Double
+                        let missionIntent          =        json["missionIntent"]!          as! String
+                        // FIXME Set scenario knobs
+                        let availableCores         =    Int(json["availableCores"]!         as! String)
+                        let availableCoreFrequency =    Int(json["availableCoreFrequency"]! as! String)
+                        let missionLength          =    Int(json["missionLength"]!          as! String)
+                        let sceneObfuscation       = Double(json["sceneObfuscation"]!       as! String)
 
                         // Change intent
                         // TODO Figure out if it is better to delay intent change/controller re-init until the end of the window
-                        let intentSpec = Runtime.intentCompiler.compileIntentSpec(source: missionIntent)!
-                        Runtime.reinitializeController(intentSpec)
+                        if let intentSpec = Runtime.intentCompiler.compileIntentSpec(source: missionIntent) {
+                            Runtime.reinitializeController(intentSpec)
+
+                            // FIXME Handle scenario knobs listed in the Perturbation JSON Schema: 
+                            //       availableCores, availableCoreFrequency, missionLength, sceneObfuscation. 
+                            //       This requires:
+                            //       1) extending the Runtime with a handler for scenario knob setting,
+                            //       2) adding missionLength and sceneObfuscation knobs, perhaps to a new 
+                            //          "Environment" TextApiModule.
+
+                            response.status = .ok // HTTP 202, which is default, but setting it for clarity
                         
-                        // FIXME Handle scenario knobs listed in the Perturbation JSON Schema: 
-                        //       availableCores, availableCoreFrequency, missionLength, sceneObfuscation. 
-                        //       This requires:
-                        //       1) extending the Runtime with a handler for scenario knob setting,
-                        //       2) adding missionLength and sceneObfuscation knobs, perhaps to a new 
-                        //          "Environment" TextApiModule.
-
-                        response.status = .ok // HTTP 202, which is default, but setting it for clarity
-
-                        Log.info("Successfully received request on /perturb REST endpoint.")
-
+                            Log.info("Successfully received request on /perturb REST endpoint.")
+                        }
+                        else {
+                            Log.error("Could not parse intent specification from JSON payload: \(missionIntent)")    
+                        }
                     } catch let err {
                         Log.error("POST body sent to /perturb REST endpoint does not contain valid JSON: \(postBodyString). \(err)")
                         response.status = .notAcceptable // HTTP 406
