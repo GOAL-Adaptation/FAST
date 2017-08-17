@@ -17,13 +17,16 @@ import PerfectHTTPServer
 
 //---------------------------------------
 
+// Key prefix for initialization
+fileprivate let key = ["proteus","server","rest"]
+
 class RestServer {
 
     let server = HTTPServer()
     var routes = Routes()
 
     @discardableResult init() {
-        server.serverPort = initialize(type: UInt16.self, from: ["server","port","rest"]) ?? 1338
+        server.serverPort = initialize(type: UInt16.self, name: "port", from: key) ?? 1338
         routes.add(method: .get, uri: "/alive", handler: {
             _, response in
             response.status = Runtime.shouldTerminate ? .serviceUnavailable : .ok
