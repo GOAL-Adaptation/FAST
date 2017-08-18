@@ -10,6 +10,7 @@
 //---------------------------------------
 
 import Foundation
+import Dispatch
 import LoggerAPI
 import PerfectLib
 import PerfectHTTP
@@ -24,6 +25,17 @@ class RestServer {
 
     let server = HTTPServer()
     var routes = Routes()
+    var requestQueue = DispatchQueue(label: "requestQueue") // A serial queue
+
+    /** 
+      * Add a route that modifiers the handler to make invocations happen serially, 
+      * in the order that they were received. 
+      */
+    func addSerialRoute(method: HTTPMethod, uri: String, handler: @escaping (HTTPRequest, HTTPResponse) -> Void) {
+        routes.add(method: method, uri: uri, 
+            handler: { request, response in self.requestQueue.async { handler(request, response) } }
+        )
+    }
 
     @discardableResult init() {
 
@@ -36,7 +48,7 @@ class RestServer {
             }
         )
 
-        routes.add(method: .post, uri: "/process", handler: {
+        addSerialRoute(method: .post, uri: "/process", handler: {
             request, response in
                 // FIXME Implement stub 
                 Log.error("The /process endpoint has not been implemented yet.")
@@ -44,7 +56,7 @@ class RestServer {
             }
         )
 
-        routes.add(method: .post, uri: "/perturb", handler: {
+        addSerialRoute(method: .post, uri: "/perturb", handler: {
             request, response in
             if let json = self.readRequestBody(request: request, fromEndpoint: "/perturb") {
                 Log.debug("Received valid JSON on /perturb endpoint: \(json)")
@@ -92,7 +104,7 @@ class RestServer {
             }
         )
 
-        routes.add(method: .post, uri: "/enable", handler: {
+        addSerialRoute(method: .post, uri: "/enable", handler: {
             _, response in
             let currentApplicationExecutionMode = Runtime.runtimeKnobs.applicationExecutionMode.get()
             switch currentApplicationExecutionMode {
