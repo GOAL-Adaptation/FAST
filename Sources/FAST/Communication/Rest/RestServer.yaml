@@ -69,6 +69,12 @@ paths:
         406:
           description: "Application execution mode change unsuccessful."
           ref: '#/definitions/Error'
+  /terminate:
+    post:
+      description: "Terminate the application."
+      responses:
+        "200":
+          description: "The application termination request was received."
   
 definitions:
   Error:
