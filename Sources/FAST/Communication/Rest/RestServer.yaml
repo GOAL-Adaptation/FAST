@@ -55,7 +55,7 @@ paths:
       responses:
         200:
           description: "Current internal state of the application."
-          ref: '#/definitions/State'
+
   /enable:
     post:
       description: "Enable or disable adaptation."
