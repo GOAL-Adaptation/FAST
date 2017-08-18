@@ -26,7 +26,7 @@ class RestServer {
     var routes = Routes()
 
     @discardableResult init() {
-        
+
         server.serverPort = initialize(type: UInt16.self, name: "port", from: key) ?? 1338
 
         routes.add(method: .get, uri: "/alive", handler: {
