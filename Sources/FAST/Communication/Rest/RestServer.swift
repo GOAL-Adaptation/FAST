@@ -26,7 +26,9 @@ class RestServer {
     var routes = Routes()
 
     @discardableResult init() {
+        
         server.serverPort = initialize(type: UInt16.self, name: "port", from: key) ?? 1338
+
         routes.add(method: .get, uri: "/alive", handler: {
             _, response in
             response.status = Runtime.shouldTerminate ? .serviceUnavailable : .ok
@@ -89,13 +91,16 @@ class RestServer {
             }
             response.completed()
         })
+
         routes.add(method: .post, uri: "/terminate", handler: {
             _, response in
             Runtime.shouldTerminate = true
             response.completed() // HTTP 202
             }
         )
+
         server.addRoutes(routes)
+
         do {
             try server.start()
             Log.info("REST server open on port \(server.serverPort).")
