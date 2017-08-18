@@ -113,6 +113,7 @@ class RestServer {
         routes.add(method: .post, uri: "/terminate", handler: {
             _, response in
             Runtime.shouldTerminate = true
+            Log.info("Application termination requested through /terminate endpoint.")
             response.completed() // HTTP 202
             }
         )
