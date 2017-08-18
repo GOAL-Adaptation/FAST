@@ -35,6 +35,15 @@ class RestServer {
             response.completed()
             }
         )
+
+        routes.add(method: .post, uri: "/process", handler: {
+            request, response in
+                // FIXME Implement stub 
+                Log.error("The /process endpoint has not been implemented yet.")
+                response.completed() // HTTP 202
+            }
+        )
+
         routes.add(method: .post, uri: "/perturb", handler: {
             request, response in
             if let json = self.readRequestBody(request: request, fromEndpoint: "/perturb") {
@@ -74,6 +83,15 @@ class RestServer {
             }
             response.completed()
         })
+
+        routes.add(method: .post, uri: "/query", handler: {
+            request, response in
+                // FIXME Implement stub 
+                Log.error("The /query endpoint has not been implemented yet.")
+                response.completed() // HTTP 202
+            }
+        )
+
         routes.add(method: .post, uri: "/enable", handler: {
             _, response in
             let currentApplicationExecutionMode = Runtime.runtimeKnobs.applicationExecutionMode.get()
