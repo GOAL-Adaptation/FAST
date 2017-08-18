@@ -35,53 +35,39 @@ class RestServer {
         )
         routes.add(method: .post, uri: "/perturb", handler: {
             request, response in
-            if let postBodyString = request.postBodyString {
-                if let postBodyData = postBodyString.data(using: String.Encoding.utf8) {
-                    do {
+            if let json = self.readRequestBody(request: request, fromEndpoint: "/perturb") {
+                Log.debug("Received valid JSON on /perturb endpoint: \(json)")
 
-                        let json = try JSONSerialization.jsonObject(with: postBodyData) as! [String: Any]
-                        Log.debug("Received valid JSON on /perturb endpoint: \(json)")
-                        
-                        // FIXME Use (definitions section of) Swagger specification to validate the input,
-                        //       to make indexing and casts fail there instead, with detailed error information.
-                        let missionIntent          =        json["missionIntent"]!          as! String
-                        // FIXME Set scenario knobs
-                        let availableCores         =    Int(json["availableCores"]!         as! String)
-                        let availableCoreFrequency =    Int(json["availableCoreFrequency"]! as! String)
-                        let missionLength          =    Int(json["missionLength"]!          as! String)
-                        let sceneObfuscation       = Double(json["sceneObfuscation"]!       as! String)
+                // FIXME Use (definitions section of) Swagger specification to validate the input,
+                //       to make indexing and casts fail there instead, with detailed error information.
+                let missionIntent          =        json["missionIntent"]!          as! String
+                // FIXME Set scenario knobs
+                let availableCores         =    Int(json["availableCores"]!         as! String)
+                let availableCoreFrequency =    Int(json["availableCoreFrequency"]! as! String)
+                let missionLength          =    Int(json["missionLength"]!          as! String)
+                let sceneObfuscation       = Double(json["sceneObfuscation"]!       as! String)
 
-                        // Change intent
-                        // TODO Figure out if it is better to delay intent change/controller re-init until the end of the window
-                        if let intentSpec = Runtime.intentCompiler.compileIntentSpec(source: missionIntent) {
-                            Runtime.reinitializeController(intentSpec)
+                // Change intent
+                // TODO Figure out if it is better to delay intent change/controller re-init until the end of the window
+                if let intentSpec = Runtime.intentCompiler.compileIntentSpec(source: missionIntent) {
+                    Runtime.reinitializeController(intentSpec)
 
-                            // FIXME Handle scenario knobs listed in the Perturbation JSON Schema: 
-                            //       availableCores, availableCoreFrequency, missionLength, sceneObfuscation. 
-                            //       This requires:
-                            //       1) extending the Runtime with a handler for scenario knob setting,
-                            //       2) adding missionLength and sceneObfuscation knobs, perhaps to a new 
-                            //          "Environment" TextApiModule.
+                    // FIXME Handle scenario knobs listed in the Perturbation JSON Schema: 
+                    //       availableCores, availableCoreFrequency, missionLength, sceneObfuscation. 
+                    //       This requires:
+                    //       1) extending the Runtime with a handler for scenario knob setting,
+                    //       2) adding missionLength and sceneObfuscation knobs, perhaps to a new 
+                    //          "Environment" TextApiModule.
 
-                            response.status = .ok // HTTP 202, which is default, but setting it for clarity
-                        
-                            Log.info("Successfully received request on /perturb REST endpoint.")
-                        }
-                        else {
-                            Log.error("Could not parse intent specification from JSON payload: \(missionIntent)")    
-                        }
-                    } catch let err {
-                        Log.error("POST body sent to /perturb REST endpoint does not contain valid JSON: \(postBodyString). \(err)")
-                        response.status = .notAcceptable // HTTP 406
-                    }
-                } 
+                    response.status = .ok // HTTP 202, which is default, but setting it for clarity
+                
+                    Log.info("Successfully received request on /perturb REST endpoint.")
+                }
                 else {
-                    Log.error("POST body sent to /perturb REST endpoint does not contain UTF8-encoded data: \(postBodyString).")
-                    response.status = .notAcceptable // HTTP 406
+                    Log.error("Could not parse intent specification from JSON payload: \(missionIntent)")    
                 }
             }
             else {
-                Log.error("Empty POST body sent to /perturb REST endpoint.")
                 response.status = .notAcceptable // HTTP 406
             }
             response.completed()
@@ -119,6 +105,29 @@ class RestServer {
             Log.warning("Error thrown while starting REST server: \(err).")
         }
         
+    }
+
+    func readRequestBody(request: HTTPRequest, fromEndpoint endpoint: String) -> [String : Any]? {
+        if let bodyString = request.postBodyString {
+            if let bodyData = bodyString.data(using: String.Encoding.utf8) {
+                do {
+                    let json = try JSONSerialization.jsonObject(with: bodyData) as! [String: Any]
+                    Log.debug("Received valid JSON on \(endpoint) endpoint: \(json)")
+                    return json
+                } catch let err {
+                    Log.error("POST body sent to /perturb REST endpoint does not contain valid JSON: \(bodyString). \(err)")
+                    return nil
+                }
+            } 
+            else {
+                Log.error("POST body sent to /perturb REST endpoint does not contain UTF8-encoded data: \(bodyString).")
+                return nil
+            }
+        }
+        else {
+            Log.error("Empty POST body sent to /perturb REST endpoint.")
+            return nil
+        }
     }
 
 }
