@@ -255,7 +255,7 @@ public class Runtime {
         exit(0)
     }
 
-    static public func establishCommuncationChannel(port: Int) {
+    static public func establishCommuncationChannel(port: Int = 1337) {
 
         Runtime.communicationChannel = TcpSocketServer(port: port)
         Runtime.communicationChannel!.run(MessageHandler())
