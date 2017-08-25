@@ -573,7 +573,11 @@ internal class MeasuringDevice {
     }
 
     public func sample() {
-        for (m,s) in stats { s.observe(Runtime.measures[m]!) }
+        for (m,s) in stats { 
+            if let measure = Runtime.measures[m] {
+                s.observe(measure)
+            }            
+        }
     }
 
     func reportProgress() {
