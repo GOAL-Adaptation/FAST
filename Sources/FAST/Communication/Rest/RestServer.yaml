@@ -29,26 +29,30 @@ paths:
       parameters: 
         - in: body
           name: workOrder
-          ref: '#/definitions/WorkOrder'
+          schema: 
+            $ref: '#/definitions/WorkOrder'
       responses:
         200:
           description: "Work order accepted."
         406:
           description: "Work order not accepted."
-          ref: '#/definitions/Error'
+          schema: 
+            $ref: '#/definitions/Error'
   /perturb:
     post:
       description: "Modify scenario knobs."
       parameters: 
         - in: body
           name: perturbation
-          ref: '#/definitions/Perturbation'
+          schema: 
+            $ref: '#/definitions/Perturbation'
       responses:
         200:
           description: "Perturbation successful."
         406:
           description: "Perturbation unsuccessful."
-          ref: '#/definitions/Error'
+          schema: 
+            $ref: '#/definitions/Error'
   /query:
     get:
       description: "Query the current internal state of the application."
@@ -62,13 +66,15 @@ paths:
       parameters: 
         - in: body
           name: applicationExecutionMode
-          ref: '#/definitions/ApplicationExecutionMode'
+          schema: 
+            $ref: '#/definitions/ApplicationExecutionMode'
       responses:
         200:
           description: "Application execution mode change successful."
         406:
           description: "Application execution mode change unsuccessful."
-          ref: '#/definitions/Error'
+          schema: 
+            $ref: '#/definitions/Error'
   /terminate:
     post:
       description: "Terminate the application."
@@ -92,8 +98,9 @@ definitions:
     required:
       - inputs
     properties:
-      inputs: integer
-      minimum: 1
+      inputs: 
+        type: integer
+        minimum: 1
   Perturbation:
     type: object
     properties:
@@ -285,17 +292,13 @@ definitions:
     - utilizedBigCoreFrequency
     properties:
       utilizedLittleCores:
-        schema:
-          $ref: '#/definitions/Cores'
+        $ref: '#/definitions/Cores'
       utilizedLittleCoreFrequency:
-        schema:
-          $ref: '#/definitions/OdroidLittleCoreFrequency'
+        $ref: '#/definitions/OdroidLittleCoreFrequency'
       utilizedBigCores:
-        schema:
-          $ref: '#/definitions/Cores'
+        $ref: '#/definitions/Cores'
       utilizedBigCoreFrequency:
-        schema:
-          $ref: '#/definitions/OdroidBigCoreFrequency'
+        $ref: '#/definitions/OdroidBigCoreFrequency'
 
   OdroidAvailableSystemConfiguration:
     type: object
@@ -306,17 +309,13 @@ definitions:
     - maximalBigCoreFrequency
     properties:
       availableLittleCores:
-        schema:
-          $ref: '#/definitions/Cores'
+        $ref: '#/definitions/Cores'
       maximalLittleCoreFrequency:
-        schema:
-          $ref: '#/definitions/OdroidLittleCoreFrequency'
+        $ref: '#/definitions/OdroidLittleCoreFrequency'
       availableBigCores:
-        schema:
-          $ref: '#/definitions/Cores'
+        $ref: '#/definitions/Cores'
       maximalBigCoreFrequency:
-        schema:
-          $ref: '#/definitions/OdroidBigCoreFrequency'
+        $ref: '#/definitions/OdroidBigCoreFrequency'
   
   OdroidArchitecture:
     type: object
@@ -334,8 +333,7 @@ definitions:
         format: int64
         minimum: 0
       systemConfigurationKnobs:
-        schema:
-          $ref: '#/definitions/OdroidUtilizedSystemConfiguration'
+        $ref: '#/definitions/OdroidUtilizedSystemConfiguration'
       resourceUsagePolicyModule:
         type: object
         required:
@@ -343,20 +341,16 @@ definitions:
         - policy
         properties:
           maintainedState:
-            schema:
-              $ref: '#/definitions/OdroidUtilizedSystemConfiguration'
+            $ref: '#/definitions/OdroidUtilizedSystemConfiguration'
           policy:
-            schema:
-              $ref: '#/definitions/ResourceUsagePolicy'
+            $ref: '#/definitions/ResourceUsagePolicy'
       scenarioKnobs:
         schema:
           $ref: '#/definitions/OdroidAvailableSystemConfiguration'
       executionMode:
-        schema:
-          $ref: '#/definitions/ExecutionMode'
+        $ref: '#/definitions/ExecutionMode'
       actuationPolicy:
-        schema:
-          $ref: '#/definitions/ActuationPolicy'
+        $ref: '#/definitions/ActuationPolicy'
       time:
         type: number
         minimum: 0
@@ -371,8 +365,7 @@ definitions:
         type: integer
         minimum: 0
       ARM-big.LITTLE:
-        schema:
-          $ref: '#/definitions/OdroidArchitecture'
+        $ref: '#/definitions/OdroidArchitecture'
       RADAR:
         type: object
         required:
@@ -384,13 +377,11 @@ definitions:
             - maxAge
             properties:
               maxAge:
-                schema:
-                  $ref: "#/definitions/DoubleKnob" 
+                $ref: "#/definitions/DoubleKnob" 
       RuntimeKnobs:
         type: object
         required:
         - interactionMode
         properties:
           interactionMode:
-            schema:
-              $ref: '#/definitions/InteractionMode'
+            $ref: '#/definitions/InteractionMode'
