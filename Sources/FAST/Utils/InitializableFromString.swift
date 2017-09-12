@@ -94,6 +94,23 @@ extension ApplicationExecutionMode: InitializableFromString {
 
 }
 
+/** Extension for LinuxDvfsGovernor */
+extension LinuxDvfsGovernor: InitializableFromString {
+
+    public init?(from text: String) {
+        switch text {
+            case "performance": 
+                self = .Performance
+            case "userspace": 
+                self = .Userspace
+            default:
+                failedToInitialize("linuxDvfsGovernor", from: text)
+                return nil
+        }
+    }
+
+}
+
 //---------------------------------------
 
 fileprivate func failedToInitialize(_ typeString: String, from text: String) {

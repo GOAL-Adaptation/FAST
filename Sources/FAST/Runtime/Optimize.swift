@@ -110,54 +110,53 @@ public func optimize
                     let measuringDevice = MeasuringDevice(ProgressSamplingPolicy(period: 1), windowSize, labels)
 
                     // Number of inputs to process when profiling a configuration
-                    let defaultProfileSize:         UInt32? = UInt32(1000)
+                    let defaultProfileSize:         UInt32 = UInt32(1000)
                     // File prefix of knob- and measure tables
-                    let defaultProfileOutputPrefix: String? = Runtime.application?.name ?? "fast"
+                    let defaultProfileOutputPrefix: String = Runtime.application?.name ?? "fast"
                     
-                    if let profileSize         = initialize(type: UInt32.self, name: "profileSize",         from: key, or: defaultProfileSize),
-                       let profileOutputPrefix = initialize(type: String.self, name: "profileOutputPrefix", from: key, or: defaultProfileOutputPrefix) 
-                    {
-                        withOpenFile(atPath: profileOutputPrefix + ".knobtable") { (knobTableOutputStream: Foundation.OutputStream) in
-                            withOpenFile(atPath: profileOutputPrefix + ".measuretable") { (measureTableOutputStream: Foundation.OutputStream) in
+                    let profileSize         = initialize(type: UInt32.self, name: "profileSize",         from: key, or: defaultProfileSize)
+                    let profileOutputPrefix = initialize(type: String.self, name: "profileOutputPrefix", from: key, or: defaultProfileOutputPrefix) 
+                    
+                    withOpenFile(atPath: profileOutputPrefix + ".knobtable") { (knobTableOutputStream: Foundation.OutputStream) in
+                        withOpenFile(atPath: profileOutputPrefix + ".measuretable") { (measureTableOutputStream: Foundation.OutputStream) in
 
-                                let knobSpace = intent.knobSpace()
-                                let knobNames = Array(knobSpace[0].settings.keys).sorted()
-                                let measureNames = intent.measures
-                                
-                                func makeRow(id: Any, rest: [Any]) -> String {
-                                    return "\(id)\(rest.reduce( "", { l,r in "\(l),\(r)" }))\n"
-                                }
-
-                                // Output headers for tables
-                                let knobTableHeader = makeRow(id: "id", rest: knobNames)
-                                knobTableOutputStream.write(knobTableHeader, maxLength: knobTableHeader.characters.count)
-                                let measureTableHeader = makeRow(id: "id", rest: measureNames)
-                                measureTableOutputStream.write(measureTableHeader, maxLength: measureTableHeader.characters.count)
-
-                                for i in 0 ..< knobSpace.count {
-
-                                    let knobSettings = knobSpace[i]
-                                    Log.info("Start profiling of configuration: \(knobSettings).")
-                                    knobSettings.apply()
-                                    loop( iterations: profileSize
-                                        , { executeAndReportProgress(measuringDevice, routine) } )
-
-                                    // Output profile entry as line in knob table
-                                    let knobValues = knobNames.map{ knobSettings.settings[$0]! }
-                                    let knobTableLine = makeRow(id: i, rest: knobValues)
-                                    knobTableOutputStream.write(knobTableLine, maxLength: knobTableLine.characters.count)
-                                    
-                                    // Output profile entry as line in measure table
-                                    let measureValues = measureNames.map{ measuringDevice.stats[$0]!.totalAverage }
-                                    let measureTableLine = makeRow(id: i, rest: measureValues)
-                                    measureTableOutputStream.write(measureTableLine, maxLength: measureTableLine.characters.count)
-                                    
-                                }
-
+                            let knobSpace = intent.knobSpace()
+                            let knobNames = Array(knobSpace[0].settings.keys).sorted()
+                            let measureNames = intent.measures
+                            
+                            func makeRow(id: Any, rest: [Any]) -> String {
+                                return "\(id)\(rest.reduce( "", { l,r in "\(l),\(r)" }))\n"
                             }
+
+                            // Output headers for tables
+                            let knobTableHeader = makeRow(id: "id", rest: knobNames)
+                            knobTableOutputStream.write(knobTableHeader, maxLength: knobTableHeader.characters.count)
+                            let measureTableHeader = makeRow(id: "id", rest: measureNames)
+                            measureTableOutputStream.write(measureTableHeader, maxLength: measureTableHeader.characters.count)
+
+                            for i in 0 ..< knobSpace.count {
+
+                                let knobSettings = knobSpace[i]
+                                Log.info("Start profiling of configuration: \(knobSettings).")
+                                knobSettings.apply()
+                                loop( iterations: profileSize
+                                    , { executeAndReportProgress(measuringDevice, routine) } )
+
+                                // Output profile entry as line in knob table
+                                let knobValues = knobNames.map{ knobSettings.settings[$0]! }
+                                let knobTableLine = makeRow(id: i, rest: knobValues)
+                                knobTableOutputStream.write(knobTableLine, maxLength: knobTableLine.characters.count)
+                                
+                                // Output profile entry as line in measure table
+                                let measureValues = measureNames.map{ measuringDevice.stats[$0]!.totalAverage }
+                                let measureTableLine = makeRow(id: i, rest: measureValues)
+                                measureTableOutputStream.write(measureTableLine, maxLength: measureTableLine.characters.count)
+                                
+                            }
+
                         }
                     }
-
+                    
                 // case .SelectiveProfiling(percentage: Int, extremeValues: Bool):
 
                 default: // .Adaptive and .NonAdaptive

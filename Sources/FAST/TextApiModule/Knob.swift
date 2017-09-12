@@ -3,7 +3,7 @@
  *
  *        Knob is a TextApiModule
  *
- *  author: Ferenc A Bartha
+ *  authors: Ferenc A Bartha, Adam Duracz
  *
  *  SWIFT implementation is based on the C library [pemu] implemented by
  *  Ferenc A Bartha, Dung X Nguyen, Jason Miller, Adam Duracz
@@ -12,6 +12,7 @@
 //---------------------------------------
 
 import Foundation
+import LoggerAPI
 
 //---------------------------------------
 
@@ -19,26 +20,30 @@ import Foundation
 extension Knob: TextApiModule {
 
     /** Knob: initialize from external configuration */
-    public convenience init(from key: [String], or defaultValue: T?, preSetter: @escaping Action = {_,_ in }, postSetter: @escaping Action = {_,_ in }) {
+    public convenience init(from key: [String], or defaultValue: T, preSetter: @escaping Action = {_,_ in }, postSetter: @escaping Action = {_,_ in }) {
 
         // Attempt to get initial value
-        let newValue = initialize(type: T.self, from: key, or: defaultValue)
+        let newValue = initialize(type: T.self, from: key)
 
         // Initialize the knob if initial value and name have been obtained successfully
-        if  let value = newValue,
-            let name  = key.last {
-            self.init(name, value, preSetter, postSetter)
-        
-        // Failed to initialize the knob
-        } else {
-            fatalError("Failed to initailze knob of type \(T.self).")
-
+        if let name  = key.last {
+            if let value = newValue {
+                self.init(name, value, preSetter, postSetter)
+            } else { // Failed to initialize the knob
+                Log.error("Failed to initailze knob of type \(T.self) from key: \(key).")
+                self.init(name, defaultValue, preSetter, postSetter)
+            }
+        }
+        else {
+            let failMessage = "Cannot initailze knob (of type \(T.self)) from an empty key, as the last entry in the key is used as the knob name."
+            Log.error(failMessage)
+            fatalError(failMessage)
         }
 
     }
 
     /** Knob: initialize from external configuration */
-    public convenience init(name: String, from key: [String], or defaultValue: T?, preSetter: @escaping Action = {_,_ in }, postSetter: @escaping Action = {_,_ in }) {
+    public convenience init(name: String, from key: [String], or defaultValue: T, preSetter: @escaping Action = {_,_ in }, postSetter: @escaping Action = {_,_ in }) {
         self.init(from: key.appended(with: name), or: defaultValue, preSetter: preSetter, postSetter: postSetter)
     }
 

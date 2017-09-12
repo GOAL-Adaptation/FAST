@@ -3,7 +3,7 @@
  *
  *        Generic Initialization Procedure
  *
- *  author: Ferenc A Bartha
+ *  authors: Ferenc A Bartha, Adam Duracz
  *
  *  SWIFT implementation is based on the C library [pemu] implemented by
  *  Ferenc A Bartha, Dung X Nguyen, Jason Miller, Adam Duracz
@@ -39,21 +39,19 @@ func initialize<T>(type: T.Type, from key: [String]) -> T? {
 }
 
 /** Attempt to inititalize a type T from reading external configuration settings or default */
-func initialize<T>(type: T.Type, from key: [String], or defaultValue: T?) -> T? {
+func initialize<T>(type: T.Type, from key: [String], or defaultValue: T) -> T {
 
     // Attempt to initialize from external readings
-    var newValue: T? = initialize(type: T.self, from: key)
+    let newValue: T? = initialize(type: T.self, from: key)
     
-    // Try the default value, if any
-    if newValue == nil {
-        newValue = defaultValue
-    }
+    // If initialization failed, return the default value
+    if let nv = newValue { return nv           }
+    else                 { return defaultValue }
 
-    return newValue
 }
 
 /** Attempt to inititalize a type T from reading external configuration settings or default */
-func initialize<T>(type: T.Type, name: String, from key: [String], or defaultValue: T?) -> T? {
+func initialize<T>(type: T.Type, name: String, from key: [String], or defaultValue: T) -> T {
 
     return initialize(type: T.self, from: key.appended(with: name), or: defaultValue)
 }

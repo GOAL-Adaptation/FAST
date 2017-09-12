@@ -3,7 +3,7 @@
  *
  *        Xilinx ZCU 102 Architecture
  *
- *  author: Ferenc A Bartha
+ *  authors: Ferenc A Bartha, Adam Duracz
  *
  *  SWIFT implementation is based on the C library [pemu] implemented by
  *  Ferenc A Bartha, Dung X Nguyen, Jason Miller, Adam Duracz
@@ -107,71 +107,10 @@ class XilinxZcu: Architecture,
     var actuationPolicy = Knob(name: "actuationPolicy", from: key, or: ActuationPolicy.NoActuation)
 
     func actuate() -> Void {
-
-        // TODO add system calls here, the C code to be translated is included
-        //  or one might create a small C library implementing actuate platform actuation and that'd be coupled along as energymon
-
-/*
-        // Configure the Hardware to use the number of cores dictated by the system configuration knobs
-        static void configureCoreUtilization(uint64_t utilizedCores) {
-
-            int returnValueOfSysCall = 0;
-            char command[4096];
-
-            char * coreMask;
-
-            switch(utilizedCores) {
-                case 1:
-                    coreMask = "0"; break;
-                case 2:
-                    coreMask = "0,1"; break;
-                case 3:
-                    coreMask = "0,1,2"; break;
-                case 4:
-                    coreMask = "0,1,2,3"; break;
-            }
-
-            sprintf(command,
-                    "ps -eLf | awk '(/%d/) && (!/awk/) {print $4}' | xargs -n1 taskset -c -p %s > /dev/null",
-                    getpid(), coreMask);
-
-            printf("Applying core allocation: %s\n", command);
-
-            if (applySysCalls == 1) {
-
-                returnValueOfSysCall = system(command);
-
-                if (returnValueOfSysCall != 0) {
-                    fprintf(stderr, "ERROR running taskset: %d\n",
-                            returnValueOfSysCall);
-                }
-            }
-        }
-
-        // Configure the Hardware to use the core frequencies dictated by the system configuration knobs
-        static void configureCoreFrequencies(uint64_t utilizedCoreFrequency) {
-
-            int returnValueOfSysCall = 0;
-            char command[4096];
-
-            // NOTE: All cores share a clock so if we set cpu0, the other 3 change too.
-            sprintf(command,
-                    "echo %" PEMU_UINT64_T_PRINT " > /sys/devices/system/cpu/cpu0/cpufreq/%s",
-                    utilizedCoreFrequency, dvfsFile);
-            printf("Applying CPU frequency: %s\n", command);
-            
-            if (applySysCalls == 1) {
-                
-                returnValueOfSysCall = system(command);
-                
-                if (returnValueOfSysCall != 0) {
-                    fprintf(stderr, "ERROR setting frequencies: %d\n",
-                        returnValueOfSysCall);
-                }             
-            }
-        }
-*/
-
+        actuateLinuxSystemConfigurationKnobs(
+            actuationPolicy       : actuationPolicy.get(), 
+            utilizedCores         : systemConfigurationKnobs.utilizedCores.get(),
+            utilizedCoreFrequency : systemConfigurationKnobs.utilizedCoreFrequency.get() )
     }
 
     /** Changing Execution Mode */
