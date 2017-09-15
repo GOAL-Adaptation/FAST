@@ -355,33 +355,78 @@ definitions:
         type: number
         minimum: 0
   
-  # Status
-  State:
+  KeyNumberPair:
     type: object
-    required: 
-      - iteration
+    description: "Data representing the value of a knob or measure."
+    required:
+      - key
+      - value
     properties:
-      iteration:
-        type: integer
-        minimum: 0
-      ARM-big.LITTLE:
-        $ref: '#/definitions/OdroidArchitecture'
-      RADAR:
+      key:
+        type: string
+      value:
+        type: number
+
+  # Identical to the response type of TH/status
+  Status:
+    type: object
+    description: "Data representing the current state of the SUT."
+    required:
+      - time
+      - arguments
+    properties:
+      time:
+        type: string
+        description: "UTC Time in RFC-3339 format."
+
+      arguments:
         type: object
+        description: "The challenge application state, the system state, the scenario knobs, and the verdict components."
         required:
-        - applicationKnobs
+          - application
+          - applicationKnobs
+          - architecture
+          - systemConfigurationKnobs
+          - scenarioKnobs
+          - runningTime
+          - energy
+          - numberOfProcessedInputs
+          - measures
         properties:
+          application:
+            enum: ["radar", "x264", "CaPSuLe"]
+            description: "Name of challenge problem application."
           applicationKnobs:
-            type: object
-            required:
-            - maxAge
-            properties:
-              maxAge:
-                $ref: "#/definitions/DoubleKnob" 
-      RuntimeKnobs:
-        type: object
-        required:
-        - interactionMode
-        properties:
-          interactionMode:
-            $ref: '#/definitions/InteractionMode'
+            type: array
+            description: "Application-dependent listing the value of each application knob."
+            items:
+              $ref: '#/definitions/KeyNumberPair'
+          architecture:
+            type: string
+            description: "Name of the system architecture."  
+          systemConfigurationKnobs:
+            type: array
+            description: "Architecture dependent listing the value of each system configuration knob."
+            items:
+              $ref: '#/definitions/KeyNumberPair'
+          scenarioKnobs:
+            type: array
+            description: "Architecture dependent settings describing the current available system resources such as the number of cores and maximal operation frequency."
+            items:
+              $ref: '#/definitions/KeyNumberPair'
+          runningTime:
+            type: number
+            description: "Application running time."
+          energy:
+            type: number
+            minimum: 0
+            description: "Energy consumed (in microjoules)."
+          numberOfProcessedInputs:
+            type: integer
+            minimum: 0
+            description: "Number of inputs (from the current input stream) that have been processed."
+          measures:
+            type: array
+            description: "Values of measures specified in the intent specification."
+            items:
+              $ref: '#/definitions/KeyNumberPair'
