@@ -74,6 +74,22 @@ paths:
           description: "Application execution mode change unsuccessful."
           schema: 
             $ref: '#/definitions/Error'
+  /changeIntent:
+    post:
+      description: "Change the active intent."
+      parameters: 
+        - in: body
+          name: intent
+          description: "Intent expressed in the FAST Intent Specification Langauge."
+          schema: 
+            $ref: '#/definitions/IntentSpecificationString'
+      responses:
+        200:
+          description: "Intnet change successful."
+        406:
+          description: "Intent change unsuccessful."
+          schema: 
+            $ref: '#/definitions/Error'
   /terminate:
     post:
       description: "Terminate the application."

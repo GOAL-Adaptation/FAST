@@ -70,25 +70,14 @@ class RestServer {
                 let missionLength          =    Int(json["missionLength"]!          as! String)
                 let sceneObfuscation       = Double(json["sceneObfuscation"]!       as! String)
 
-                // Change intent
-                // TODO Figure out if it is better to delay intent change/controller re-init until the end of the window
-                if let intentSpec = Runtime.intentCompiler.compileIntentSpec(source: missionIntent) {
-                    Runtime.reinitializeController(intentSpec)
-
-                    // FIXME Handle scenario knobs listed in the Perturbation JSON Schema: 
-                    //       availableCores, availableCoreFrequency, missionLength, sceneObfuscation. 
-                    //       This requires:
-                    //       1) extending the Runtime with a handler for scenario knob setting,
-                    //       2) adding missionLength and sceneObfuscation knobs, perhaps to a new 
-                    //          "Environment" TextApiModule.
-
-                    response.status = .ok // HTTP 202, which is default, but setting it for clarity
-                
-                    Log.info("Successfully received request on /perturb REST endpoint.")
-                }
-                else {
-                    Log.error("Could not parse intent specification from JSON payload: \(missionIntent)")    
-                }
+                // FIXME Handle scenario knobs listed in the Perturbation JSON Schema: 
+                //       availableCores, availableCoreFrequency, missionLength, sceneObfuscation. 
+                //       This requires:
+                //       1) extending the Runtime with a handler for scenario knob setting,
+                //       2) adding missionLength and sceneObfuscation knobs, perhaps to a new 
+                //          "Environment" TextApiModule.
+            
+                response.status = self.changeIntent(missionIntent, accumulatedStatus: response.status)
             }
             else {
                 response.status = .notAcceptable // HTTP 406
@@ -106,21 +95,36 @@ class RestServer {
 
         addSerialRoute(method: .post, uri: "/enable", handler: {
             _, response in
-            let currentApplicationExecutionMode = Runtime.runtimeKnobs.applicationExecutionMode.get()
-            switch currentApplicationExecutionMode {
-                case .Adaptive:
-                    Runtime.runtimeKnobs.applicationExecutionMode.set(.NonAdaptive)
-                    Log.info("Successfully received request on /enable REST endpoint. Adaptation turned off.")
-                case .NonAdaptive:
-                    Runtime.runtimeKnobs.applicationExecutionMode.set(.Adaptive)
-                    Log.info("Successfully received request on /enable REST endpoint. Adaptation turned on.")
-                default:
-                    Log.warning("Current application execution mode (\(currentApplicationExecutionMode)) is not one of {.Adaptive, .NonAdaptive}.")
-                    Runtime.runtimeKnobs.applicationExecutionMode.set(.Adaptive)
-                    Log.info("Successfully received request on /enable REST endpoint. Adaptation turned on.")
-            }
-            response.completed()
+                let currentApplicationExecutionMode = Runtime.runtimeKnobs.applicationExecutionMode.get()
+                switch currentApplicationExecutionMode {
+                    case .Adaptive:
+                        Runtime.runtimeKnobs.applicationExecutionMode.set(.NonAdaptive)
+                        Log.info("Successfully received request on /enable REST endpoint. Adaptation turned off.")
+                    case .NonAdaptive:
+                        Runtime.runtimeKnobs.applicationExecutionMode.set(.Adaptive)
+                        Log.info("Successfully received request on /enable REST endpoint. Adaptation turned on.")
+                    default:
+                        Log.warning("Current application execution mode (\(currentApplicationExecutionMode)) is not one of {.Adaptive, .NonAdaptive}.")
+                        Runtime.runtimeKnobs.applicationExecutionMode.set(.Adaptive)
+                        Log.info("Successfully received request on /enable REST endpoint. Adaptation turned on.")
+                }
+             response.completed()
         })
+
+        routes.add(method: .post, uri: "/changeIntent", handler: {
+            request, response in
+                if let json = self.readRequestBody(request: request, fromEndpoint: "/perturb") {
+                    Log.debug("Received valid JSON on /perturb endpoint: \(json)")
+                    let missionIntent = json["missionIntent"]! as! String
+                    response.status = self.changeIntent(missionIntent, accumulatedStatus: response.status)
+                    Log.info("Intent change requested through /changeIntent endpoint.")
+                }
+                else {
+                    Log.error("Did not receive valid JSON on /perturb endpoint: \(json)")
+                }
+                response.completed()
+            }
+        )
 
         routes.add(method: .post, uri: "/terminate", handler: {
             _, response in
@@ -163,6 +167,20 @@ class RestServer {
         else {
             Log.error("Empty POST body sent to /perturb REST endpoint.")
             return nil
+        }
+    }
+
+    /** Change the active intent */
+    func changeIntent(_ missionIntent: String, accumulatedStatus: HTTPResponseStatus) -> HTTPResponseStatus {
+        if let intentSpec = Runtime.intentCompiler.compileIntentSpec(source: missionIntent) {
+            // TODO Figure out if it is better to delay intent change/controller re-init until the end of the window
+            Runtime.reinitializeController(intentSpec)
+            Log.info("Successfully received request on /perturb REST endpoint.")
+            return accumulatedStatus
+        }
+        else {
+            Log.error("Could not parse intent specification from JSON payload: \(missionIntent)")    
+            return .notAcceptable
         }
     }
 
