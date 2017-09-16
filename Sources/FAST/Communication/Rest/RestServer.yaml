@@ -59,7 +59,6 @@ paths:
       responses:
         200:
           description: "Current internal state of the application."
-
   /enable:
     post:
       description: "Enable or disable adaptation."
@@ -83,6 +82,7 @@ paths:
           description: "The application termination request was received."
   
 definitions:
+
   Error:
     type: object
     required: 
@@ -93,6 +93,7 @@ definitions:
         type: integer
       description:
         type: string
+
   WorkOrder:
     type: object
     required:
@@ -101,6 +102,7 @@ definitions:
       inputs: 
         type: integer
         minimum: 1
+  
   Perturbation:
     type: object
     properties:
@@ -125,6 +127,7 @@ definitions:
         type: number
         minimum: 0
         maximum: 1
+
   ApplicationExecutionMode:
     type: object
     properties:
@@ -190,6 +193,7 @@ definitions:
         enum: ["FAST.ExecutionMode"]
       value:
         enum: ["Default", "Emulated"]
+
   ResourceUsagePolicy:
     type: object
     required:
