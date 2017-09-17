@@ -124,7 +124,7 @@ definitions:
     properties:
       missionIntent:
         description: "Intent expressed in the FAST Intent Specification Langauge."
-        type: string
+        $ref: '#/definitions/IntentSpecification'
       availableCores:
         description: "Number of CPU cores on which the application is running."
         type: integer
@@ -152,52 +152,6 @@ definitions:
         type: boolean
   
   # Common
-  
-  DoubleKnob:
-    type: object
-    required:
-    - type
-    - value
-    properties:
-      type:
-        enum: ["Swift.Double"]
-      value:
-        type: number
-  
-  Int32Knob:
-    type: object
-    required:
-    - type
-    - value
-    properties:
-      type:
-        enum: ["Swift.Int32"]
-      value:
-        type: integer
-        format: int32
-  
-  Int64Knob:
-    type: object
-    required:
-    - type
-    - value
-    properties:
-      type:
-        enum: ["Swift.Int64"]
-      value:
-        type: integer
-        format: int64
-
-  StringKnob:
-    type: object
-    required:
-    - type
-    - value
-    properties:
-      type:
-        enum: ["Swift.String"]
-      value:
-        type: number  
   
   ExecutionMode:
     type: object
@@ -242,138 +196,80 @@ definitions:
         enum: ["FAST.InteractionMode"]
       value:
         enum: ["Default", "Scripted"]
-        
-  Cores:
-    type: object
-    required:
-    - type
-    - value
-    properties:
-      type:
-        enum: ["Swift.Int"]
-      value:
-        enum: [1,2,3,4]  
-  
-  # Xlilinx ZCU
-  
-  XilinxCoreFrequency:
-    type: object
-    required:
-    - type
-    - value
-    properties:
-      type:
-        enum: ["Swift.Int"]
-      value:
-        enum:
-          [300, 400, 600, 1200]
-  
-  # ODROID
-  
-  OdroidLittleCoreFrequency:
-    type: object
-    required:
-    - type
-    - value
-    properties:
-      type:
-        enum: ["Swift.Int"]
-      value:
-        enum:
-          [ 200000, 300000, 400000, 500000
-          , 600000, 700000, 800000, 900000
-          , 1000000, 1100000, 1200000, 1300000
-          , 1400000
-          ]
 
-  OdroidBigCoreFrequency:
-    type: object
-    required:
-      - type
-      - value
-    properties:
-      type:
-        enum: ["Swift.Int"]
-      value:
-        enum:
-          [ 200000, 300000, 400000, 500000
-          , 600000, 700000, 800000, 900000
-          , 1000000, 1100000, 1200000, 1300000
-          , 1400000, 1500000, 1600000, 1700000
-          , 1800000, 1900000, 2000000
-          ]
+  IntentSpecificationString:
+    description: 'A string containing FAST Intent Specification Language source code.'
+    type: string
 
-  OdroidUtilizedSystemConfiguration:
-    type: object
-    required:
-    - utilizedLittleCores
-    - utilizedLittleCoreFrequency
-    - utilizedBigCores
-    - utilizedBigCoreFrequency
-    properties:
-      utilizedLittleCores:
-        $ref: '#/definitions/Cores'
-      utilizedLittleCoreFrequency:
-        $ref: '#/definitions/OdroidLittleCoreFrequency'
-      utilizedBigCores:
-        $ref: '#/definitions/Cores'
-      utilizedBigCoreFrequency:
-        $ref: '#/definitions/OdroidBigCoreFrequency'
-
-  OdroidAvailableSystemConfiguration:
-    type: object
-    required:
-    - availableLittleCores
-    - maximalLittleCoreFrequency
-    - availableBigCores
-    - maximalBigCoreFrequency
-    properties:
-      availableLittleCores:
-        $ref: '#/definitions/Cores'
-      maximalLittleCoreFrequency:
-        $ref: '#/definitions/OdroidLittleCoreFrequency'
-      availableBigCores:
-        $ref: '#/definitions/Cores'
-      maximalBigCoreFrequency:
-        $ref: '#/definitions/OdroidBigCoreFrequency'
+  #### Begin JSON FAST ISL Intent Types ###
   
-  OdroidArchitecture:
+  IntentSpecification:
+    description: 'JSON Representation of a FAST Intent Specification Language (ISL) source file. Note: supports only a subset of FAST ISL.'
     type: object
     required:
-    - energy
-    - systemConfigurationKnobs
-    - resourceUsagePolicyModule
-    - scenarioKnobs
-    - executionMode
-    - actuationPolicy
-    - time
+    - knobs
+    - measures
+    - intent
     properties:
-      energy:
-        type: integer
-        format: int64
-        minimum: 0
-      systemConfigurationKnobs:
-        $ref: '#/definitions/OdroidUtilizedSystemConfiguration'
-      resourceUsagePolicyModule:
+      knobs:
+        type: array
+        items:
+          $ref: '#/definitions/KnobDeclaration'
+      measures:
+        type: array
+        items:
+          $ref: '#/definitions/MeasureDeclaration'
+      intent:
         type: object
         required:
-        - maintainedState
-        - policy
+          - name
+          - optimizationType
+          - objectiveFunction
+          - constraintVariable
+          - constraintValue
         properties:
-          maintainedState:
-            $ref: '#/definitions/OdroidUtilizedSystemConfiguration'
-          policy:
-            $ref: '#/definitions/ResourceUsagePolicy'
-      scenarioKnobs:
-        schema:
-          $ref: '#/definitions/OdroidAvailableSystemConfiguration'
-      executionMode:
-        $ref: '#/definitions/ExecutionMode'
-      actuationPolicy:
-        $ref: '#/definitions/ActuationPolicy'
-      time:
+          name:
+            type: string
+          optimizationType:
+            enum: ['min', 'max']
+          objectiveFunction:
+            # TODO Extend to arbitrary arithmetic expressions
+            #      over measures, once Swagger 3.0 is released and.
+            #      with it, support for 'oneOf' schema combinators,
+            #      needed to specify expression ASTs.
+            description: 'The name of a measure'
+            type: string
+          constraintMeasure:
+            description: 'The name of a measure'
+            type: string
+          constraintValue:
+            type: number
+ 
+  KnobDeclaration:
+    type: object
+    required:
+      - name
+      - range
+      - referenceValue
+    properties:
+      name:
+        type: string
+      range:
+        type: array
+        items: 
+          type: number
+      referenceValue:
         type: number
-        minimum: 0
+        
+  MeasureDeclaration:
+    type: object
+    required:
+      - name
+    properties:
+      name:
+        type: string
+
+  #### End JSON FAST ISL Intent Types ###
   
   KeyNumberPair:
     type: object

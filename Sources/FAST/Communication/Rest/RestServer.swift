@@ -63,21 +63,50 @@ class RestServer {
 
                 // FIXME Use (definitions section of) Swagger specification to validate the input,
                 //       to make indexing and casts fail there instead, with detailed error information.
-                let missionIntent          =        json["missionIntent"]!          as! String
-                // FIXME Set scenario knobs
-                let availableCores         =    Int(json["availableCores"]!         as! String)
-                let availableCoreFrequency =    Int(json["availableCoreFrequency"]! as! String)
-                let missionLength          =    Int(json["missionLength"]!          as! String)
-                let sceneObfuscation       = Double(json["sceneObfuscation"]!       as! String)
 
-                // FIXME Handle scenario knobs listed in the Perturbation JSON Schema: 
+                // Extract intent components from JSON messahge and inject them into string template
+
+                let missionIntent           = json["missionIntent"]!        as! [String: Any]
+                let knobs                   = missionIntent["knobs"]!       as! [[String: Any]]
+                let measures                = missionIntent["measures"]!    as! [[String: Any]]
+                let intent                  = missionIntent["intent"]!      as! [String: Any]
+
+                let intentName              = intent["name"]!               as! String
+                let intentOptimizationType  = intent["optimizationType"]!   as! String
+                let intentObjectiveFunction = intent["objectiveFunction"]!  as! String
+                let intentConstraintMeasure = intent["constraintMeasure"]!  as! String
+                let intentConstraintValue   = intent["constraintValue"]!    as! Double
+
+                let measuresString: String = measures.map { 
+                    "\($0["name"]! as! String): Double" 
+                }.joined(separator:"\n\t")
+
+                let knobsString: String = knobs.map {
+                    knob in
+                    let name  = knob["name"]! as! String
+                    let range = (knob["range"]! as! [Any]).map{ "\($0)" }.joined(separator: ",")
+                    let referenceValue = knob["referenceValue"]! as! Double
+                    return "\(name) = [\(range)] reference \(referenceValue)" 
+                }.joined(separator:"\n\t")
+
+                let missionIntentString =
+                    "knobs \(knobsString) \n" +
+                    "measures \(measuresString) \n" +
+                    "intent \(intentName) \(intentOptimizationType)(\(intentObjectiveFunction)) such that \(intentConstraintMeasure) == \(intentConstraintValue) \n" +
+                    "trainingSet []"
+
+                // FIXME Set scenario knobs listed in the Perturbation JSON Schema: 
                 //       availableCores, availableCoreFrequency, missionLength, sceneObfuscation. 
                 //       This requires:
                 //       1) extending the Runtime with a handler for scenario knob setting,
                 //       2) adding missionLength and sceneObfuscation knobs, perhaps to a new 
                 //          "Environment" TextApiModule.
+                let availableCores         =    Int(json["availableCores"]!         as! Int32)
+                let availableCoreFrequency =    Int(json["availableCoreFrequency"]! as! Int64)
+                let missionLength          =    Int(json["missionLength"]!          as! Int64)
+                let sceneObfuscation       = Double(json["sceneObfuscation"]!       as! Double)
             
-                response.status = self.changeIntent(missionIntent, accumulatedStatus: response.status)
+                response.status = self.changeIntent(missionIntentString, accumulatedStatus: response.status)
             }
             else {
                 response.status = .notAcceptable // HTTP 406
@@ -120,7 +149,7 @@ class RestServer {
                     Log.info("Intent change requested through /changeIntent endpoint.")
                 }
                 else {
-                    Log.error("Did not receive valid JSON on /perturb endpoint: \(json)")
+                    Log.error("Did not receive valid JSON on /perturb endpoint: \(request)")
                 }
                 response.completed()
             }
