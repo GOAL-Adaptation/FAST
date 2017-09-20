@@ -1,352 +1,470 @@
-swagger: "2.0"
+openapi: 3.0.0
+servers:
+  - url: /v1
 info:
-  description: "This is the FAST REST API. It can be used to query or perturb the state of a running application."
-  version: "1.0.0"
-  title: "FAST"
-basePath: "/v1"
-schemes:
-  - http
-consumes:
-  - application/json
-produces:
-  - application/json
+  description: >-
+    This is the FAST REST API. It can be used to query or perturb the state of a
+    running application.
+  version: 1.0.0
+  title: FAST
+
 paths:
+
   # Part of the LL API
   /alive:
     get:
-      description: "Query the liveliness of the application."
-      produces: 
-        - application/json
+      description: Query the liveliness of the application.
       responses:
-        "200":
-          description: "The application is alive."
-        "503":
-          description: "The application is not alive."
-          schema:
-            $ref: '#/definitions/Error'
+        '200':
+          description: The application is alive.
+        '503':
+          description: The application is not alive.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
   # Part of the LL API
   /process:
     post:
-      description: "Process a number of inputs."
-      parameters: 
-        - in: body
-          name: workOrder
-          schema: 
-            $ref: '#/definitions/WorkOrder'
+      description: Process a number of inputs.
       responses:
-        200:
-          description: "Work order accepted."
-        406:
-          description: "Work order not accepted."
-          schema: 
-            $ref: '#/definitions/Error'
+        '200':
+          description: Work order accepted.
+        '406':
+          description: Work order not accepted.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WorkOrder'
+
   # Part of the LL API
   /perturb:
     post:
-      description: "Modify scenario knobs."
-      parameters: 
-        - in: body
-          name: perturbation
-          schema: 
-            $ref: '#/definitions/Perturbation'
+      description: Modify scenario knobs.
       responses:
-        200:
-          description: "Perturbation successful."
-        406:
-          description: "Perturbation unsuccessful."
-          schema: 
-            $ref: '#/definitions/Error'
+        '200':
+          description: Perturbation successful.
+        '406':
+          description: Perturbation unsuccessful.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Perturbation'
+
   # Part of the LL API
   /query:
     get:
-      description: "Query the current internal state of the application."
+      description: Query the current internal state of the application.
       responses:
-        200:
-          description: "Current internal state of the application."
+        '200':
+          description: Current internal state of the application.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Status'
+        '406':
+          description: Application execution mode change unsuccessful.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
   /enable:
     post:
-      description: "Enable or disable adaptation."
-      parameters: 
-        - in: body
-          name: applicationExecutionMode
-          schema: 
-            $ref: '#/definitions/ApplicationExecutionMode'
+      description: Enable or disable adaptation.
       responses:
-        200:
-          description: "Application execution mode change successful."
-        406:
-          description: "Application execution mode change unsuccessful."
-          schema: 
-            $ref: '#/definitions/Error'
+        '200':
+          description: Application execution mode change successful.
+        '406':
+          description: Application execution mode change unsuccessful.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApplicationExecutionMode'
+
   /changeIntent:
     post:
-      description: "Change the active intent."
-      parameters: 
-        - in: body
-          name: intent
-          description: "Intent expressed in the FAST Intent Specification Langauge."
-          schema: 
-            $ref: '#/definitions/IntentSpecificationString'
+      description: Change the active intent.
       responses:
-        200:
-          description: "Intnet change successful."
-        406:
-          description: "Intent change unsuccessful."
-          schema: 
-            $ref: '#/definitions/Error'
+        '200':
+          description: Intent change successful.
+        '406':
+          description: Intent change unsuccessful.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IntentSpecificationString'
+        description: Intent expressed in the FAST Intent Specification Langauge.
+
   /terminate:
     post:
-      description: "Terminate the application."
+      description: Terminate the application.
       responses:
-        "200":
-          description: "The application termination request was received."
-  
-definitions:
+        '200':
+          description: The application termination request was received.
 
-  Error:
-    type: object
-    required: 
-      - id
-      - description
-    properties:
-      id:
-        type: integer
-      description:
-        type: string
+components:
 
-  WorkOrder:
-    type: object
-    required:
-      - inputs
-    properties:
-      inputs: 
-        type: integer
-        minimum: 1
-  
-  Perturbation:
-    type: object
-    properties:
-      missionIntent:
-        description: "Intent expressed in the FAST Intent Specification Langauge."
-        $ref: '#/definitions/IntentSpecification'
-      availableCores:
-        description: "Number of CPU cores on which the application is running."
-        type: integer
-        enum: [1, 2, 3, 4]
-      availableCoreFrequency:
-        description: "Operating frequency of the CPU on which the application is running."
-        type: integer
-        enum: [300, 400, 600, 1200]
-      missionLength:
-        description: "Mission length in minutes. Affects the maximum permitted energy usage."
-        type: integer
-        minimum: 0
-        maximum: 1000
-      sceneObfuscation:
-        description: "Amount of additive noise applied to input. Used to model conditions such as fog that affect how informative the input signal is."
-        type: number
-        minimum: 0
-        maximum: 1
+  schemas:
 
-  ApplicationExecutionMode:
-    type: object
-    properties:
-      adaptive:
-        description: "When true, the system will adapt with respect to the active intent. Otherwise execution will proceed without adaptation."
-        type: boolean
-  
-  # Common
-  
-  ExecutionMode:
-    type: object
-    required:
-    - type
-    - value   
-    properties:
-      type:
-        enum: ["FAST.ExecutionMode"]
-      value:
-        enum: ["Default", "Emulated"]
+    Error:
+      type: object
+      required:
+        - id
+        - description
+      properties:
+        id:
+          type: integer
+        description:
+          type: string
 
-  ResourceUsagePolicy:
-    type: object
-    required:
-    - type
-    - value
-    properties:
-      type:
-        enum: ["FAST.ResourceUsagePolicy"]
-      value:
-        enum: ["Simple", "Maintain", "Maximal"]
-        
-  ActuationPolicy:
-    type: object
-    required:
-    - type
-    - value
-    properties:
-      type:
-        enum: ["FAST.ActuationPolicy"]
-      value:
-        enum: ["Actuate", "NoActuation"]
-        
-  InteractionMode:
-    type: object
-    required:
-    - type
-    - value
-    properties:
-      type:
-        enum: ["FAST.InteractionMode"]
-      value:
-        enum: ["Default", "Scripted"]
+    WorkOrder:
+      type: object
+      required:
+        - inputs
+      properties:
+        inputs:
+          type: integer
+          minimum: 1
 
-  IntentSpecificationString:
-    description: 'A string containing FAST Intent Specification Language source code.'
-    type: string
-
-  #### Begin JSON FAST ISL Intent Types ###
-  
-  IntentSpecification:
-    description: 'JSON Representation of a FAST Intent Specification Language (ISL) source file. Note: supports only a subset of FAST ISL.'
-    type: object
-    required:
-    - knobs
-    - measures
-    - intent
-    properties:
-      knobs:
-        type: array
-        items:
-          $ref: '#/definitions/KnobDeclaration'
-      measures:
-        type: array
-        items:
-          $ref: '#/definitions/MeasureDeclaration'
-      intent:
-        type: object
-        required:
-          - name
-          - optimizationType
-          - objectiveFunction
-          - constraintVariable
-          - constraintValue
-        properties:
-          name:
-            type: string
-          optimizationType:
-            enum: ['min', 'max']
-          objectiveFunction:
-            # TODO Extend to arbitrary arithmetic expressions
-            #      over measures, once Swagger 3.0 is released and.
-            #      with it, support for 'oneOf' schema combinators,
-            #      needed to specify expression ASTs.
-            description: 'The name of a measure'
-            type: string
-          constraintMeasure:
-            description: 'The name of a measure'
-            type: string
-          constraintValue:
-            type: number
- 
-  KnobDeclaration:
-    type: object
-    required:
-      - name
-      - range
-      - referenceValue
-    properties:
-      name:
-        type: string
-      range:
-        type: array
-        items: 
+    Perturbation:
+      type: object
+      properties:
+        missionIntent:
+          $ref: '#/components/schemas/IntentSpecification'
+        availableCores:
+          description: Number of CPU cores on which the application is running.
+          type: integer
+          enum:
+            - 1
+            - 2
+            - 3
+            - 4
+        availableCoreFrequency:
+          description: Operating frequency of the CPU on which the application is running.
+          type: integer
+          enum:
+            - 300
+            - 400
+            - 600
+            - 1200
+        missionLength:
+          description: >-
+            Mission length in minutes. Affects the maximum permitted energy usage.
+          type: integer
+          minimum: 0
+          maximum: 1000
+        sceneObfuscation:
+          description: >-
+            Amount of additive noise applied to input. Used to model conditions
+            such as fog that affect how informative the input signal is.
           type: number
-      referenceValue:
-        type: number
-        
-  MeasureDeclaration:
-    type: object
-    required:
-      - name
-    properties:
-      name:
-        type: string
+          minimum: 0
+          maximum: 1
 
-  #### End JSON FAST ISL Intent Types ###
-  
-  KeyNumberPair:
-    type: object
-    description: "Data representing the value of a knob or measure."
-    required:
-      - key
-      - value
-    properties:
-      key:
-        type: string
-      value:
-        type: number
+    ApplicationExecutionMode:
+      type: object
+      properties:
+        adaptive:
+          description: >-
+            When true, the system will adapt with respect to the active intent.
+            Otherwise execution will proceed without adaptation.
+          type: boolean
 
-  # Identical to the response type of TH/status
-  Status:
-    type: object
-    description: "Data representing the current state of the SUT."
-    required:
-      - time
-      - arguments
-    properties:
-      time:
-        type: string
-        description: "UTC Time in RFC-3339 format."
+    ExecutionMode:
+      type: object
+      required:
+        - type
+        - value
+      properties:
+        type:
+          enum:
+            - FAST.ExecutionMode
+        value:
+          enum:
+            - Default
+            - Emulated
 
-      arguments:
-        type: object
-        description: "The challenge application state, the system state, the scenario knobs, and the verdict components."
-        required:
-          - application
-          - applicationKnobs
-          - architecture
-          - systemConfigurationKnobs
-          - scenarioKnobs
-          - runningTime
-          - energy
-          - numberOfProcessedInputs
-          - measures
-        properties:
-          application:
-            enum: ["radar", "x264", "CaPSuLe"]
-            description: "Name of challenge problem application."
-          applicationKnobs:
-            type: array
-            description: "Application-dependent listing the value of each application knob."
-            items:
-              $ref: '#/definitions/KeyNumberPair'
-          architecture:
-            type: string
-            description: "Name of the system architecture."  
-          systemConfigurationKnobs:
-            type: array
-            description: "Architecture dependent listing the value of each system configuration knob."
-            items:
-              $ref: '#/definitions/KeyNumberPair'
-          scenarioKnobs:
-            type: array
-            description: "Architecture dependent settings describing the current available system resources such as the number of cores and maximal operation frequency."
-            items:
-              $ref: '#/definitions/KeyNumberPair'
-          runningTime:
+    ResourceUsagePolicy:
+      type: object
+      required:
+        - type
+        - value
+      properties:
+        type:
+          enum:
+            - FAST.ResourceUsagePolicy
+        value:
+          enum:
+            - Simple
+            - Maintain
+            - Maximal
+
+    ActuationPolicy:
+      type: object
+      required:
+        - type
+        - value
+      properties:
+        type:
+          enum:
+            - FAST.ActuationPolicy
+        value:
+          enum:
+            - Actuate
+            - NoActuation
+
+    InteractionMode:
+      type: object
+      required:
+        - type
+        - value
+      properties:
+        type:
+          enum:
+            - FAST.InteractionMode
+        value:
+          enum:
+            - Default
+            - Scripted
+
+    IntentSpecificationString:
+      description: A string containing FAST Intent Specification Language source code.
+      type: string
+
+    #### Begin JSON FAST ISL Intent Types ###
+
+    IntentSpecification:
+      description: >-
+        JSON Representation of a FAST Intent Specification Language (ISL) source file.
+      type: object
+      required:
+        - knobs
+        - measures
+        - intent
+      properties:
+        knobs:
+          type: array
+          items:
+            $ref: '#/components/schemas/KnobDeclaration'
+        measures:
+          type: array
+          items:
+            $ref: '#/components/schemas/MeasureDeclaration'
+        intent:
+          type: object
+          required:
+            - name
+            - optimizationType
+            - objectiveFunction
+            - constraintVariable
+            - constraintValue
+          properties:
+            name:
+              type: string
+            optimizationType:
+              enum:
+                - min
+                - max
+            objectiveFunction:
+              description: >-
+                An arithmetic expression over the measures declared in the measures
+                parameter of the enclosing IntentSpecification.
+              type: Expression
+            constraintMeasure:
+              description: The name of a measure
+              type: string
+            constraintValue:
+              type: number
+
+    KnobDeclaration:
+      type: object
+      required:
+        - name
+        - range
+        - referenceValue
+      properties:
+        name:
+          type: string
+        range:
+          type: array
+          items:
             type: number
-            description: "Application running time."
-          energy:
-            type: number
-            minimum: 0
-            description: "Energy consumed (in microjoules)."
-          numberOfProcessedInputs:
-            type: integer
-            minimum: 0
-            description: "Number of inputs (from the current input stream) that have been processed."
-          measures:
-            type: array
-            description: "Values of measures specified in the intent specification."
-            items:
-              $ref: '#/definitions/KeyNumberPair'
+        referenceValue:
+          type: number
+
+    MeasureDeclaration:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          
+    Expression:
+      type: object
+      required:
+        - expression
+      properties:
+        expression: 
+          oneOf:
+            - $ref: '#/components/schemas/ExpressionLiteral'
+            - $ref: '#/components/schemas/ExpressionVariableName'
+            - $ref: '#/components/schemas/ExpressionUnaryOperator'
+            - $ref: '#/components/schemas/ExpressionBinaryOperator'
+    
+    ExpressionLiteral:
+      type: object
+      required:
+        - literal
+      properties:
+        literal:
+          type: number
+
+    ExpressionVariableName:
+      type: object
+      required:
+        - variableName
+      properties:
+        variableName:
+          type: string
+
+    ExpressionUnaryOperator:
+      type: object
+      required:
+        - operator
+        - expression
+      properties:
+        operator:
+          enum:
+            - '-'
+        expression:
+          $ref: '#/components/schemas/Expression'
+
+    ExpressionBinaryOperator:
+      type: object
+      required:
+        - operator
+        - leftExpression
+        - rightExpression
+      properties:
+        operator:
+          enum:
+            - '+'
+            - '-'
+            - '*'
+            - '/'
+        leftExpression:
+          $ref: '#/components/schemas/Expression'
+        rightExpression:
+          $ref: '#/components/schemas/Expression'
+
+    #### End JSON FAST ISL Intent Types ###
+
+    NameValuePair:
+      type: object
+      description: Data representing the value of a knob or measure.
+      required:
+        - name
+        - value
+      properties:
+        name:
+          type: string
+        value:
+          type: number
+    
+    # Identical to the response type of TH/status
+    Status:
+      type: object
+      description: Data representing the current state of the SUT.
+      required:
+        - time
+        - arguments
+      properties:
+        time:
+          type: string
+          description: UTC Time in RFC-3339 format.
+        arguments:
+          type: object
+          description: >-
+            The challenge application state, the system state, the scenario
+            knobs, and the verdict components.
+          required:
+            - application
+            - applicationKnobs
+            - architecture
+            - systemConfigurationKnobs
+            - scenarioKnobs
+            - runningTime
+            - energy
+            - numberOfProcessedInputs
+            - measures
+          properties:
+            application:
+              enum:
+                - radar
+                - x264
+                - CaPSuLe
+              description: Name of challenge problem application.
+            applicationKnobs:
+              type: array
+              description: >-
+                Application-dependent listing the value of each application knob.
+              items:
+                $ref: '#/components/schemas/NameValuePair'
+            architecture:
+              type: string
+              description: Name of the system architecture.
+            systemConfigurationKnobs:
+              type: array
+              description: >-
+                Architecture dependent listing the value of each system
+                configuration knob.
+              items:
+                $ref: '#/components/schemas/NameValuePair'
+            scenarioKnobs:
+              type: array
+              description: >-
+                Architecture dependent settings describing the current available
+                system resources such as the number of cores and maximal
+                operation frequency.
+              items:
+                $ref: '#/components/schemas/NameValuePair'
+            runningTime:
+              type: number
+              description: Application running time.
+            energy:
+              type: number
+              minimum: 0
+              description: Energy consumed (in microjoules).
+            numberOfProcessedInputs:
+              type: integer
+              minimum: 0
+              description: >-
+                Number of inputs (from the current input stream) that have been processed.
+            measures:
+              type: array
+              description: Values of measures specified in the intent specification.
+              items:
+                $ref: '#/components/schemas/NameValuePair'

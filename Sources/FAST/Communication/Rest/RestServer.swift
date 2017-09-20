@@ -61,39 +61,7 @@ class RestServer {
             if let json = self.readRequestBody(request: request, fromEndpoint: "/perturb") {
                 Log.debug("Received valid JSON on /perturb endpoint: \(json)")
 
-                // FIXME Use (definitions section of) Swagger specification to validate the input,
-                //       to make indexing and casts fail there instead, with detailed error information.
-
-                // Extract intent components from JSON messahge and inject them into string template
-
-                let missionIntent           = json["missionIntent"]!        as! [String: Any]
-                let knobs                   = missionIntent["knobs"]!       as! [[String: Any]]
-                let measures                = missionIntent["measures"]!    as! [[String: Any]]
-                let intent                  = missionIntent["intent"]!      as! [String: Any]
-
-                let intentName              = intent["name"]!               as! String
-                let intentOptimizationType  = intent["optimizationType"]!   as! String
-                let intentObjectiveFunction = intent["objectiveFunction"]!  as! String
-                let intentConstraintMeasure = intent["constraintMeasure"]!  as! String
-                let intentConstraintValue   = intent["constraintValue"]!    as! Double
-
-                let measuresString: String = measures.map { 
-                    "\($0["name"]! as! String): Double" 
-                }.joined(separator:"\n\t")
-
-                let knobsString: String = knobs.map {
-                    knob in
-                    let name  = knob["name"]! as! String
-                    let range = (knob["range"]! as! [Any]).map{ "\($0)" }.joined(separator: ",")
-                    let referenceValue = knob["referenceValue"]! as! Double
-                    return "\(name) = [\(range)] reference \(referenceValue)" 
-                }.joined(separator:"\n\t")
-
-                let missionIntentString =
-                    "knobs \(knobsString) \n" +
-                    "measures \(measuresString) \n" +
-                    "intent \(intentName) \(intentOptimizationType)(\(intentObjectiveFunction)) such that \(intentConstraintMeasure) == \(intentConstraintValue) \n" +
-                    "trainingSet []"
+                let missionIntentString = RestServer.mkIntentString(from: json)
 
                 // FIXME Set scenario knobs listed in the Perturbation JSON Schema: 
                 //       availableCores, availableCoreFrequency, missionLength, sceneObfuscation. 
@@ -197,6 +165,93 @@ class RestServer {
             Log.error("Empty POST body sent to /perturb REST endpoint.")
             return nil
         }
+    }
+
+    /** Show the artihmetic AST expressed by the JSON parameter as a string. */
+    static func mkExpressionString(from json: [String: Any]) -> String {
+
+        switch json.count {
+            case 1:
+                // Literal Double
+                if let literal = json["literal"] as? Double {
+                    return "\(literal)"
+                }
+                // Variable name
+                else if let variableName = json["variableName"] as? String {
+                    return variableName
+                }
+                else {
+                    fatalError("Unknown expression: \(json).")
+                }
+            case 2:
+                // Unary operator
+                if let op = json["operator"],
+                   let e = json["expression"],
+                   let expression = e as? [String: Any] {
+                    let eString = mkExpressionString(from: expression)
+                    return "(\(op)\(eString))"
+                }
+                else {
+                    fatalError("Unknown expression: \(json).")
+                }
+            case 3:
+                // Binary operator
+                if let opAny = json["operator"],
+                   let op = opAny as? String,
+                   ["+","-","*","/"].contains(op),
+                   let l = json["leftExpression"],
+                   let r = json["rightExpression"],
+                   let lExpression = l as? [String: Any],
+                   let rExpression = r as? [String: Any] {
+                    let lString = mkExpressionString(from: lExpression)
+                    let rString = mkExpressionString(from: rExpression)
+                    return "(\(lString) \(op) \(rString))"
+                }
+                else {
+                    fatalError("Unknown expression: \(json).")
+                }
+            default:
+                fatalError("Unknown expression: \(json).")
+        }
+
+    }
+
+    /** Extract intent components from JSON messahge and inject them into string template. */
+    static func mkIntentString(from json: [String: Any]) -> String {
+        // FIXME Use (definitions section of) Swagger specification to validate the input,
+        //       to make indexing and casts fail there instead, with detailed error information.
+
+        let missionIntent           = json["missionIntent"]!        as! [String: Any]
+        let knobs                   = missionIntent["knobs"]!       as! [[String: Any]]
+        let measures                = missionIntent["measures"]!    as! [[String: Any]]
+        let intent                  = missionIntent["intent"]!      as! [String: Any]
+
+        let intentName              = intent["name"]!               as! String
+        let intentOptimizationType  = intent["optimizationType"]!   as! String
+        let intentObjectiveFunction = intent["objectiveFunction"]!  as! [String: Any]
+        let intentConstraintMeasure = intent["constraintMeasure"]!  as! String
+        let intentConstraintValue   = intent["constraintValue"]!    as! Double
+
+        let measuresString: String = measures.map { 
+            "\($0["name"]! as! String): Double" 
+        }.joined(separator:"\n\t")
+
+        let knobsString: String = knobs.map {
+            knob in
+            let name  = knob["name"]! as! String
+            let range = (knob["range"]! as! [Any]).map{ "\($0)" }.joined(separator: ",")
+            let referenceValue = knob["referenceValue"]!
+            return "\(name) = [\(range)] reference \(referenceValue)" 
+        }.joined(separator:"\n\t")
+
+        let intentObjectiveFunctionString = mkExpressionString(from: intentObjectiveFunction)
+
+        return 
+            "knobs \(knobsString) \n" +
+            "measures \(measuresString) \n" +
+            "intent \(intentName) \(intentOptimizationType)(\(intentObjectiveFunctionString)) " +
+                "such that \(intentConstraintMeasure) == \(intentConstraintValue) \n" +
+            "trainingSet []"
     }
 
     /** Change the active intent */

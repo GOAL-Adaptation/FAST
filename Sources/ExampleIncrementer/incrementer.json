@@ -1,0 +1,49 @@
+{
+	"missionIntent" : {
+		"knobs": [
+			{
+				"name": "threshold",
+				"range": [2000000,4000000,6000000,8000000,10000000],
+				"referenceValue": 10000000
+			},
+			{
+				"name": "step",
+				"range": [1,2,3,4],
+				"referenceValue": 1
+			}
+		],
+		"measures": [
+			{
+				"name": "latency"
+			},
+			{
+				"name": "operations"
+			}
+		],
+		"intent": {
+			"name": "incrementer",
+			"optimizationType": "min",
+			"objectiveFunction": {			
+                "operator": "/",
+                "leftExpression": {
+                    "operator": "*",
+                    "leftExpression": {
+                        "variableName": "operations"
+                    },
+                    "rightExpression": {
+                        "variableName": "operations"
+                    }
+                },
+                "rightExpression": {
+                    "literal": 2.0
+                }
+			},
+			"constraintMeasure": "latency",
+			"constraintValue": 0.1
+		}
+	},
+	"availableCores" : 4,
+	"availableCoreFrequency" : 1200,
+	"missionLength" : 100,
+	"sceneObfuscation" : 0.0
+}

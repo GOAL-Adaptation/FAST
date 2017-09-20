@@ -4,6 +4,6 @@ knobs       threshold = [2000000,4000000,6000000,8000000,10000000] reference 100
 measures    latency: Double
             operations: Double
 
-intent      incrementer min(1.0/(operations+1.0)) such that latency == 0.1
+intent      incrementer min(((operations * operations) / 2.0)) such that latency == 0.1
 
 trainingSet []
