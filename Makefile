@@ -64,19 +64,26 @@ execute: export proteus_armBigLittle_utilizedLittleCoreFrequency := 1400000
 execute:
 	.build/debug/ExampleIncrementer
 
-go:           build run
+go:               build run
+                  
+all:              rebuild run
+                  
+run:              export proteus_runtime_interactionMode    := Default
+run:              export proteus_armBigLittle_executionMode := Default
+run:              execute
+                  
+run-scripted:     export proteus_runtime_interactionMode    := Scripted
+run-scripted:     export proteus_armBigLittle_executionMode := Default
+run-scripted:     execute
+                  
+emulate:          export proteus_runtime_interactionMode    := Default
+emulate:          export proteus_armBigLittle_executionMode := Emulated
+emulate:          execute
+
+emulate-scripted: export proteus_runtime_interactionMode    := Scripted
+emulate:          export proteus_armBigLittle_executionMode := Emulated
+emulate:          execute
               
-all:          rebuild run
-
-run:          export proteus_runtime_interactionMode    := Default
-run:          export proteus_armBigLittle_executionMode := Default
-run:          execute
-
-scripted-run: export proteus_runtime_interactionMode    := Scripted
-scripted-run: export proteus_armBigLittle_executionMode := Default
-scripted-run: execute
-
-              
-profile:      export proteus_runtime_applicationExecutionMode := ExhaustiveProfiling
-profile:      export proteus_runtime_profileSize := $(if $(TEST),$(TEST),1000)
-profile:      build execute ## To select number of inputs to process when profiling: make size=<NUMBER_OF_RUNS> profile
+profile:          export proteus_runtime_applicationExecutionMode := ExhaustiveProfiling
+profile:          export proteus_runtime_profileSize := $(if $(TEST),$(TEST),1000)
+profile:          build execute ## To select number of inputs to process when profiling: make size=<NUMBER_OF_RUNS> profile

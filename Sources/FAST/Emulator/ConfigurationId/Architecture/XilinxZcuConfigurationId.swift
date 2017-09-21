@@ -14,6 +14,7 @@
 //-------------------------------
 
 import SQLite
+import LoggerAPI
 
 //-------------------------------
 
@@ -51,7 +52,8 @@ extension Database {
                     }
 	
         } catch {
-	        
+	        Log.error("Failed to read the Xilinx ZCU 102 Configuration ID from the emulation database.")
+            fatalError()
         }
 
         return result

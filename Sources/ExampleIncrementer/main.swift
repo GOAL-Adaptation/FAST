@@ -11,12 +11,15 @@
 import Foundation
 import HeliumLogger
 import LoggerAPI
+import SQLite
 import FASTController
 import FAST
 
 //---------------------------------------
 
 HeliumLogger.use(.debug)
+
+let applicationName = "incrementer"
 
 //-----------------------------------------------------------------------------------------------
 // Knobs
@@ -26,7 +29,7 @@ let threshold = Knob("threshold", 10000000)
 let step = Knob("step", 1)
 
 //-----------------------------------------------------------------------------------------------
-// Text API access
+// Text API access and Emulation
 //-----------------------------------------------------------------------------------------------
 
 /** Incrementer Application Knobs */
@@ -43,9 +46,9 @@ class IncrementerApplicationKnobs: TextApiModule {
 }
 
 /** Incrementer Application instance */
-class Incrementer: Application {
+class Incrementer: Application, EmulateableApplication {
 
-    let name = "incrementer"
+    let name = applicationName
     var subModules = [String : TextApiModule]()
 
     var applicationKnobs = IncrementerApplicationKnobs()
@@ -53,10 +56,16 @@ class Incrementer: Application {
     /** Initialize the application */
     required init() {
         Runtime.registerApplication(application: self)
+        Runtime.initializeArchitecture(name: "ArmBigLittle")
         Runtime.establishCommuncationChannel()
         self.addSubModule(newModule: applicationKnobs)
     }
-    
+
+    /** Identifier used to look up  */
+    func getConfigurationId(database: Database) -> Int {
+        return database.getConfigurationId(application: self)
+    }
+
 }
 
 /** Create that container from above */
@@ -70,7 +79,7 @@ let window: UInt32 = 20
 
 var x = 0
 
-optimize("incrementer", across: window, ["latency", "operations"]) {
+optimize(applicationName, across: window, ["latency", "operations"]) {
     let start = NSDate().timeIntervalSince1970
     var operations = 0.0
     while(x < threshold.get()) {

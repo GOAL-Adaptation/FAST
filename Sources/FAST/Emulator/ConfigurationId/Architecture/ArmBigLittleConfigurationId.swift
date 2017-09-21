@@ -14,6 +14,7 @@
 //-------------------------------
 
 import SQLite
+import LoggerAPI
 
 //-------------------------------
 
@@ -54,8 +55,9 @@ extension Database {
                 
                     }
 	
-        } catch {
-	        
+        } catch let exception {
+	        Log.error("Failed to read the ARM bigLITTLE Configuration ID from the emulation database: \(exception).")
+            fatalError()
         }
         
         return result

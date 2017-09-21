@@ -12,6 +12,7 @@
 //-------------------------------
 
 import Foundation
+import LoggerAPI
 
 //-------------------------------
 
@@ -335,6 +336,8 @@ class ArmBigLittle: Architecture,
                     self.subModules = [:]
                     self.addSubModule(newModules: [self.scenarioKnobs, self.systemConfigurationKnobs, self.resourceUsagePolicyModule, self.executionMode, self.actuationPolicy, emulator])
             }
+
+            Log.verbose("Changed architecture execution mode to \(newMode).")
         }
     }   
 
@@ -353,6 +356,8 @@ class ArmBigLittle: Architecture,
         } else {
             changeExecutionMode(oldMode: ExecutionMode.Emulated, newMode: ExecutionMode.Default)
         }
+
+        Log.info("Initialized architecture \(name) in \(executionMode.get()) mode.")
 
         self.addSubModule(newModules: [scenarioKnobs, systemConfigurationKnobs, resourceUsagePolicyModule, executionMode, actuationPolicy])
         self.registerSystemMeasures()

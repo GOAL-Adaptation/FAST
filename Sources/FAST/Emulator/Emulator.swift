@@ -14,6 +14,7 @@
 //-------------------------------
 
 import Foundation
+import LoggerAPI
 import SQLite
 
 //-------------------------------
@@ -60,7 +61,8 @@ class Emulator: TextApiModule, ClockMonitor, EnergyMonitor {
       if let database = Database() {
         self.database = database
       } else {
-        fatalError("Could not initialize the Database")
+        Log.error("Could not initialize the Database.")
+        fatalError()
       }
       self.application = application
       self.applicationInputId = applicationInput

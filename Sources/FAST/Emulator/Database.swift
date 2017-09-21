@@ -5,7 +5,7 @@
  *
  *        Database Layer
  *
- *  author: Ferenc A Bartha
+ *  author: Ferenc A Bartha, Adam Duracz
  *
  *  SWIFT implementation is based on the C library [pemu] implemented by
  *  Ferenc A Bartha, Dung X Nguyen, Jason Miller, Adam Duracz
@@ -14,6 +14,7 @@
 //-------------------------------
 
 import Foundation
+import LoggerAPI
 import SQLite
 import SQLite3
 
@@ -84,111 +85,161 @@ extension ReadingMode: CustomStringConvertible {
 /** Database */
 public class Database: TextApiModule {
 
-    public let name = "database"
-    public var subModules = [String : TextApiModule]()
+  public let name = "database"
+  public var subModules = [String : TextApiModule]()
 
-    var databaseKnobs = DatabaseKnobs()
+  var databaseKnobs = DatabaseKnobs()
 
-    public var database: SQLite
+  public var database: SQLite
 
-    public init?(databaseFile: String) {
-        do {
-            self.database = try SQLite(databaseFile)
-        } catch {
-            return nil
-        }
-        createStatisticalViews()
+  public init?(databaseFile: String) {
+    if !FileManager.default.fileExists(atPath: databaseFile) {
+        Log.error("Failed to initialize emulation database. File does not exist: '\(databaseFile)'.")
+        fatalError()
+    }
+    do {
+        self.database = try SQLite(databaseFile)
+        Log.info("Initialized emulation database from file '\(databaseFile)'.")
+    } catch let exception {
+        Log.error("Exception while initializing emulation database from file '\(databaseFile)': \(exception).")
+        fatalError()
+    }
+    createStatisticalViews()
 
-        self.addSubModule(newModule: databaseKnobs)
+    self.addSubModule(newModule: databaseKnobs)
+
+  }
+
+  public convenience init?() {
+    if let databaseFile = initialize(type: String.self, name: "db", from: key) {
+        self.init(databaseFile: databaseFile)
+    } else {
+        Log.error("Failed to initialize emulation database from key '\(key)'.")
+        fatalError()
+    }
+  }
+
+  /** Get Configuration Id from DB */
+  public func getConfigurationId(application: Application) -> Int {
+
+    var result: Int = 0
+
+    let sqliteQuery =
+        " SELECT AppsInputsConfigs.appCfgID " + 
+        "   FROM AppsInputs " + 
+        "        INNER JOIN AppsInputsConfigs ON AppsInputs.app_appInpID = AppsInputsConfigs.app_appInpID " +
+        "        INNER JOIN Applications ON Applications.appID = AppsInputs.appID " + 
+        " " + 
+        "  WHERE Applications.appName = :1 " + 
+        "    AND AppsInputsConfigs.cdr = :2 " + 
+        "    AND AppsInputsConfigs.fdr = :3 " + 
+        "    AND AppsInputsConfigs.numRanges = :4 " + 
+        "    AND AppsInputsConfigs.numBeams = :5"
+
+    do {
+      try database.forEachRow(statement: sqliteQuery, doBindings: {
+
+        (statement: SQLiteStmt) -> () in
+
+        try statement.bind(position: 1, application.name)
+        try statement.bind(position: 2, 1)
+        try statement.bind(position: 3, 1)
+        try statement.bind(position: 4, 8192)
+        try statement.bind(position: 5, 64)
+
+      })  { (statement: SQLiteStmt, i:Int) -> () in
+
+        result = statement.columnInt(position: 0)
+
+      }
+      Log.debug("Successfully read configuration ID \(result) from emulation database.")
+    } catch {
+      Log.error("Error running query.")
     }
 
-    public convenience init?() {
-        if let databaseFile = initialize(type: String.self, name: "db", from: key) {
-            self.init(databaseFile: databaseFile)
-        } else {
-            return nil
-        }
-    }
-
-  //-------------------------------
+    return result
+  }
 
   /** Create Statistical Views */
   func createStatisticalViews() {
     do {  
 
-        var sqliteQuery: String
+      var sqliteQuery: String
+      // Loading extensions
+      database.enableLoadExtension()
 
-        // Loading extensions
-        database.enableLoadExtension()
-
-        // TODO compile extensions in project
-        if let extensionLocation = initialize(type: String.self, from: key.appended(with: "extensionLocation")) {
-
-          sqliteQuery =
-              "SELECT load_extension('" + extensionLocation + "');"
-
+      // TODO compile extensions in project
+      if let extensionLocation = initialize(type: String.self, from: key.appended(with: "extensionLocation")) {
+        sqliteQuery =
+            "SELECT load_extension('" + extensionLocation + "');"
+        do {
           try database.execute(statement: sqliteQuery)
+          Log.verbose("Loaded emulation database extensions from '\(extensionLocation)'.")
         }
+        catch {
+          Log.verbose("Failed to load emulation database extensions from '\(extensionLocation)'.")
+        }
+      }
 
-        // Increase cache size
-        sqliteQuery =
-            "PRAGMA cache_size = 10000;"
+      // Increase cache size
+      sqliteQuery =
+          "PRAGMA cache_size = 10000;"
+      try database.execute(statement: sqliteQuery)
 
-        try database.execute(statement: sqliteQuery)
+      // Turn on referential integrity
+      sqliteQuery =
+          "PRAGMA foreign_keys=on;"
+      try database.execute(statement: sqliteQuery)
 
-        // Turn on referential integrity
-        sqliteQuery =
-            "PRAGMA foreign_keys=on;"
+      // Creating the post-warmup view
+      sqliteQuery =
+        "CREATE TEMPORARY VIEW PostWarmup_App_Sys_JobLogs AS " +
+        "  SELECT [App_Sys_JobLogs].[app_appInp_appCfgID], " +
+        "         [App_Sys_JobLogs].[sys_sysCfgID], " +
+        "         [App_Sys_JobLogs].[jobID], " +
+        "         [App_Sys_JobLogs].[delta_time], " +
+        "         [App_Sys_JobLogs].[delta_energy], " +
+        "         [App_Sys_JobLogs].[instructionCount] " +
+        "  FROM   ([Applications] " +
+        "         INNER JOIN ([AppsInputs] " +
+        "         INNER JOIN [AppsInputsConfigs] ON [AppsInputs].[app_appInpID] = [AppsInputsConfigs].[app_appInpID]) ON [Applications].[appID] = [AppsInputs].[appID]) " +
+        "         INNER JOIN [App_Sys_JobLogs] ON [AppsInputsConfigs].[app_appInp_appCfgID] = [App_Sys_JobLogs].[app_appInp_appCfgID] " +
+        "  WHERE  ((([App_Sys_JobLogs].[jobID]) > [warmupJobNum]))"
+      try database.execute(statement: sqliteQuery)
 
-        try database.execute(statement: sqliteQuery)
+      Log.verbose("Created emulation database post-warmup view.")
 
-        // Creating the post-warmup view
-        sqliteQuery =
-            "CREATE TEMPORARY VIEW PostWarmup_App_Sys_JobLogs AS " +
-            "  SELECT [App_Sys_JobLogs].[app_appInp_appCfgID], " +
-            "         [App_Sys_JobLogs].[sys_sysCfgID], " +
-            "         [App_Sys_JobLogs].[jobID], " +
-            "         [App_Sys_JobLogs].[delta_time], " +
-            "         [App_Sys_JobLogs].[delta_energy], " +
-            "         [App_Sys_JobLogs].[instructionCount] " +
-            "  FROM   ([Applications] " +
-            "         INNER JOIN ([AppsInputs] " +
-            "         INNER JOIN [AppsInputsConfigs] ON [AppsInputs].[app_appInpID] = [AppsInputsConfigs].[app_appInpID]) ON [Applications].[appID] = [AppsInputs].[appID]) " +
-            "         INNER JOIN [App_Sys_JobLogs] ON [AppsInputsConfigs].[app_appInp_appCfgID] = [App_Sys_JobLogs].[app_appInp_appCfgID] " +
-            "  WHERE  ((([App_Sys_JobLogs].[jobID]) > [warmupJobNum]))"
+      // Creating the statistical post-warmup view
+      sqliteQuery =
+        "CREATE TEMPORARY VIEW App_Sys_Logs_Avg_Stdev AS " +
+        "  SELECT        [PostWarmup_App_Sys_JobLogs].[app_appInp_appCfgID], " +
+        "                [PostWarmup_App_Sys_JobLogs].[sys_sysCfgID], " +
+        "         AVG   ([PostWarmup_App_Sys_JobLogs].[delta_time])       AS [AvgOfdelta_time], " +
+        "         STDEV ([PostWarmup_App_Sys_JobLogs].[delta_time])       AS [StDevOfdelta_time], " +
+        "         AVG   ([PostWarmup_App_Sys_JobLogs].[delta_energy])     AS [AvgOfdelta_energy], " +
+        "         STDEV ([PostWarmup_App_Sys_JobLogs].[delta_energy])     AS [StDevOfdelta_energy], " +
+        "         AVG   ([PostWarmup_App_Sys_JobLogs].[instructionCount]) AS [AvgOfinstructionCount], " +
+        "         STDEV ([PostWarmup_App_Sys_JobLogs].[instructionCount]) AS [StDevOfinstructionCount] " +
+        "  FROM     [PostWarmup_App_Sys_JobLogs] " +
+        "    GROUP BY " +
+        "      [PostWarmup_App_Sys_JobLogs].[app_appInp_appCfgID], [PostWarmup_App_Sys_JobLogs].[sys_sysCfgID]"
+      try database.execute(statement: sqliteQuery)
+      
+      Log.verbose("Created emulation database statistical post-warmup view.")
 
-            try database.execute(statement: sqliteQuery)
-
-            // Creating the statistical post-warmup view
-            sqliteQuery =
-            "CREATE TEMPORARY VIEW App_Sys_Logs_Avg_Stdev AS " +
-            "  SELECT        [PostWarmup_App_Sys_JobLogs].[app_appInp_appCfgID], " +
-            "                [PostWarmup_App_Sys_JobLogs].[sys_sysCfgID], " +
-            "         AVG   ([PostWarmup_App_Sys_JobLogs].[delta_time])       AS [AvgOfdelta_time], " +
-            "         STDEV ([PostWarmup_App_Sys_JobLogs].[delta_time])       AS [StDevOfdelta_time], " +
-            "         AVG   ([PostWarmup_App_Sys_JobLogs].[delta_energy])     AS [AvgOfdelta_energy], " +
-            "         STDEV ([PostWarmup_App_Sys_JobLogs].[delta_energy])     AS [StDevOfdelta_energy], " +
-            "         AVG   ([PostWarmup_App_Sys_JobLogs].[instructionCount]) AS [AvgOfinstructionCount], " +
-            "         STDEV ([PostWarmup_App_Sys_JobLogs].[instructionCount]) AS [StDevOfinstructionCount] " +
-            "  FROM     [PostWarmup_App_Sys_JobLogs] " +
-            "    GROUP BY " +
-            "      [PostWarmup_App_Sys_JobLogs].[app_appInp_appCfgID], [PostWarmup_App_Sys_JobLogs].[sys_sysCfgID]"
-
-            try database.execute(statement: sqliteQuery)
-
-    } catch {
-        print("Failure creating database statistical tables")
+    } catch let exception {
+        Log.error("Failure creating emulation database statistical tables in the emulation database: \(exception).")
+        fatalError()
     }
-  }
 
-  //-------------------------------
+  }
 
   /** Read the appropriate reference application configuration */
   func getReferenceApplicationConfigurationID(application: String) -> Int {
 
     // If there's a more dense profile grid, it makes sense to make different interpolation, e.g. basing on the closest intersection of profiled axes.
     // This is emphasized by keeping these IDs dynamically queried.
-    var result = 0;
+    var result: Int? = nil
 
     let sqliteQuery =
       "SELECT appCfgID " + 
@@ -199,25 +250,34 @@ public class Database: TextApiModule {
       " WHERE AppsInputsConfigs.isReference = 1 " + 
       "   AND Applications.appName = :1"
 
-          do {
-    
-            try database.forEachRow(statement: sqliteQuery, doBindings: {
-      
-              (statement: SQLiteStmt) -> () in
-      
-                  try statement.bind(position: 1, application)
-      
-            })  {(statement: SQLiteStmt, i:Int) -> () in
+    do {
 
-                result = statement.columnInt(position: 0)
-                  
-            }
-    
-          } catch {
-            
-          }
+      try database.forEachRow(statement: sqliteQuery, doBindings: {
 
-          return result
+        (statement: SQLiteStmt) -> () in
+
+        try statement.bind(position: 1, application)
+
+      })  {(statement: SQLiteStmt, i:Int) -> () in
+
+        result = statement.columnInt(position: 0)
+
+      }
+
+    } catch let exception {
+      Log.error("Exception while reading the reference application configuration from the emulation database: \(exception).")
+      fatalError()
+    }
+
+    if let res = result {
+        Log.debug("Read reference application configuration from the emulation database: \(res).")
+        return res
+    }
+    else {
+        Log.error("Failed to read the reference application configuration from the emulation database.")
+        fatalError()
+    }
+          
   }
 
   /** Read the appropriate reference system configuration */
@@ -241,16 +301,17 @@ public class Database: TextApiModule {
 
         (statement: SQLiteStmt) -> () in
 
-            try statement.bind(position: 1, architecture)
+        try statement.bind(position: 1, architecture)
 
       })  {(statement: SQLiteStmt, i:Int) -> () in
 
-          result = statement.columnInt(position: 0)
-            
+        result = statement.columnInt(position: 0)
+
       }
 
-    } catch {
-      
+    } catch let exception {
+      Log.error("Failed to read the reference system configuration from the emulation database: \(exception).")
+      fatalError()
     }
 
     return result
@@ -268,21 +329,20 @@ public class Database: TextApiModule {
       " WHERE Applications.appName = :1"
 
     do {
-
       try database.forEachRow(statement: sqliteQuery, doBindings: {
 
         (statement: SQLiteStmt) -> () in
 
-            try statement.bind(position: 1, application)
+        try statement.bind(position: 1, application)
 
-      })  {(statement: SQLiteStmt, i:Int) -> () in
+      })  { (statement: SQLiteStmt, i:Int) -> () in
 
-          result = statement.columnInt(position: 0)
-            
+        result = statement.columnInt(position: 0)   
+
       }
-
-    } catch {
-      
+    } catch let exception {
+      Log.error("Failed to read the number of warmupInputs from the emulation database: \(exception).")
+      fatalError()
     }
 
     return result
@@ -302,18 +362,18 @@ public class Database: TextApiModule {
     var result = 0
     
     let sqliteQuery =
-        "SELECT max(App_Sys_JobLogs.jobID) " + 
-        "  FROM AppsInputs " + 
-        "       INNER JOIN SystemsConfigs ON SystemsConfigs.sys_sysCfgID = App_Sys_JobLogs.sys_sysCfgID" + 
-        "       INNER JOIN Systems ON SystemsConfigs.sysID = Systems.sysID " + 
-        "       INNER JOIN AppsInputsConfigs ON AppsInputs.app_appInpID = AppsInputsConfigs.app_appInpID" + 
-        "       INNER JOIN App_Sys_JobLogs ON AppsInputsConfigs.app_appInp_appCfgID = App_Sys_JobLogs.app_appInp_appCfgID " + 
-        " " + 
-        " WHERE AppsInputs.appID = :1 " + 
-        "   AND AppsInputs.appInpID = :2 " + 
-        "   AND AppsInputsConfigs.appCfgID = :3 " + 
-        "   AND Systems.sysName = :4 " + 
-        "   AND SystemsConfigs.sysCfgID = :5"
+      "SELECT max(App_Sys_JobLogs.jobID) " + 
+      "  FROM AppsInputs " + 
+      "       INNER JOIN SystemsConfigs ON SystemsConfigs.sys_sysCfgID = App_Sys_JobLogs.sys_sysCfgID" + 
+      "       INNER JOIN Systems ON SystemsConfigs.sysID = Systems.sysID " + 
+      "       INNER JOIN AppsInputsConfigs ON AppsInputs.app_appInpID = AppsInputsConfigs.app_appInpID" + 
+      "       INNER JOIN App_Sys_JobLogs ON AppsInputsConfigs.app_appInp_appCfgID = App_Sys_JobLogs.app_appInp_appCfgID " + 
+      " " + 
+      " WHERE AppsInputs.appID = :1 " + 
+      "   AND AppsInputs.appInpID = :2 " + 
+      "   AND AppsInputsConfigs.appCfgID = :3 " + 
+      "   AND Systems.sysName = :4 " + 
+      "   AND SystemsConfigs.sysCfgID = :5"
 
     do {
 
@@ -321,20 +381,21 @@ public class Database: TextApiModule {
 
         (statement: SQLiteStmt) -> () in
 
-            try statement.bind(position: 1, application)
-            try statement.bind(position: 2, applicationInputID)
-            try statement.bind(position: 3, applicationConfigurationID)
-            try statement.bind(position: 4, architecture)
-            try statement.bind(position: 5, systemConfigurationID)
+        try statement.bind(position: 1, application)
+        try statement.bind(position: 2, applicationInputID)
+        try statement.bind(position: 3, applicationConfigurationID)
+        try statement.bind(position: 4, architecture)
+        try statement.bind(position: 5, systemConfigurationID)
 
-      })  {(statement: SQLiteStmt, i:Int) -> () in
+      })  { (statement: SQLiteStmt, i:Int) -> () in
 
-          result = statement.columnInt(position: 0)
+        result = statement.columnInt(position: 0)
             
       }
 
-    } catch {
-      
+    } catch let exception {
+      Log.error("Failed to read the inputs profiled from the emulation database: \(exception).")
+      fatalError()
     }
 
     return result
@@ -359,16 +420,17 @@ public class Database: TextApiModule {
 
         (statement: SQLiteStmt) -> () in
 
-            try statement.bind(position: 1, application)
+        try statement.bind(position: 1, application)
 
-      })  {(statement: SQLiteStmt, i:Int) -> () in
+      })  { (statement: SQLiteStmt, i:Int) -> () in
 
-          result = statement.columnDouble(position: 0)
+        result = statement.columnDouble(position: 0)
             
       }
 
-    } catch {
-      
+    } catch let exception {
+      Log.error("Failed to read the Tape noise from the emulation database: \(exception).")
+      fatalError()
     }
 
     return result
@@ -429,16 +491,17 @@ public class Database: TextApiModule {
 
         (statement: SQLiteStmt) -> () in
 
-            try statement.bind(position: 1, application)
+        try statement.bind(position: 1, application)
 
-      })  {(statement: SQLiteStmt, i:Int) -> () in
+      })  { (statement: SQLiteStmt, i:Int) -> () in
 
-          result = (statement.columnDouble(position: 0), statement.columnDouble(position: 1))
+        result = (statement.columnDouble(position: 0), statement.columnDouble(position: 1))
             
       }
 
-    } catch {
-      
+    } catch let exception {
+      Log.error("Failed to read the outliers for the application from the emulation database: \(exception).")
+      fatalError()
     }
 
     return result
@@ -501,26 +564,31 @@ public class Database: TextApiModule {
 
             (statement: SQLiteStmt) -> () in
 
-                try statement.bind(position: 1, application)
-                try statement.bind(position: 2, applicationInputID)
-                try statement.bind(position: 3, applicationConfigurationID)
-                try statement.bind(position: 4, architecture)
-                try statement.bind(position: 5, systemConfigurationID)
-                try statement.bind(position: 6, entryID)
+              try statement.bind(position: 1, application)
+              try statement.bind(position: 2, applicationInputID)
+              try statement.bind(position: 3, applicationConfigurationID)
+              try statement.bind(position: 4, architecture)
+              try statement.bind(position: 5, systemConfigurationID)
+              try statement.bind(position: 6, entryID)
 
           })  {(statement: SQLiteStmt, i:Int) -> () in
 
-              readTime = statement.columnInt(position: 0)
-              readEnergy = statement.columnInt(position: 1)
+            readTime = statement.columnInt(position: 0)
+            readEnergy = statement.columnInt(position: 1)
                 
           }
 
-        } catch {
-          
+        } catch let exception {
+          Log.error("Failed to read the delta from the emulation database (in Tape reading mode): \(exception).")
+          fatalError()
         }
 
         // Adding noise
-        return ( readTime + Int(randomizerWhiteGaussianNoise(deviation: Double(readTime) * tapeNoise)), readEnergy + Int(randomizerWhiteGaussianNoise(deviation: Double(readEnergy) * tapeNoise)) )
+        let deltas =  ( readTime + Int(randomizerWhiteGaussianNoise(deviation: Double(readTime) * tapeNoise))
+                      , readEnergy + Int(randomizerWhiteGaussianNoise(deviation: Double(readEnergy) * tapeNoise)) )
+        Log.debug("Read (time,energy) deltas from emulation database: \((readTime,readEnergy)). With (Tape) noise: \(deltas).")        
+
+        return deltas
 
       case ReadingMode.Statistics:
         // Obtain the means and deviations of deltaEnergy and deltaTime
@@ -579,50 +647,53 @@ public class Database: TextApiModule {
 
             (statement: SQLiteStmt) -> () in
 
-                try statement.bind(position: 1, application)
-                try statement.bind(position: 2, applicationInputID)
-                try statement.bind(position: 3, applicationConfigurationID)
-                try statement.bind(position: 4, architecture)
-                try statement.bind(position: 5, systemConfigurationID)
+              try statement.bind(position: 1, application)
+              try statement.bind(position: 2, applicationInputID)
+              try statement.bind(position: 3, applicationConfigurationID)
+              try statement.bind(position: 4, architecture)
+              try statement.bind(position: 5, systemConfigurationID)
 
-                // warmup data requires the inputID
-                if progressCounter <= warmupInputs {
-                  try statement.bind(position: 6, progressCounter)
-                }
+              // warmup data requires the inputID
+              if progressCounter <= warmupInputs {
+                try statement.bind(position: 6, progressCounter)
+              }
 
           })  {(statement: SQLiteStmt, i:Int) -> () in
 
-              meanDeltaTime = statement.columnInt(position: 0)
-              deviationDeltaTime = statement.columnInt(position: 1)
-              meanDeltaEnergy = statement.columnInt(position: 2)
-              deviationDeltaEnergy = statement.columnInt(position: 3)
+            meanDeltaTime = statement.columnInt(position: 0)
+            deviationDeltaTime = statement.columnInt(position: 1)
+            meanDeltaEnergy = statement.columnInt(position: 2)
+            deviationDeltaEnergy = statement.columnInt(position: 3)
                 
           }
 
-        } catch {
-          
+        } catch let exception {
+          Log.error("Failed to read the delta from the emulation database (in Statistics reading mode): \(exception).")
+          fatalError()
         }
 
-            let (timeOutlier, energyOutlier) = obtainOutliers(application: application)
+        let (timeOutlier, energyOutlier) = obtainOutliers(application: application)
 
-            // Eliminate outliers
-            switch application {
-              case "RADAR": // TODO align with new DB name
-                // no outliers in test data
-                break
+        // Eliminate outliers
+        switch application {
 
-              case "x264":
-                randomizerEliminateOutliers(measurement: meanDeltaTime,   error: deviationDeltaTime,   factor: &rescaleFactorVariance, safetyMargin: timeOutlier)
-                randomizerEliminateOutliers(measurement: meanDeltaEnergy, error: deviationDeltaEnergy, factor: &rescaleFactorVariance, safetyMargin: energyOutlier)
+          // FIXME Move this into Application instance for x264
+          case "x264":
+            randomizerEliminateOutliers(measurement: meanDeltaTime,   error: deviationDeltaTime,   factor: &rescaleFactorVariance, safetyMargin: timeOutlier)
+            randomizerEliminateOutliers(measurement: meanDeltaEnergy, error: deviationDeltaEnergy, factor: &rescaleFactorVariance, safetyMargin: energyOutlier)
 
-              default:
-                fatalError("no such application")
+          default:
+            // Do not eliminate outliers for this application
+            break
 
-            }
+        }
 
         // Adding noise
-        return ( Int(Double(meanDeltaTime)   * rescaleFactorMean + randomizerWhiteGaussianNoise(deviation: Double(deviationDeltaTime)   * rescaleFactorVariance)), 
-                 Int(Double(meanDeltaEnergy) * rescaleFactorMean + randomizerWhiteGaussianNoise(deviation: Double(deviationDeltaEnergy) * rescaleFactorVariance)) )
+        let deltas = ( Int(Double(meanDeltaTime)   * rescaleFactorMean + randomizerWhiteGaussianNoise(deviation: Double(deviationDeltaTime)   * rescaleFactorVariance)) 
+                     , Int(Double(meanDeltaEnergy) * rescaleFactorMean + randomizerWhiteGaussianNoise(deviation: Double(deviationDeltaEnergy) * rescaleFactorVariance)) )        
+        Log.debug("Read mean (time,energy) deltas from emulation database: \((meanDeltaTime,meanDeltaEnergy)). With (Statistics) noise: \(deltas).")        
+
+        return deltas
 
     }
   }

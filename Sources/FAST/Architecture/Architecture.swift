@@ -13,7 +13,7 @@
 
 import Foundation
 import LoggerAPI
-import Venice
+import Dispatch
 
 //---------------------------------------
 
@@ -144,14 +144,15 @@ extension ClockAndEnergyArchitecture {
   var systemMeasures: Array<String> { return ["time", "energy"] } 
 
   // Register System Measures
-  func registerSystemMeasures() -> Void {
-    co {
-        while true {
-            let _ = Runtime.measure("energy", Double(self.energyMonitor.readEnergy()))
-            let _ = Runtime.measure("time",          self.clockMonitor.readClock())
-            nap(for: 1.millisecond)
-        }
+  func registerSystemMeasures() -> Void {      
+    DispatchQueue.global(qos: .utility).async {
+      while true {
+        Runtime.measure("energy", Double(self.energyMonitor.readEnergy()))
+        Runtime.measure("time",          self.clockMonitor.readClock())
+        usleep(1000) // Register system measures every millisecond
+      }
     }
+    Log.verbose("Started registering system measures for architecure \(name).")
   }
 }
 
