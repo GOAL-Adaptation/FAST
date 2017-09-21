@@ -74,14 +74,18 @@ public func optimize
             Runtime.initializeController(model, intent, windowSize)
 
             func runOnce() {
-                // Initialize measuring device, that will update measures based on the samplingPolicy
-                let measuringDevice = MeasuringDevice(samplingPolicy, windowSize, labels)
-                // FIXME what if the counter overflows
-                var iteration: UInt32 = 0 // iteration counter
                 if let controllerModel = Runtime.controller.model {
+                    // Initialize measuring device, that will update measures based on the samplingPolicy
+                    let measuringDevice = MeasuringDevice(samplingPolicy, windowSize, labels)
                     var schedule: Schedule = Schedule(constant: controllerModel.getInitialConfiguration()!.knobSettings)
+                    // FIXME what if the counter overflows
+                    var iteration: UInt32 = 0 // iteration counter
+                    var startTime = ProcessInfo.processInfo.systemUptime // used for runningTime counter
+                    var runningTime = 0.0 // counts only time spent inside the loop body
+                    Runtime.measure("iteration", Double(iteration))
+                    Runtime.measure("runningTime", runningTime) // running time in seconds
                     loop {
-                        Runtime.measure("iteration", Double(iteration))
+                        startTime = ProcessInfo.processInfo.systemUptime // reset, in case something paused execution between iterations
                         executeAndReportProgress(measuringDevice, routine)
                         iteration += 1
                         if iteration % windowSize == 0 {
@@ -93,6 +97,8 @@ public func optimize
                             schedule[iteration % windowSize].apply()
                         }
                         Runtime.measure("iteration", Double(iteration))
+                        runningTime += ProcessInfo.processInfo.systemUptime - startTime
+                        Runtime.measure("runningTime", runningTime) // running time in seconds
                         // FIXME maybe stalling in scripted mode should not be done inside of optimize but somewhere else in an independent and better way
                         Runtime.reportProgress()
                     } 

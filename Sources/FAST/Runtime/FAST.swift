@@ -169,8 +169,8 @@ public class Runtime {
 
     private init() {}
 
-    internal static var measures: [String : Double] = [:]
-    internal static var measuresLock = NSLock()
+    private static var measures: [String : Double] = [:]
+    private static var measuresLock = NSLock()
 
     internal static var knobSetters: [String : (Any) -> Void] = [:]
     internal static var knobSettersLock = NSLock()
@@ -289,6 +289,29 @@ public class Runtime {
             Runtime.scriptedCounter = 0
         }
     }
+
+    // These knobs simulate changes to the environment during a test
+    class ScenarioKnobs: TextApiModule {
+
+        let name = "scenarioKnobs"
+
+        var subModules = [String : TextApiModule]()
+
+        // Number of inputs to be processed across a mission
+        var missionLength: Knob<UInt64>
+        // Parameter (with range [0.0,1.0]) used to introduce noise in the input
+        var sceneObfuscation: Knob<Double>
+
+        init() {
+            self.missionLength    = Knob(name: "missionLength",    from: key, or: 1000, preSetter: { assert((0...1000).contains($1)) })
+            self.sceneObfuscation = Knob(name: "sceneObfuscation", from: key, or: 0.0,  preSetter: { assert((0.0...1.0).contains($1)) })
+            self.addSubModule(newModule: missionLength)
+            self.addSubModule(newModule: sceneObfuscation)
+        }
+
+    }
+
+    static var scenarioKnobs: ScenarioKnobs = ScenarioKnobs()
 
     // The runtime API this where the channel connects
     public class RuntimeApiModule: TextApiModule {
@@ -528,6 +551,11 @@ public class Runtime {
         return measures[name]
     }
 
+    /** Get the current values of all measures */
+    internal static func getMeasures() -> [String : Double] {
+        return measures
+    }    
+
     /** Update the value of name in the global measure store and return that value */
     internal static func setKnob(_ name: String, to value: Any) {
         if let setKnobTo = knobSetters[name] {
@@ -574,7 +602,7 @@ internal class MeasuringDevice {
 
     public func sample() {
         for (m,s) in stats { 
-            if let measure = Runtime.measures[m] {
+            if let measure = Runtime.getMeasure(m) {
                 s.observe(measure)
             }            
         }

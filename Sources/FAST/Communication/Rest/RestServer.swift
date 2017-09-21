@@ -27,6 +27,8 @@ class RestServer {
     var routes = Routes()
     var requestQueue = DispatchQueue(label: "requestQueue") // A serial queue
 
+    private let utcDateFormatter = DateFormatter()
+
     /** 
       * Add a route that modifiers the handler to make invocations happen serially, 
       * in the order that they were received. 
@@ -40,6 +42,9 @@ class RestServer {
     @discardableResult init() {
 
         server.serverPort = initialize(type: UInt16.self, name: "port", from: key) ?? 1338
+
+        utcDateFormatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
+        utcDateFormatter.timeZone = TimeZone(identifier: "GMT")
 
         routes.add(method: .get, uri: "/alive", handler: {
             _, response in
@@ -82,11 +87,70 @@ class RestServer {
             response.completed()
         })
 
-        routes.add(method: .post, uri: "/query", handler: {
+        routes.add(method: .get, uri: "/query", handler: {
             request, response in
-                // FIXME Implement stub 
-                Log.error("The /query endpoint has not been implemented yet.")
-                response.completed() // HTTP 202
+                
+                func toArrayOfPairDicts(_ dict: [String : Any]) -> [[String : Any]] {
+                    return Array(dict).map { (s , a) in [s : a] }
+                }
+
+                func unwrapValues(_ dict: [String: Any]) -> [String: Any] {
+                    return Dictionary(dict.map { (s,a) in (s, (a as! [String: Any])["value"]!) })
+                }
+
+                func extractStatus(from module: TextApiModule) -> [String : Any] {
+                    return (module.getStatus() as? [String: Any]).map{ unwrapValues($0) } ?? [:]
+                }
+
+                func extractStatus(of subModule: String, from module: TextApiModule?) -> [String : Any] {
+                    return (module?.getStatus()?[subModule] as? [String: Any]).map{ unwrapValues($0) } ?? [:]
+                }
+
+                if let runningTime               = Runtime.getMeasure("runningTime"),
+                   let energy                    = Runtime.getMeasure("energy"),
+                   let numberOfProcessedInputs   = Runtime.getMeasure("iteration") {
+
+                    let architecture             = Runtime.architecture?.name ?? "NOT CONFIGURED"
+                    let systemConfigurationKnobs = extractStatus(of: "systemConfigurationKnobs", from: Runtime.architecture ) 
+                    let applicationKnobs         = extractStatus(of: "applicationKnobs",         from: Runtime.application  )
+                    let scenarioKnobs            = extractStatus(                                from: Runtime.scenarioKnobs)
+
+                    let status : [String : Any] =
+                        [ "time"      : self.utcDateFormatter.string(from: Date())
+                        , "arguments" : 
+                            [ "architecture"             : architecture
+                            , "runningTime"              : runningTime
+                            , "energy"                   : energy
+                            , "numberOfProcessedInputs"  : numberOfProcessedInputs
+                            , "applicationKnobs"         : toArrayOfPairDicts(applicationKnobs)
+                            , "systemConfigurationKnobs" : toArrayOfPairDicts(systemConfigurationKnobs)
+                            , "scenarioKnobs"            : toArrayOfPairDicts(scenarioKnobs)
+                            , "measures"                 : toArrayOfPairDicts(Runtime.getMeasures())
+                            ]
+                        ]
+
+                    do {
+                        let statusData = try JSONSerialization.data(withJSONObject: status)
+                        if let statusString = String(data: statusData, encoding: String.Encoding.utf8) {
+                            response.setBody(string: statusString)
+                            Log.info("Successfully responded to request on /query REST endpoint: \(statusString).")
+                            response.completed() // HTTP 202
+                        }
+                        else {
+                            response.status = .notAcceptable // HTTP 406
+                            Log.info("Error while UTF8-encoding JSON status in response to request on /query REST endpoint: \(status).")                        
+                        }
+                    } 
+                    catch let e {
+                        response.status = .notAcceptable // HTTP 406
+                        Log.info("Exception while serializing JSON in response to request on /query REST endpoint: \(status). Exception: \(e).")
+                    }
+                }
+                else {
+                    response.status = .notAcceptable // HTTP 406
+                    Log.info("Error while extracting status in response to request on /query REST endpoint.")
+                }
+
             }
         )
 

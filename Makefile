@@ -33,11 +33,11 @@ test: copy-resources-test
 
 copy-resources-build:
 	mkdir -p $(RESOURCE_TARGET_PATH)
-	cp $(RESOURCE_PATH)/incrementer.* $(RESOURCE_TARGET_PATH)
+	cp $(RESOURCE_PATH)/incrementer.* $(RESOURCE_TARGET_PATH)/
 	
 copy-resources-test:
 	mkdir -p $(TEST_RESOURCE_TARGET_PATH)
-	cp $(RESOURCE_PATH)/incrementer.* $(TEST_RESOURCE_TARGET_PATH)
+	cp $(RESOURCE_PATH)/incrementer.* $(TEST_RESOURCE_TARGET_PATH)/
 
 clean:
 	rm Package.pins
@@ -45,14 +45,38 @@ clean:
 
 rebuild: clean build
 
-run: proteus_runtime_applicationExecutionMode := Adaptive
-run:
+execute: export proteus_runtime_applicationExecutionMode         := Adaptive
+execute: export proteus_runtime_missionLength                    := 1000
+execute: export proteus_runtime_sceneObfuscation                 := 0.0
+execute: export proteus_client_rest_testHarnessPath              := plt08.cs.rice.edu:8080
+execute: export proteus_emulator_database_db                     := 
+execute: export proteus_emulator_database_readingMode            := Statistics
+execute: export proteus_armBigLittle_policy                      := Simple
+execute: export proteus_armBigLittle_actuationPolicy             := Actuate
+execute: export proteus_armBigLittle_availableBigCores           := 4
+execute: export proteus_armBigLittle_availableLittleCores        := 4
+execute: export proteus_armBigLittle_maximalBigCoreFrequency     := 2000000
+execute: export proteus_armBigLittle_maximalLittleCoreFrequency  := 1400000
+execute: export proteus_armBigLittle_utilizedBigCores            := 4
+execute: export proteus_armBigLittle_utilizedLittleCores         := 0
+execute: export proteus_armBigLittle_utilizedBigCoreFrequency    := 2000000
+execute: export proteus_armBigLittle_utilizedLittleCoreFrequency := 1400000
+execute:
 	.build/debug/ExampleIncrementer
 
-go: build run
-	
-all: rebuild run
+go:           build run
+              
+all:          rebuild run
 
-profile: export proteus_runtime_applicationExecutionMode := ExhaustiveProfiling
-profile: export proteus_runtime_profileSize := $(if $(TEST),$(TEST),1000)
-profile: build run ## To select number of inputs to process when profiling: make size=<NUMBER_OF_RUNS> profile
+run:          export proteus_runtime_interactionMode    := Default
+run:          export proteus_armBigLittle_executionMode := Default
+run:          execute
+
+scripted-run: export proteus_runtime_interactionMode    := Scripted
+scripted-run: export proteus_armBigLittle_executionMode := Default
+scripted-run: execute
+
+              
+profile:      export proteus_runtime_applicationExecutionMode := ExhaustiveProfiling
+profile:      export proteus_runtime_profileSize := $(if $(TEST),$(TEST),1000)
+profile:      build execute ## To select number of inputs to process when profiling: make size=<NUMBER_OF_RUNS> profile
