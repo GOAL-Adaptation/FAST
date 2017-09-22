@@ -48,8 +48,9 @@ rebuild: clean build
 execute: export proteus_runtime_applicationExecutionMode         := Adaptive
 execute: export proteus_runtime_missionLength                    := 1000
 execute: export proteus_runtime_sceneObfuscation                 := 0.0
-execute: export proteus_client_rest_testHarnessPath              := plt08.cs.rice.edu:8080
-execute: export proteus_emulator_database_db                     := 
+execute: export proteus_client_rest_serverPath                   := brass-th
+execute: export proteus_client_rest_serverPort                   := 8080
+execute: export proteus_emulator_database_db                     := /Users/adam/project/FAST/Sources/ExampleIncrementer/incrementer.db
 execute: export proteus_emulator_database_readingMode            := Statistics
 execute: export proteus_armBigLittle_policy                      := Simple
 execute: export proteus_armBigLittle_actuationPolicy             := Actuate

@@ -201,9 +201,9 @@ class RestServer {
             try server.start()
             Log.info("REST server open on port \(server.serverPort).")
         } catch PerfectError.networkError(let err, let msg) {
-            Log.warning("Network error thrown while starting REST server: \(err) \(msg).")
+            Log.error("Network error thrown while starting REST server: \(err) \(msg).")
         } catch let err {
-            Log.warning("Error thrown while starting REST server: \(err).")
+            Log.error("Error thrown while starting REST server: \(err).")
         }
         
     }
