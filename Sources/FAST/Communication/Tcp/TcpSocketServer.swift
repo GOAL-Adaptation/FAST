@@ -3,7 +3,7 @@
  *
  *        TCP Socket Server
  *
- *  author: Ferenc A Bartha
+ *  author: Ferenc A Bartha, Adam Duracz
  *
  *  SWIFT implementation is based on the C library [pemu] implemented by
  *  Ferenc A Bartha, Dung X Nguyen, Jason Miller, Adam Duracz
@@ -15,8 +15,9 @@
 //-------------------------------
 
 import Foundation
-import Socket
 import Dispatch
+import LoggerAPI
+import Socket
 
 //-------------------------------
 
@@ -82,21 +83,21 @@ class TcpSocketServer: CommunicationServer {
                 try self.listenSocket = Socket.create(family: self.family)
 
                 guard let socket = self.listenSocket else {
-                    print("TcpSocketServer: run: Unable to unwrap socket")
+                    Log.error("Unable to unwrap socket")
                     return
                 }
 
                 // Listen on port
                 try socket.listen(on: self.port)
 
-                print("TcpSocketServer: run: Listening on port: \(socket.listeningPort)")
+                Log.info("Run: Listening on port: \(socket.listeningPort)")
 
                 // Accepting connections
                 repeat {
                     let newSocket = try socket.acceptClientConnection()
 
-                    print("TcpSocketServer: run: Accepted connection from: \(newSocket.remoteHostname) on port \(newSocket.remotePort)")
-                    print("TcpSocketServer: run: Socket Signature: \(newSocket.signature?.description ?? "no signature")")
+                    Log.info("Accepted connection from: \(newSocket.remoteHostname) on port \(newSocket.remotePort)")
+                    Log.verbose("Socket Signature: \(newSocket.signature?.description ?? "no signature")")
 
                     self.addNewConnection(socket: newSocket)
 
@@ -105,13 +106,13 @@ class TcpSocketServer: CommunicationServer {
             }
             catch let error {
                 guard let socketError = error as? Socket.Error else {
-                    print("TcpSocketServer: run: Unexpected error...")
+                    Log.error("Unexpected error...")
                     return
                 }
 
                 if self.continueRunning {
 
-                    print("TcpSocketServer: run: Error reported:\n \(socketError.description)")
+                    Log.error("Error reported:\n \(socketError.description)")
 
                 }
             }
@@ -146,7 +147,7 @@ class TcpSocketServer: CommunicationServer {
                     if bytesRead > 0 {
                         guard let response = self.messageHandler!.handle(server: self, &shouldKeepRunning, message: String(data: readData, encoding: .utf8)!) else {
 
-                            print("Error decoding response...")
+                            Log.error("Error decoding response...")
                             readData.count = 0
                             break
                         }
@@ -168,7 +169,7 @@ class TcpSocketServer: CommunicationServer {
                     self.shutdownServer()
                 }
 
-                print("Socket: \(socket.remoteHostname):\(socket.remotePort) closed...")
+                Log.info("Socket: \(socket.remoteHostname):\(socket.remotePort) closed...")
                 socket.close()
 
                 self.socketLockQueue.sync { [unowned self, socket] in
@@ -178,11 +179,11 @@ class TcpSocketServer: CommunicationServer {
             }
             catch let error {
                 guard let socketError = error as? Socket.Error else {
-                    print("Unexpected error by connection at \(socket.remoteHostname):\(socket.remotePort)...")
+                    Log.error("Unexpected error by connection at \(socket.remoteHostname):\(socket.remotePort)...")
                     return
                 }
                 if self.continueRunning {
-                    print("Error reported by connection at \(socket.remoteHostname):\(socket.remotePort):\n \(socketError.description)")
+                    Log.error("Error reported by connection at \(socket.remoteHostname):\(socket.remotePort):\n \(socketError.description)")
                 }
             }
         }
@@ -191,7 +192,7 @@ class TcpSocketServer: CommunicationServer {
     //-------------------------------
 
     func shutdownServer() {
-        print("\nShutdown in progress...")
+        Log.error("Shutdown in progress...")
         continueRunning = false
 
         // Close all open sockets...
