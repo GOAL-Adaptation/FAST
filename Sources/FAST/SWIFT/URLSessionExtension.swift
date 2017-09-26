@@ -1,4 +1,17 @@
+/*
+ *  FAST: An implicit programing language based on SWIFT
+ *
+ *        Extensions to built-in SWIFT types: URLSession
+ *
+ *  authors: Adam Duracz
+ */
+
+//---------------------------------------
+
 import Foundation
+import Dispatch
+
+//---------------------------------------
 
 extension URLSession {
     
