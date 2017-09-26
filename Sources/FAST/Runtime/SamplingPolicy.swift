@@ -5,8 +5,8 @@
 
 */
 
+import Foundation
 import Dispatch
-import Venice
 
 public protocol SamplingPolicy {
 
