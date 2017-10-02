@@ -75,6 +75,34 @@ extension UInt32: InitializableFromString {
 
 }
 
+/** Extension for UInt64 */
+extension UInt64: InitializableFromString {
+
+    public init?(from text: String) {
+        if let value = UInt64(text) {
+            self = value
+        } else {
+            failedToInitialize("UInt64", from: text)
+            return nil
+        }
+    }
+
+}
+
+/** Extension for Double */
+extension Double: InitializableFromString {
+
+    public init?(from text: String) {
+        if let value = Double(text) {
+            self = value
+        } else {
+            failedToInitialize("Double", from: text)
+            return nil
+        }
+    }
+
+}
+
 /** Extension for ApplicationExecutionMode */
 extension ApplicationExecutionMode: InitializableFromString {
 
