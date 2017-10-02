@@ -45,6 +45,7 @@ clean:
 
 rebuild: clean build
 
+execute: export proteus_runtime_logLevel                         := Verbose
 execute: export proteus_runtime_applicationExecutionMode         := Adaptive
 execute: export proteus_runtime_missionLength                    := 1000
 execute: export proteus_runtime_sceneObfuscation                 := 0.0

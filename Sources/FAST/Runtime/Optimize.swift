@@ -11,6 +11,7 @@
 import Foundation
 import Dispatch
 import LoggerAPI
+import HeliumLogger
 import FASTController
 
 //---------------------------------------
@@ -49,6 +50,9 @@ public func optimize
     , samplingPolicy: SamplingPolicy = TimingSamplingPolicy(100.millisecond)
     , _ labels: [String]
     , _ routine: @escaping (Void) -> Void ) {
+
+    let logLevel = initialize(type: LoggerMessageType.self, name: "logLevel", from: key, or: .verbose)
+    HeliumLogger.use(logLevel)
 
     startRestServer()
 

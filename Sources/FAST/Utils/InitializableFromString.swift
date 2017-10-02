@@ -111,6 +111,33 @@ extension LinuxDvfsGovernor: InitializableFromString {
 
 }
 
+/** LoggerAPI LoggerMessageType */
+extension LoggerMessageType: InitializableFromString {
+
+    public init?(from text: String) {
+        switch text {
+            case "Entry":
+                self = .entry
+            case "Exit":
+                self = .exit
+            case "Debug":
+                self = .debug
+            case "Verbose":
+                self = .verbose
+            case "Info":
+                self = .info
+            case "Warning":
+                self = .warning
+            case "Error":
+                self = .error
+            default:
+                failedToInitialize("LoggerMessageType", from: text)
+                return nil
+        }
+    }
+
+}
+
 //---------------------------------------
 
 fileprivate func failedToInitialize(_ typeString: String, from text: String) {
