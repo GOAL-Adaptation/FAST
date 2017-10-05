@@ -69,29 +69,37 @@ execute: export proteus_armBigLittle_utilizedLittleCoreFrequency := 1400000
 execute:
 	.build/debug/ExampleIncrementer
 
-go:               build run
-                  
-all:              rebuild run
-                  
-run:              export proteus_runtime_interactionMode           := Default
-run:              export proteus_armBigLittle_executionMode        := Default
-run:              execute
-                  
-run-scripted:     export proteus_runtime_interactionMode           := Scripted
-run-scripted:     export proteus_armBigLittle_executionMode        := Default
-run-scripted:     execute
-                  
-emulate:          export proteus_runtime_interactionMode           := Default
-emulate:          export proteus_armBigLittle_executionMode        := Emulated
-emulate:          execute
+go:                build run
+                   
+all:               rebuild run
+                   
+run:               export proteus_runtime_interactionMode           := Default
+run:               export proteus_armBigLittle_executionMode        := Default
+run:               execute
 
-emulate-scripted: export proteus_runtime_interactionMode           := Scripted
-emulate-scripted: export proteus_armBigLittle_executionMode        := Emulated
-emulate-scripted: execute
+run-harness:       export proteus_runtime_executeWithTestHarness    := true
+run-harness:       export proteus_runtime_interactionMode           := Default
+run-harness:       export proteus_armBigLittle_executionMode        := Default
+run-harness:       execute
 
-evaluate: export proteus_runtime_initializeFromTestHarness := true
-evaluate: emulate-scripted
-              
-profile:          export proteus_runtime_applicationExecutionMode := ExhaustiveProfiling
-profile:          export proteus_runtime_profileSize := $(if $(TEST),$(TEST),1000)
-profile:          build execute ## To select number of inputs to process when profiling: make size=<NUMBER_OF_RUNS> profile
+run-scripted:      export proteus_runtime_interactionMode           := Scripted
+run-scripted:      export proteus_armBigLittle_executionMode        := Default
+run-scripted:      execute
+                   
+emulate:           export proteus_runtime_interactionMode           := Default
+emulate:           export proteus_armBigLittle_executionMode        := Emulated
+emulate:           execute
+ 
+emulate-scripted:  export proteus_runtime_interactionMode           := Scripted
+emulate-scripted:  export proteus_armBigLittle_executionMode        := Emulated
+emulate-scripted:  execute
+ 
+evaluate:          export proteus_runtime_executeWithTestHarness    := true
+evaluate:          emulate
+ 
+evaluate-scripted: export proteus_runtime_executeWithTestHarness    := true
+evaluate-scripted: emulate-scripted
+               
+profile:           export proteus_runtime_applicationExecutionMode := ExhaustiveProfiling
+profile:           export proteus_runtime_profileSize := $(if $(TEST),$(TEST),1000)
+profile:           build execute ## To select number of inputs to process when profiling: make size=<NUMBER_OF_RUNS> profile

@@ -170,8 +170,10 @@ public class Runtime {
     private init() {}
 
     internal static let restServerPort = initialize(type: UInt16.self, name: "port", from: key) ?? 1338
-    // Controls whether or not initialization parameters are obtained from response to post to brass-th/ready
-    internal static let initializeFromTestHarness = initialize(type: Bool.self, name: "initializeFromTestHarness", from: key) ?? false
+    // Controls whether or not the test harness is involved in the execution. 
+    // This includes obtaining initialization parameters are obtained from response to post to brass-th/ready, 
+    // and posting to brass-th/status after the processing of each input.
+    internal static let executeWithTestHarness = initialize(type: Bool.self, name: "executeWithTestHarness", from: key) ?? false
 
     private static var measures: [String : Double] = [:]
     private static var measuresLock = NSLock()

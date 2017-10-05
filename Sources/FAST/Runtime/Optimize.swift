@@ -160,7 +160,7 @@ fileprivate func startRestServer() -> (RestServer, InitializationParameters?) {
 
     waitUntilUp(endpoint: "alive", host: "127.0.0.1", port: Runtime.restServerPort, method: .GET, description: "REST")
 
-    if Runtime.initializeFromTestHarness {
+    if Runtime.executeWithTestHarness {
 
         Log.info("Posting to TH/ready.")
 
@@ -322,7 +322,7 @@ public func optimize
     // Run the optimize loop, either based on initializaiton parameters 
     // from the Test Harness, or on data read from files.
 
-    if Runtime.initializeFromTestHarness {
+    if Runtime.executeWithTestHarness {
 
         if let ips = initializationParameters {
 
