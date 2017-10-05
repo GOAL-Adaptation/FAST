@@ -27,14 +27,9 @@ class FastRestServer : RestServer {
         return "REST server"
     }
 
-    private let utcDateFormatter = DateFormatter()
-
     @discardableResult override init(port: UInt16) {
 
         super.init(port: port)
-
-        utcDateFormatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
-        utcDateFormatter.timeZone = TimeZone(identifier: "GMT")
 
         routes.add(method: .get, uri: "/alive", handler: {
             _, response in
@@ -93,48 +88,9 @@ class FastRestServer : RestServer {
 
         routes.add(method: .get, uri: "/query", handler: {
             request, response in
-                
-                func toArrayOfPairDicts(_ dict: [String : Any]) -> [[String : Any]] {
-                    return Array(dict).map { (s , a) in [s : a] }
-                }
 
-                func unwrapValues(_ dict: [String: Any]) -> [String: Any] {
-                    return Dictionary(dict.map { (s,a) in (s, (a as! [String: Any])["value"]!) })
-                }
-
-                func extractStatus(from module: TextApiModule) -> [String : Any] {
-                    return module.getStatus().map{ unwrapValues($0) } ?? [:]
-                }
-
-                func extractStatus(of subModule: String, from module: TextApiModule?) -> [String : Any] {
-                    return (module?.getStatus()?[subModule] as? [String: Any]).map{ unwrapValues($0) } ?? [:]
-                }
-
-                if let runningTime               = Runtime.getMeasure("runningTime"),
-                   let energy                    = Runtime.getMeasure("energy"),
-                   let numberOfProcessedInputs   = Runtime.getMeasure("iteration") {
-
-                    let architecture             = Runtime.architecture?.name ?? "NOT CONFIGURED"
-                    let systemConfigurationKnobs = extractStatus(of: "systemConfigurationKnobs", from: Runtime.architecture ) 
-                    let applicationKnobs         = extractStatus(of: "applicationKnobs",         from: Runtime.application  )
-                    let scenarioKnobs            = extractStatus(                                from: Runtime.scenarioKnobs)
-
-                    let status : [String : Any] =
-                        [ "time"      : self.utcDateFormatter.string(from: Date())
-                        , "arguments" : 
-                            [ "architecture"             : architecture
-                            , "runningTime"              : runningTime
-                            , "energy"                   : energy
-                            , "numberOfProcessedInputs"  : numberOfProcessedInputs
-                            , "applicationKnobs"         : toArrayOfPairDicts(applicationKnobs)
-                            , "systemConfigurationKnobs" : toArrayOfPairDicts(systemConfigurationKnobs)
-                            , "scenarioKnobs"            : toArrayOfPairDicts(scenarioKnobs)
-                            , "measures"                 : toArrayOfPairDicts(Runtime.getMeasures())
-                            ]
-                        ]
-
-                    self.addJsonBody(toResponse: response, json: status, jsonDescription: "status", endpointName: "query")
-
+                if let runtimeStatus = Runtime.statusDictionary() {
+                    self.addJsonBody(toResponse: response, json: runtimeStatus, jsonDescription: "status", endpointName: "query")
                 }
                 else {
                     response.status = .notAcceptable // HTTP 406

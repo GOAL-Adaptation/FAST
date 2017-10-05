@@ -23,6 +23,11 @@ fileprivate let key = ["th","server","rest"]
 
 class ThMockRestServer : RestServer {
 
+    private var _statusesReceived: UInt64 = 0
+    func statusesReceived() -> UInt64 {
+        return _statusesReceived
+    }
+
     override func name() -> String? {
         return "TH mock REST server"
     }
@@ -73,6 +78,23 @@ class ThMockRestServer : RestServer {
                                 , endpointName    : "ready" )
 
                 response.completed() // HTTP 202
+
+            }
+        )
+
+        addSerialRoute(method: .post, uri: "/status", handler: {
+            request, response in
+
+                if let json = self.readRequestBody(request: request, fromEndpoint: "/status") {
+                    Log.verbose("Received post \(self.statusesReceived()) to /status endpoint.")
+                    Log.debug("Received JSON on /status endpoint: \(json).")
+                    self._statusesReceived += 1
+                }
+                else {
+                    Log.debug("Failed to parse JSON from post to /status endpoint.")
+                    response.status = .notAcceptable // HTTP 406
+                }
+                response.completed()
 
             }
         )

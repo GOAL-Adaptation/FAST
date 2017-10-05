@@ -288,6 +288,62 @@ public class Runtime {
 
     static var runtimeKnobs: RuntimeKnobs = RuntimeKnobs()
 
+    /** Status in the form of a dictionary, for easy conversion to JSON. */
+    static func statusDictionary() -> [String : Any]? {
+
+        let utcDateFormatter = DateFormatter()
+        utcDateFormatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
+        utcDateFormatter.timeZone = TimeZone(identifier: "GMT")
+        
+        func toArrayOfPairDicts(_ dict: [String : Any]) -> [[String : Any]] {
+            return Array(dict).map { (s , a) in [s : a] }
+        }
+
+        func unwrapValues(_ dict: [String: Any]) -> [String: Any] {
+            return Dictionary(dict.map { (s,a) in (s, (a as! [String: Any])["value"]!) })
+        }
+
+        func extractStatus(from module: TextApiModule) -> [String : Any] {
+            return module.getStatus().map{ unwrapValues($0) } ?? [:]
+        }
+
+        func extractStatus(of subModule: String, from module: TextApiModule?) -> [String : Any] {
+            return (module?.getStatus()?[subModule] as? [String: Any]).map{ unwrapValues($0) } ?? [:]
+        }
+
+        if let runningTime               = Runtime.getMeasure("runningTime"),
+            let energy                   = Runtime.getMeasure("energy"),
+            let numberOfProcessedInputs  = Runtime.getMeasure("iteration") {
+
+            let architecture             = Runtime.architecture?.name ?? "NOT CONFIGURED"
+            let systemConfigurationKnobs = extractStatus(of: "systemConfigurationKnobs", from: Runtime.architecture ) 
+            let applicationKnobs         = extractStatus(of: "applicationKnobs",         from: Runtime.application  )
+            let scenarioKnobs            = extractStatus(                                from: Runtime.scenarioKnobs)
+
+            let status : [String : Any] =
+                [ "time"      : utcDateFormatter.string(from: Date())
+                , "arguments" : 
+                    [ "architecture"             : architecture
+                    , "runningTime"              : runningTime
+                    , "energy"                   : energy
+                    , "numberOfProcessedInputs"  : numberOfProcessedInputs
+                    , "applicationKnobs"         : toArrayOfPairDicts(applicationKnobs)
+                    , "systemConfigurationKnobs" : toArrayOfPairDicts(systemConfigurationKnobs)
+                    , "scenarioKnobs"            : toArrayOfPairDicts(scenarioKnobs)
+                    , "measures"                 : toArrayOfPairDicts(Runtime.getMeasures())
+                    ]
+                ]
+
+            return status
+
+        }
+        else {
+            return nil
+        }
+
+    }
+
+
     static func changeInteractionMode(oldMode: InteractionMode, newMode: InteractionMode) -> Void {
 
         // Change applies only if the value has changed

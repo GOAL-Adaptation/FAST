@@ -249,10 +249,15 @@ public func optimize
                     Runtime.measure("runningTime", runningTime) // running time in seconds
                     // FIXME maybe stalling in scripted mode should not be done inside of optimize but somewhere else in an independent and better way
                     Runtime.reportProgress()
+                    
+                    if Runtime.executeWithTestHarness {
+                        RestClient.sendRequest(to: "status", withBody: Runtime.statusDictionary())
+                    }
                 } 
             }
             else {
                 Log.error("Attempt to execute using controller with undefined model.")
+                fatalError()
             } 
         }
 

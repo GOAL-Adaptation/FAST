@@ -69,7 +69,8 @@ class RestClient {
                     let bodyData = try JSONSerialization.data(withJSONObject: body! as Any, options: .prettyPrinted)
                     if let bodyString = String(data: bodyData, encoding: String.Encoding.utf8) {
                         request.httpBody = bodyData
-                        Log.info("Sending \(method) request to \(urlString) with body: \(bodyString).")
+                        Log.info("Sending \(method) request to \(urlString).")
+                        Log.debug("Sending \(method) request to \(urlString) with body: \(bodyString).")
                     }
                     else {
                         return nilAndLogError("Failed to UTF-encode request body data: \(body!).")
