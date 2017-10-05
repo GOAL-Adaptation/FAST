@@ -28,6 +28,9 @@ endif
 build: copy-resources-build
 	swift build $(SPM_FLAGS)
 
+test: export proteus_runtime_logLevel       := Error
+test: export proteus_client_rest_serverPath := 127.0.0.1
+test: export proteus_client_rest_serverPort := 8080
 test: copy-resources-test
 	swift test $(SPM_FLAGS)
 
@@ -70,21 +73,24 @@ go:               build run
                   
 all:              rebuild run
                   
-run:              export proteus_runtime_interactionMode    := Default
-run:              export proteus_armBigLittle_executionMode := Default
+run:              export proteus_runtime_interactionMode           := Default
+run:              export proteus_armBigLittle_executionMode        := Default
 run:              execute
                   
-run-scripted:     export proteus_runtime_interactionMode    := Scripted
-run-scripted:     export proteus_armBigLittle_executionMode := Default
+run-scripted:     export proteus_runtime_interactionMode           := Scripted
+run-scripted:     export proteus_armBigLittle_executionMode        := Default
 run-scripted:     execute
                   
-emulate:          export proteus_runtime_interactionMode    := Default
-emulate:          export proteus_armBigLittle_executionMode := Emulated
+emulate:          export proteus_runtime_interactionMode           := Default
+emulate:          export proteus_armBigLittle_executionMode        := Emulated
 emulate:          execute
 
-emulate-scripted: export proteus_runtime_interactionMode    := Scripted
-emulate:          export proteus_armBigLittle_executionMode := Emulated
-emulate:          execute
+emulate-scripted: export proteus_runtime_interactionMode           := Scripted
+emulate-scripted: export proteus_armBigLittle_executionMode        := Emulated
+emulate-scripted: execute
+
+evaluate: export proteus_runtime_initializeFromTestHarness := true
+evaluate: emulate-scripted
               
 profile:          export proteus_runtime_applicationExecutionMode := ExhaustiveProfiling
 profile:          export proteus_runtime_profileSize := $(if $(TEST),$(TEST),1000)

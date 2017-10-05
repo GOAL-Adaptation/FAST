@@ -15,34 +15,6 @@ import XCTest
 
 class FASTTests: XCTestCase {
 
-    /** 
-     * If FAST is unable to load the intent or model files, an optimize should 
-     * behave like a while(true) loop. 
-     */
-    func testOptimizeWithoutIntentAndModel() {
-        
-        let threshold = 100
-        var optimizeState: Int = 0
-        var whileState: Int = 0
-
-        optimize("NO_SUCH_INTENT", []) {
-            if optimizeState < threshold {
-                optimizeState += 1
-            }
-            else { Runtime.shouldTerminate = true }
-        }
-
-        while(true) {
-            if whileState < threshold { 
-                whileState += 1
-            }
-            else { break }
-        }
-
-        XCTAssertTrue(optimizeState == whileState)
-
-    }
-
     /**
      * Quick check to see if https://bugs.swift.org/browse/SR-221
      * affects the compiler that executes this test suite.
@@ -70,7 +42,6 @@ class FASTTests: XCTestCase {
     }
 
     static var allTests = [
-        ("testOptimizeWithoutIntentAndModel", testOptimizeWithoutIntentAndModel),
         ("testSR221", testSR221)
     ]
 

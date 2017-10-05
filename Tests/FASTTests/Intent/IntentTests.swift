@@ -16,21 +16,12 @@ import XCTest
 
 class IntentTests: XCTestCase {
 
-    let intent1 = 
-        "knobs       k1 = [1,2,3,4,5]   reference 5      \n" +
-        "            k2 = [1,2,3,4]     reference 4      \n" +
-        "            k3 = [1.1,2.2,3.3] reference 3.3    \n" +
-        "measures    m1: Double                          \n" +
-        "            m2: Double                          \n" +
-        "intent      intent1 max(m1) such that m2 == 0.0 \n" +
-        "trainingSet []"
-
     let compiler = Compiler()
 
     /** Check that the knob space contains all combinations of knob settings. */
     func testKnobSpace() {  
 
-        if let intentSpec = compiler.compileIntentSpec(source: intent1) {
+        if let intentSpec = compiler.compileIntentSpec(source: ThMockRestServer.intent) {
 
             let knobSpace: [KnobSettings] = intentSpec.knobSpace()
             let k1Range = [1,2,3,4,5]

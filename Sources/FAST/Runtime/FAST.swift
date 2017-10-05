@@ -169,6 +169,10 @@ public class Runtime {
 
     private init() {}
 
+    internal static let restServerPort = initialize(type: UInt16.self, name: "port", from: key) ?? 1338
+    // Controls whether or not initialization parameters are obtained from response to post to brass-th/ready
+    internal static let initializeFromTestHarness = initialize(type: Bool.self, name: "initializeFromTestHarness", from: key) ?? false
+
     private static var measures: [String : Double] = [:]
     private static var measuresLock = NSLock()
 
@@ -313,6 +317,20 @@ public class Runtime {
 
     static var scenarioKnobs: ScenarioKnobs = ScenarioKnobs()
 
+    /**
+     * When running in the Scripted InteractionMode, (controlled by the environment variable
+     * proteus_runtime_interactionMode) instruct the Runtime to process numberOfInputs inputs, 
+     * and block until it has completed their processing.
+     */
+    static func process(numberOfInputs: UInt64) {
+
+        Runtime.scriptedCounter += UInt64(numberOfInputs)
+
+        while (Runtime.runtimeKnobs.interactionMode.get() == InteractionMode.Scripted && 
+                Runtime.scriptedCounter > 0) {}
+
+    }
+
     // The runtime API this where the channel connects
     public class RuntimeApiModule: TextApiModule {
         public let name = "Runtime"
@@ -351,10 +369,7 @@ public class Runtime {
 
                         if stepAmount > 0 {
 
-                            Runtime.scriptedCounter += UInt64(stepAmount)
-
-                            while (Runtime.runtimeKnobs.interactionMode.get() == InteractionMode.Scripted && 
-                                   Runtime.scriptedCounter > 0) {}
+                            Runtime.process(numberOfInputs: stepAmount)
 
                             switch verbosityLevel {
 

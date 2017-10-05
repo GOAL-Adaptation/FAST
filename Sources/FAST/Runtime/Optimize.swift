@@ -18,6 +18,8 @@ import FASTController
 
 fileprivate let key = ["proteus","runtime"]
 
+let compiler = Compiler()
+
 /* A strategy for switching between KnobSettings, based on the input index. */
 public class Schedule {
     let schedule: (_ progress: UInt32) -> KnobSettings
@@ -35,11 +37,152 @@ public class Schedule {
     }
 }
 
-/** Start the REST server in a low-priority background thread */
-fileprivate func startRestServer() {
-    DispatchQueue.global(qos: .utility).async {
-        RestServer()
+/** Extract a value of type T from a JSON object */
+func extract<T : InitializableFromString>(type: T.Type, name: String, json: [String : Any]) -> T? {
+    if let v = json[name] {
+        if let t = v as? T {
+            return t
+        }
+        else {
+            if let s = v as? String,
+               let t = T(from: s) {
+                return t
+            }
+            else if let i = v as? Int,
+                    let t = T(from: "\(i)") {
+                return t
+            }
+            else {
+                Log.error("Failed to extract '\(name)' of type \(T.self) from JSON: '\(v)'.")  
+                return nil
+            }
+        }
     }
+    else {
+        Log.error("No key \(name) in JSON.")  
+        return nil
+    }
+}
+
+/** Perturbation */
+struct Perturbation {
+
+    let missionIntent          : IntentSpec
+    let availableCores         : UInt16
+    let availableCoreFrequency : UInt64
+    let missionLength          : UInt64
+    let sceneObfuscation       : Double
+
+    init?(json: [String: Any]) {
+        
+        if let missionIntentString    = extract(type: String.self, name: "missionIntent"         , json: json)
+         , let missionIntent          = compiler.compileIntentSpec(source: missionIntentString)
+         , let availableCores         = extract(type: UInt16.self, name: "availableCores"        , json: json)
+         , let availableCoreFrequency = extract(type: UInt64.self, name: "availableCoreFrequency", json: json)
+         , let missionLength          = extract(type: UInt64.self, name: "missionLength"         , json: json)
+         , let sceneObfuscation       = extract(type: Double.self, name: "sceneObfuscation"      , json: json) {
+
+            self.missionIntent          = missionIntent
+            self.availableCores         = availableCores
+            self.availableCoreFrequency = availableCoreFrequency
+            self.missionLength          = missionLength
+            self.sceneObfuscation       = sceneObfuscation
+
+        }
+        else {
+            Log.error("Unable to parse Perturbation from JSON: \(json).")
+            return nil
+        }
+
+    }
+
+}
+
+/** Initialization Parameters */
+struct InitializationParameters {
+
+    enum ArchitectureName {
+        case ArmBigLittle, XilinxZcu
+    }
+
+    enum ApplicationName {
+        case radar, x264, CaPSuLe, incrementer
+    }
+
+    let architecture            : ArchitectureName
+    let application             : ApplicationName
+    let numberOfInputsToProcess : UInt64  
+    let adaptationEnabled       : Bool
+    let statusInterval          : UInt64
+    let randomSeed              : UInt64
+    let initialConditions       : Perturbation
+
+    init?(json: [String: Any]) {
+
+        if let architecture            = extract(type: ArchitectureName.self, name: "architecture"           , json: json)
+         , let application             = extract(type: ApplicationName.self , name: "application"            , json: json)
+         , let numberOfInputsToProcess = extract(type: UInt64.self          , name: "numberOfInputsToProcess", json: json)
+         , let adaptationEnabled       = extract(type: Bool.self            , name: "adaptationEnabled"      , json: json)
+         , let statusInterval          = extract(type: UInt64.self          , name: "statusInterval"         , json: json)
+         , let randomSeed              = extract(type: UInt64.self          , name: "randomSeed"             , json: json)
+         , let initialConditionsJson   = json["initialConditions"] as? [String : Any] 
+         , let initialConditions       = Perturbation(json: initialConditionsJson)
+        {
+
+            self.architecture            = architecture
+            self.application             = application
+            self.numberOfInputsToProcess = numberOfInputsToProcess
+            self.adaptationEnabled       = adaptationEnabled
+            self.statusInterval          = statusInterval
+            self.randomSeed              = randomSeed
+            self.initialConditions       = initialConditions
+
+        }
+        else {
+            Log.error("Unable to parse Perturbation from JSON: \(json).")
+            return nil
+        }
+
+    }
+
+}
+
+/** Start the REST server in a low-priority background thread */
+fileprivate func startRestServer() -> (RestServer, InitializationParameters?) {
+    
+    var server: RestServer? = nil
+
+    // Start RestServer in a background thread
+    DispatchQueue.global(qos: .utility).async {
+        server = FastRestServer(port: Runtime.restServerPort)
+        server!.start()
+    }
+
+    waitUntilUp(endpoint: "alive", host: "127.0.0.1", port: Runtime.restServerPort, method: .GET, description: "REST")
+
+    if Runtime.initializeFromTestHarness {
+
+        Log.info("Posting to TH/ready.")
+
+        if let initializationParametersJson = RestClient.sendRequest(to: "ready") {
+            Log.verbose("Received response from post to TH/ready.")
+            if let ips = InitializationParameters(json: initializationParametersJson) {
+                return (server!, ips)
+            }
+            else {
+                Log.error("Failed to parse InitializationParameters from response from post to TH/ready: \(initializationParametersJson).")
+                fatalError()
+            }
+        } else {
+            Log.error("No response from TH/ready.")
+            fatalError()
+        }
+
+    }
+    else {
+        return (server!, nil)
+    }
+
 }
 
 /* Defines an optimization scope. Replaces a loop in a pure Swift program. */
@@ -54,7 +197,9 @@ public func optimize
     let logLevel = initialize(type: LoggerMessageType.self, name: "logLevel", from: key, or: .verbose)
     HeliumLogger.use(logLevel)
 
-    startRestServer()
+    // Start the FAST REST API, possibly obtaining initalization parameters
+    // by posting to brass-th/ready
+    let (restServer, initializationParameters) = startRestServer()
 
     /** Loop body for a given number of iterations (or infinitely, if iterations == nil) */
     func loop(iterations: UInt32? = nil, _ body: (Void) -> Void) {
@@ -70,118 +215,152 @@ public func optimize
             }
         }
     }
-    
-    if let intent = Runtime.loadIntent(id) {
-        if let model = Runtime.loadModel(id) {
 
-            // Initialize the controller with the knob-to-mesure model, intent and window size
-            Runtime.initializeController(model, intent, windowSize)
+    func optimizeBasedOn(model: Model, intent: IntentSpec) {
 
-            func runOnce() {
-                if let controllerModel = Runtime.controller.model {
-                    // Initialize measuring device, that will update measures based on the samplingPolicy
-                    let measuringDevice = MeasuringDevice(samplingPolicy, windowSize, labels)
-                    var schedule: Schedule = Schedule(constant: controllerModel.getInitialConfiguration()!.knobSettings)
-                    // FIXME what if the counter overflows
-                    var iteration: UInt32 = 0 // iteration counter
-                    var startTime = ProcessInfo.processInfo.systemUptime // used for runningTime counter
-                    var runningTime = 0.0 // counts only time spent inside the loop body
+        // Initialize the controller with the knob-to-mesure model, intent and window size
+        Runtime.initializeController(model, intent, windowSize)
+
+        func runOnce() {
+            if let controllerModel = Runtime.controller.model {
+                // Initialize measuring device, that will update measures based on the samplingPolicy
+                let measuringDevice = MeasuringDevice(samplingPolicy, windowSize, labels)
+                var schedule: Schedule = Schedule(constant: controllerModel.getInitialConfiguration()!.knobSettings)
+                // FIXME what if the counter overflows
+                var iteration: UInt32 = 0 // iteration counter
+                var startTime = ProcessInfo.processInfo.systemUptime // used for runningTime counter
+                var runningTime = 0.0 // counts only time spent inside the loop body
+                Runtime.measure("iteration", Double(iteration))
+                Runtime.measure("runningTime", runningTime) // running time in seconds
+                loop {
+                    startTime = ProcessInfo.processInfo.systemUptime // reset, in case something paused execution between iterations
+                    executeAndReportProgress(measuringDevice, routine)
+                    iteration += 1
+                    if iteration % windowSize == 0 {
+                        let measureWindowAverages = Dictionary(measuringDevice.stats.map{ (n,s) in (n, s.windowAverage) })
+                        schedule = Runtime.controller.getSchedule(intent, measureWindowAverages)
+                    }
+                    if Runtime.runtimeKnobs.applicationExecutionMode.get() == ApplicationExecutionMode.Adaptive {
+                        // FIXME This should only apply when the schedule actually needs to change knobs
+                        schedule[iteration % windowSize].apply()
+                    }
                     Runtime.measure("iteration", Double(iteration))
+                    runningTime += ProcessInfo.processInfo.systemUptime - startTime
                     Runtime.measure("runningTime", runningTime) // running time in seconds
-                    loop {
-                        startTime = ProcessInfo.processInfo.systemUptime // reset, in case something paused execution between iterations
-                        executeAndReportProgress(measuringDevice, routine)
-                        iteration += 1
-                        if iteration % windowSize == 0 {
-                            let measureWindowAverages = Dictionary(measuringDevice.stats.map{ (n,s) in (n, s.windowAverage) })
-                            schedule = Runtime.controller.getSchedule(intent, measureWindowAverages)
-                        }
-                        if Runtime.runtimeKnobs.applicationExecutionMode.get() == ApplicationExecutionMode.Adaptive {
-                            // FIXME This should only apply when the schedule actually needs to change knobs
-                            schedule[iteration % windowSize].apply()
-                        }
-                        Runtime.measure("iteration", Double(iteration))
-                        runningTime += ProcessInfo.processInfo.systemUptime - startTime
-                        Runtime.measure("runningTime", runningTime) // running time in seconds
-                        // FIXME maybe stalling in scripted mode should not be done inside of optimize but somewhere else in an independent and better way
-                        Runtime.reportProgress()
-                    } 
-                }
-                else {
-                    Log.error("Attempt to execute using controller with undefined model.")
+                    // FIXME maybe stalling in scripted mode should not be done inside of optimize but somewhere else in an independent and better way
+                    Runtime.reportProgress()
                 } 
             }
+            else {
+                Log.error("Attempt to execute using controller with undefined model.")
+            } 
+        }
 
-            Log.info("Application executing in \(Runtime.runtimeKnobs.applicationExecutionMode.get()) mode.")
-            switch Runtime.runtimeKnobs.applicationExecutionMode.get() {
-                case .ExhaustiveProfiling:
+        Log.info("Application executing in \(Runtime.runtimeKnobs.applicationExecutionMode.get()) mode.")
+        switch Runtime.runtimeKnobs.applicationExecutionMode.get() {
+            case .ExhaustiveProfiling:
 
-                    // Initialize measuring device, that will update measures at every input
-                    let measuringDevice = MeasuringDevice(ProgressSamplingPolicy(period: 1), windowSize, labels)
+                // Initialize measuring device, that will update measures at every input
+                let measuringDevice = MeasuringDevice(ProgressSamplingPolicy(period: 1), windowSize, labels)
 
-                    // Number of inputs to process when profiling a configuration
-                    let defaultProfileSize:         UInt32 = UInt32(1000)
-                    // File prefix of knob- and measure tables
-                    let defaultProfileOutputPrefix: String = Runtime.application?.name ?? "fast"
-                    
-                    let profileSize         = initialize(type: UInt32.self, name: "profileSize",         from: key, or: defaultProfileSize)
-                    let profileOutputPrefix = initialize(type: String.self, name: "profileOutputPrefix", from: key, or: defaultProfileOutputPrefix) 
-                    
-                    withOpenFile(atPath: profileOutputPrefix + ".knobtable") { (knobTableOutputStream: Foundation.OutputStream) in
-                        withOpenFile(atPath: profileOutputPrefix + ".measuretable") { (measureTableOutputStream: Foundation.OutputStream) in
+                // Number of inputs to process when profiling a configuration
+                let defaultProfileSize:         UInt32 = UInt32(1000)
+                // File prefix of knob- and measure tables
+                let defaultProfileOutputPrefix: String = Runtime.application?.name ?? "fast"
+                
+                let profileSize         = initialize(type: UInt32.self, name: "profileSize",         from: key, or: defaultProfileSize)
+                let profileOutputPrefix = initialize(type: String.self, name: "profileOutputPrefix", from: key, or: defaultProfileOutputPrefix) 
+                
+                withOpenFile(atPath: profileOutputPrefix + ".knobtable") { (knobTableOutputStream: Foundation.OutputStream) in
+                    withOpenFile(atPath: profileOutputPrefix + ".measuretable") { (measureTableOutputStream: Foundation.OutputStream) in
 
-                            let knobSpace = intent.knobSpace()
-                            let knobNames = Array(knobSpace[0].settings.keys).sorted()
-                            let measureNames = intent.measures
-                            
-                            func makeRow(id: Any, rest: [Any]) -> String {
-                                return "\(id)\(rest.reduce( "", { l,r in "\(l),\(r)" }))\n"
-                            }
-
-                            // Output headers for tables
-                            let knobTableHeader = makeRow(id: "id", rest: knobNames)
-                            knobTableOutputStream.write(knobTableHeader, maxLength: knobTableHeader.characters.count)
-                            let measureTableHeader = makeRow(id: "id", rest: measureNames)
-                            measureTableOutputStream.write(measureTableHeader, maxLength: measureTableHeader.characters.count)
-
-                            for i in 0 ..< knobSpace.count {
-
-                                let knobSettings = knobSpace[i]
-                                Log.info("Start profiling of configuration: \(knobSettings).")
-                                knobSettings.apply()
-                                loop( iterations: profileSize
-                                    , { executeAndReportProgress(measuringDevice, routine) } )
-
-                                // Output profile entry as line in knob table
-                                let knobValues = knobNames.map{ knobSettings.settings[$0]! }
-                                let knobTableLine = makeRow(id: i, rest: knobValues)
-                                knobTableOutputStream.write(knobTableLine, maxLength: knobTableLine.characters.count)
-                                
-                                // Output profile entry as line in measure table
-                                let measureValues = measureNames.map{ measuringDevice.stats[$0]!.totalAverage }
-                                let measureTableLine = makeRow(id: i, rest: measureValues)
-                                measureTableOutputStream.write(measureTableLine, maxLength: measureTableLine.characters.count)
-                                
-                            }
-
+                        let knobSpace = intent.knobSpace()
+                        let knobNames = Array(knobSpace[0].settings.keys).sorted()
+                        let measureNames = intent.measures
+                        
+                        func makeRow(id: Any, rest: [Any]) -> String {
+                            return "\(id)\(rest.reduce( "", { l,r in "\(l),\(r)" }))\n"
                         }
+
+                        // Output headers for tables
+                        let knobTableHeader = makeRow(id: "id", rest: knobNames)
+                        knobTableOutputStream.write(knobTableHeader, maxLength: knobTableHeader.characters.count)
+                        let measureTableHeader = makeRow(id: "id", rest: measureNames)
+                        measureTableOutputStream.write(measureTableHeader, maxLength: measureTableHeader.characters.count)
+
+                        for i in 0 ..< knobSpace.count {
+
+                            let knobSettings = knobSpace[i]
+                            Log.info("Start profiling of configuration: \(knobSettings).")
+                            knobSettings.apply()
+                            loop( iterations: profileSize
+                                , { executeAndReportProgress(measuringDevice, routine) } )
+
+                            // Output profile entry as line in knob table
+                            let knobValues = knobNames.map{ knobSettings.settings[$0]! }
+                            let knobTableLine = makeRow(id: i, rest: knobValues)
+                            knobTableOutputStream.write(knobTableLine, maxLength: knobTableLine.characters.count)
+                            
+                            // Output profile entry as line in measure table
+                            let measureValues = measureNames.map{ measuringDevice.stats[$0]!.totalAverage }
+                            let measureTableLine = makeRow(id: i, rest: measureValues)
+                            measureTableOutputStream.write(measureTableLine, maxLength: measureTableLine.characters.count)
+                            
+                        }
+
                     }
-                    
-                // case .SelectiveProfiling(percentage: Int, extremeValues: Bool):
+                }
+                
+            // case .SelectiveProfiling(percentage: Int, extremeValues: Bool):
 
-                default: // .Adaptive and .NonAdaptive
-                    runOnce()
-            }
+            default: // .Adaptive and .NonAdaptive
+                runOnce()
+        }
 
-        } else {
-            Log.warning("No model loaded for optimize scope '\(id)'. Proceeding without adaptation.")
-            loop(routine)
-        }        
-    } else {
-        Log.warning("No intent loaded for optimize scope '\(id)'. Proceeding without adaptation.")
-        loop(routine)
     }
 
-    print("FAST application terminating.")
+    // Run the optimize loop, either based on initializaiton parameters 
+    // from the Test Harness, or on data read from files.
+
+    if Runtime.initializeFromTestHarness {
+
+        if let ips = initializationParameters {
+
+            // FIXME Read a model corresponding to the initialized application,
+            //       intent, and input stream.
+            let model = Runtime.loadModel(id)!
+            
+            // FIXME Use initialization parameters to initialize the Runtime
+
+            Log.info("Posting to TH/initialized.")
+            RestClient.sendRequest(to: "initialized")
+
+            optimizeBasedOn(model: model, intent: ips.initialConditions.missionIntent)
+
+        }
+        else {
+            Log.error("No initalization parameters received from brass-th/ready.")
+            fatalError()
+        }
+
+    }
+    else {
+        if let intent = Runtime.loadIntent(id) {
+            if let model = Runtime.loadModel(id) {
+
+                optimizeBasedOn(model: model, intent: intent)
+
+            } else {
+                Log.warning("No model loaded for optimize scope '\(id)'. Proceeding without adaptation.")
+                loop(routine)
+            }        
+        } else {
+            Log.warning("No intent loaded for optimize scope '\(id)'. Proceeding without adaptation.")
+            loop(routine)
+        }
+    }
+
+    Log.info("FAST application terminating.")
+    restServer.stop()
 
 }

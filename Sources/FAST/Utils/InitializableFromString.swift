@@ -33,6 +33,20 @@ extension String: InitializableFromString {
 
 }
 
+/** Extension for Bool */
+extension Bool: InitializableFromString {
+
+    public init?(from text: String) {
+        if let value = Bool(text) {
+            self = value
+        } else {
+            failedToInitialize("Bool", from: text)
+            return nil
+        }
+    }
+
+}
+
 /** Extension for Int */
 extension Int: InitializableFromString {
 
@@ -133,6 +147,44 @@ extension LinuxDvfsGovernor: InitializableFromString {
                 self = .Userspace
             default:
                 failedToInitialize("linuxDvfsGovernor", from: text)
+                return nil
+        }
+    }
+
+}
+
+/** Extension for ArchitectureName */
+extension InitializationParameters.ArchitectureName : InitializableFromString {
+
+    public init?(from text: String) {
+        switch text {
+            case "ArmBigLittle": 
+                self = .ArmBigLittle
+            case "XilinxZcu": 
+                self = .XilinxZcu
+            default:
+                failedToInitialize("ArchitectureName", from: text)
+                return nil
+        }
+    }
+
+}
+
+/** Extension for ApplicationName */
+extension InitializationParameters.ApplicationName : InitializableFromString {
+
+    public init?(from text: String) {
+        switch text {
+            case "radar": 
+                self = .radar
+            case "x264": 
+                self = .x264
+            case "CaPSuLe": 
+                self = .CaPSuLe
+            case "incrementer": 
+                self = .incrementer
+            default:
+                failedToInitialize("ApplicationName", from: text)
                 return nil
         }
     }

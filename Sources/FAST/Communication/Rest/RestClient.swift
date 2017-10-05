@@ -96,7 +96,7 @@ class RestClient {
                     }
                     else {
                         if let maybeResponseDataJson = try? responseDataString.jsonDecode(),
-                            let responseDataJson = maybeResponseDataJson as? [String:Any] {
+                           let responseDataJson      = maybeResponseDataJson as? [String:Any] {
                             
                             Log.verbose("Successfully JSON decoded response from \(method) to \(path): \(responseDataJson).")
                             return responseDataJson
