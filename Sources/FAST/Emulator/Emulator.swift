@@ -143,10 +143,10 @@ class Emulator: TextApiModule, ClockMonitor, EnergyMonitor {
     if let recentNumberOfProcessedInpts = Runtime.getMeasure("iteration") {
 
       // Obtain the Application State
-      let applicationConfigurationId   = self.application.getConfigurationId(database: self.database)
+      let applicationConfigurationId   = self.application.getCurrentConfigurationId(database: self.database)
 
       // Obtain the System State
-      let systemConfigurationId        = self.architecture.getConfigurationId(database: self.database)
+      let systemConfigurationId        = self.architecture.getCurrentConfigurationId(database: self.database)
 
       // Emulate system measures for each unemulated input
       if self.numberOfProcessedInputs < UInt64(recentNumberOfProcessedInpts) {

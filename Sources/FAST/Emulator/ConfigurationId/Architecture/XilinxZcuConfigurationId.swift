@@ -21,7 +21,7 @@ import LoggerAPI
 /** Xilinx ZCU 102 Configuration ID from the Database */
 extension Database {
 
-    func getConfigurationId(architecture: XilinxZcu) -> Int {
+    func getCurrentConfigurationId(architecture: XilinxZcu) -> Int {
 
         var result: Int = 0
 
@@ -63,8 +63,8 @@ extension Database {
 /** Xilinx ZCU 102 gets the Configuration Id from the Database*/
 extension XilinxZcu {
     
-    func getConfigurationId(database: Database) -> Int {
-        return database.getConfigurationId(architecture: self)
+    func getCurrentConfigurationId(database: Database) -> Int {
+        return database.getCurrentConfigurationId(architecture: self)
     }
 }
 

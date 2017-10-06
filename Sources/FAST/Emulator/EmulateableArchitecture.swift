@@ -61,7 +61,7 @@ extension ExecutionMode: CustomStringConvertible {
 public protocol EmulateableArchitecture: Architecture {
 
   // Architecture State wil generate a Configuration Id
-  func getConfigurationId(database: Database) -> Int
+  func getCurrentConfigurationId(database: Database) -> Int
 
   // Architecture has an ExecutionMode
   var executionMode: Knob<ExecutionMode> { get }

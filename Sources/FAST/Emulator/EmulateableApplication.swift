@@ -17,8 +17,8 @@
 /** Generic Interface for an Emulateable Application */
 public protocol EmulateableApplication: Application {
 
-  // Application State wil generate a Configuration Id
-  func getConfigurationId(database: Database) -> Int
+  /** Look up the id (in the database) of the current application configuration. */
+  func getCurrentConfigurationId(database: Database) -> Int
 }
 
 //---------------------------------------

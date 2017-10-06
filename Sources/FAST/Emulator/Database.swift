@@ -119,8 +119,10 @@ public class Database: TextApiModule {
     }
   }
 
-  /** Get Configuration Id from DB */
-  public func getConfigurationId(application: Application) -> Int {
+  /** Get the configuration Id of the current application knobs and their corresponding values 
+  from the database. 
+  */
+  public func getCurrentConfigurationId(application: EmulateableApplication) -> Int {
 
     var result: Int = 0
 
