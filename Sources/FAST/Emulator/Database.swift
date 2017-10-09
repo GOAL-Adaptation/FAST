@@ -5,7 +5,7 @@
  *
  *        Database Layer
  *
- *  author: Ferenc A Bartha, Adam Duracz
+ *  author: Ferenc A Bartha, Adam Duracz, Dung Nguyen
  *
  *  SWIFT implementation is based on the C library [pemu] implemented by
  *  Ferenc A Bartha, Dung X Nguyen, Jason Miller, Adam Duracz
@@ -122,66 +122,106 @@ public class Database: TextApiModule {
   /** Get the configuration Id of the current application knobs and their corresponding values 
   from the database. 
   */
-  public func getCurrentConfigurationId(application: EmulateableApplication) -> Int {
+  public func getCurrentConfigurationId(application: Application) -> Int {
 
-    var result: Int = 0
+    var result: Int? = nil
 
-    let sqliteQuery =
-        " SELECT AppsInputsConfigs.appCfgID " + 
-        "   FROM AppsInputs " + 
-        "        INNER JOIN AppsInputsConfigs ON AppsInputs.app_appInpID = AppsInputsConfigs.app_appInpID " +
-        "        INNER JOIN Applications ON Applications.appID = AppsInputs.appID " + 
-        " " + 
-        "  WHERE Applications.appName = :1 " + 
-        "    AND AppsInputsConfigs.cdr = :2 " + 
-        "    AND AppsInputsConfigs.fdr = :3 " + 
-        "    AND AppsInputsConfigs.numRanges = :4 " + 
-        "    AND AppsInputsConfigs.numBeams = :5"
+    var sqliteQuery =
+      "CREATE TEMPORARY VIEW AllAppCfgIdView AS " +
+      "SELECT [ApplicationConfiguration].[id] AS [appCfgId], " +
+      "       [Knob].[name] AS [knobName], " +
+      "       [ApplicationConfiguration_Application_Knob].[knobValue] AS [knobValue] " +
+      "FROM   [Knob] " +
+      "       INNER JOIN [Application_Knob] ON [Knob].[id] = [Application_Knob].[knobId] " +
+      "       INNER JOIN [Application] ON [Application].[id] = [Application_Knob].[applicationId] " +
+      "       INNER JOIN [ApplicationConfiguration_Application_Knob] ON [Application_Knob].[id] = [ApplicationConfiguration_Application_Knob].[applicationKnobId] " +
+      "       INNER JOIN [ApplicationConfiguration] ON [ApplicationConfiguration].[id] = [ApplicationConfiguration_Application_Knob].[applicationConfigurationId] " +
+      "WHERE  [Application].[name] =  '\(application.name)'; " +
+      "SELECT DISTINCT appCfgId FROM AllAppCfgIdView " +
+      "WHERE appCfgId NOT IN (" +
+      " SELECT appCfgId FROM AllAppCfgIdView " +
+      " WHERE appCfgId NOT IN ("
+
+    var appKnobs = application.getStatus()!["applicationKnobs"] as! [String : Any]
+
+  //  let threshold: Int = (appKnobs["threshold"]! as! [String : Any])["value"]! as! Int
+
+    if let (firstKnobName, firstKnobValueAny) = appKnobs.first,
+       let firstKnobValueDict = firstKnobValueAny as? [String : Any],
+       let firstKnobValue = firstKnobValueDict["value"] {
+      sqliteQuery += "SELECT appCfgId FROM AllAppCfgIdView WHERE knobName = '\(firstKnobName)' AND knobValue =  \(firstKnobValue) "
+      appKnobs.removeValue(forKey: firstKnobName)
+    }
+    for (knobName, knobValueAny) in appKnobs {
+      if let knobValueDict = knobValueAny as? [String : Any],
+         let knobValue = knobValueDict["value"] {
+        sqliteQuery += "INTERSECT SELECT appCfgId FROM AllAppCfgIdView WHERE knobName = '\(knobName)' AND knobValue = \(knobValue) "
+      }
+    }
+    sqliteQuery += ") )"
 
     do {
-      try database.forEachRow(statement: sqliteQuery, doBindings: {
-
-        (statement: SQLiteStmt) -> () in
-
-        try statement.bind(position: 1, application.name)
-        try statement.bind(position: 2, 1)
-        try statement.bind(position: 3, 1)
-        try statement.bind(position: 4, 8192)
-        try statement.bind(position: 5, 64)
-
-      })  { (statement: SQLiteStmt, i:Int) -> () in
-
-        result = statement.columnInt(position: 0)
-
-      }
-      Log.debug("Successfully read configuration ID \(result) from emulation database.")
+      print(">>> query:\n\n \(sqliteQuery)")
+      print(">>> before query")
+      try database.forEachRow(statement: sqliteQuery, handleRow: {
+            (s: SQLiteStmt, i:Int) -> () in 
+                  print(">>> in query \((s,i))")
+            result = s.columnInt(position: 0)
+          })
+      print(">>> after query")
     } catch {
-      Log.error("Error running query.")
+      //Log.error("Exception getting the current application configuration ID: \(exception).")
+      fatalError("Cannot execute query: \(sqliteQuery)")
     }
 
-    return result
+    if let res = result {
+      Log.debug("Read reference application configuration from the emulation database: \(res).")
+      return res
+    }
+    else {
+      // Log.error("Failed to read the reference application configuration from the emulation database.")
+      // fatalError("sqliteQuery: \(sqliteQuery)")
+      return -1
+    }
   }
 
+/** Get the configuration Id of the current system knobs and their corresponding values 
+    from the database. 
+*/
+func getCurrentConfigurationId(architecture: Architecture) -> Int {
+// TODO
+/*
+  var sqliteQuery = 
+  "CREATE TEMPORARY VIEW  AllSysCfgIdView AS
+SELECT [SystemConfiguration].[id] AS [sysCfgId], 
+       [Knob].[name] AS [knobName], 
+       [SystemConfiguration_System_Knob].[knobValue] AS [knobValue] 
+FROM   [Knob]
+       INNER JOIN [System_Knob] ON [Knob].[id] = [System_Knob].[knobId]
+       INNER JOIN [System] ON [System].[id] = [System_Knob].[systemId]
+       INNER JOIN [SystemConfiguration_System_Knob] ON [System_Knob].[id] = [SystemConfiguration_System_Knob].[systemKnobId]
+       INNER JOIN [SystemConfiguration] ON [SystemConfiguration].[id] = [SystemConfiguration_System_Knob].[systemConfigurationId]
+WHERE  [System].[name] = 'Xilinx';
+
+SELECT DISTINCT sysCfgId FROM AllSysCfgIdView
+WHERE sysCfgId NOT IN 
+(
+ SELECT sysCfgId FROM AllSysCfgIdView
+ WHERE sysCfgId NOT IN 
+ (
+       SELECT sysCfgId FROM AllSysCfgIdView WHERE knobName = 'numberOfCores' AND knobValue = 3
+       INTERSECT
+       SELECT sysCfgId FROM AllSysCfgIdView WHERE knobName = 'frequency' AND knobValue = 400
+ )
+)"
+*/
+  return -1 // TODO
+}
   /** Create Statistical Views */
   func createStatisticalViews() {
     do {  
 
       var sqliteQuery: String
-      // Loading extensions
-      database.enableLoadExtension()
-
-      // TODO compile extensions in project
-      if let extensionLocation = initialize(type: String.self, from: key.appended(with: "extensionLocation")) {
-        sqliteQuery =
-            "SELECT load_extension('" + extensionLocation + "');"
-        do {
-          try database.execute(statement: sqliteQuery)
-          Log.verbose("Loaded emulation database extensions from '\(extensionLocation)'.")
-        }
-        catch {
-          Log.verbose("Failed to load emulation database extensions from '\(extensionLocation)'.")
-        }
-      }
 
       // Increase cache size
       sqliteQuery =
@@ -195,77 +235,89 @@ public class Database: TextApiModule {
 
       // Creating the post-warmup view
       sqliteQuery =
-        "CREATE TEMPORARY VIEW PostWarmup_App_Sys_JobLogs AS " +
-        "  SELECT [App_Sys_JobLogs].[app_appInp_appCfgID], " +
-        "         [App_Sys_JobLogs].[sys_sysCfgID], " +
-        "         [App_Sys_JobLogs].[jobID], " +
-        "         [App_Sys_JobLogs].[delta_time], " +
-        "         [App_Sys_JobLogs].[delta_energy], " +
-        "         [App_Sys_JobLogs].[instructionCount] " +
-        "  FROM   ([Applications] " +
-        "         INNER JOIN ([AppsInputs] " +
-        "         INNER JOIN [AppsInputsConfigs] ON [AppsInputs].[app_appInpID] = [AppsInputsConfigs].[app_appInpID]) ON [Applications].[appID] = [AppsInputs].[appID]) " +
-        "         INNER JOIN [App_Sys_JobLogs] ON [AppsInputsConfigs].[app_appInp_appCfgID] = [App_Sys_JobLogs].[app_appInp_appCfgID] " +
-        "  WHERE  ((([App_Sys_JobLogs].[jobID]) > [warmupJobNum]))"
+        "CREATE TEMPORARY VIEW PostWarmup_ApplicationSystemInputLog AS  " +
+        "SELECT DISTINCT [ApplicationSystemInputLog].[applicationInputStream_applicationConfigurationId], " +
+        "       [ApplicationSystemInputLog].[systemConfigurationId], " +
+        "       [ApplicationSystemInputLog].[inputNumber], " +
+        "       [ApplicationSystemInputLog].[deltaTime], " +
+        "       [ApplicationSystemInputLog].[deltaEnergy] " +
+        "FROM   [Application] " +
+        "       INNER JOIN [Application_Knob] ON [Application].[id] = [Application_Knob].[applicationId] " +
+        "       INNER JOIN [ApplicationConfiguration_Application_Knob] ON [Application_Knob].[id] = [ApplicationConfiguration_Application_Knob].[applicationKnobId] " +
+        "       INNER JOIN [ApplicationConfiguration] ON [ApplicationConfiguration].[id] = [ApplicationConfiguration_Application_Knob].[applicationConfigurationId] " +
+        "         AND [ApplicationConfiguration].[id] = [ApplicationInputStream_ApplicationConfiguration].[applicationConfigurationId] " +
+        "       INNER JOIN [ApplicationInputStream] ON [Application].[id] = [ApplicationInputStream].[applicationId] " +
+        "       INNER JOIN [ApplicationInputStream_ApplicationConfiguration] ON [ApplicationInputStream].[id] = [ApplicationInputStream_ApplicationConfiguration].[applicationInputId] " +
+        "       INNER JOIN [ApplicationSystemInputLog] ON [ApplicationInputStream_ApplicationConfiguration].[id] = [ApplicationSystemInputLog].[applicationInputStream_applicationConfigurationId] " +
+        "WHERE [ApplicationSystemInputLog].[inputNumber] > [warmupInputNum];"
       try database.execute(statement: sqliteQuery)
 
       Log.verbose("Created emulation database post-warmup view.")
 
       // Creating the statistical post-warmup view
       sqliteQuery =
-        "CREATE TEMPORARY VIEW App_Sys_Logs_Avg_Stdev AS " +
-        "  SELECT        [PostWarmup_App_Sys_JobLogs].[app_appInp_appCfgID], " +
-        "                [PostWarmup_App_Sys_JobLogs].[sys_sysCfgID], " +
-        "         AVG   ([PostWarmup_App_Sys_JobLogs].[delta_time])       AS [AvgOfdelta_time], " +
-        "         STDEV ([PostWarmup_App_Sys_JobLogs].[delta_time])       AS [StDevOfdelta_time], " +
-        "         AVG   ([PostWarmup_App_Sys_JobLogs].[delta_energy])     AS [AvgOfdelta_energy], " +
-        "         STDEV ([PostWarmup_App_Sys_JobLogs].[delta_energy])     AS [StDevOfdelta_energy], " +
-        "         AVG   ([PostWarmup_App_Sys_JobLogs].[instructionCount]) AS [AvgOfinstructionCount], " +
-        "         STDEV ([PostWarmup_App_Sys_JobLogs].[instructionCount]) AS [StDevOfinstructionCount] " +
-        "  FROM     [PostWarmup_App_Sys_JobLogs] " +
-        "    GROUP BY " +
-        "      [PostWarmup_App_Sys_JobLogs].[app_appInp_appCfgID], [PostWarmup_App_Sys_JobLogs].[sys_sysCfgID]"
+        "CREATE TEMPORARY VIEW [PostWarmup_ApplicationSystemInputLog_Avg_Var] AS " +
+        "SELECT [PostWarmup_ApplicationSystemInputLog].[applicationInputStream_applicationConfigurationId], " +
+        "       [PostWarmup_ApplicationSystemInputLog].[systemConfigurationId], " +
+        "       AVG ([PostWarmup_ApplicationSystemInputLog].[deltaTime]) AS [AvgOfDeltaTime], " +
+        "       (SELECT (SUM (([deltaTime] - (SELECT AVG ([deltaTime]) " +
+        "FROM   [PostWarmup_ApplicationSystemInputLog])) * ([deltaTime] - (SELECT AVG ([deltaTime]) " +
+        "FROM   [PostWarmup_ApplicationSystemInputLog])))) / (COUNT ([deltaTime]) - 1) AS [Variance] " +
+        "FROM   [PostWarmup_ApplicationSystemInputLog]) AS [VarOfDeltaTime], " +
+        "       AVG ([PostWarmup_ApplicationSystemInputLog].[deltaEnergy]) AS [AvgOfDeltaEnergy], " +
+        "       (SELECT (SUM (([deltaEnergy] - (SELECT AVG ([deltaEnergy]) " +
+        "FROM   [PostWarmup_ApplicationSystemInputLog])) * ([deltaEnergy] - (SELECT AVG ([deltaEnergy]) " +
+        "FROM   [PostWarmup_ApplicationSystemInputLog])))) / (COUNT ([deltaEnergy]) - 1) AS [Variance] " +
+        "FROM   [PostWarmup_ApplicationSystemInputLog]) AS [VarOfDeltaEnergy] " +
+        "FROM   [PostWarmup_ApplicationSystemInputLog] " +
+        "GROUP  BY [PostWarmup_ApplicationSystemInputLog].[applicationInputStream_applicationConfigurationId], " +
+        "          [PostWarmup_ApplicationSystemInputLog].[systemConfigurationId];"
       try database.execute(statement: sqliteQuery)
       
       Log.verbose("Created emulation database statistical post-warmup view.")
 
     } catch let exception {
-        Log.error("Failure creating emulation database statistical tables in the emulation database: \(exception).")
+        Log.error("Exception creating emulation database statistical tables in the emulation database: \(exception).")
         fatalError()
     }
 
   }
 
-  /** Read the appropriate reference application configuration */
+  /** Read the appropriate reference application configuration 
+  * If there's a more dense profile grid, it makes sense to make different interpolation, 
+  * e.g. basing on the closest intersection of profiled axes.
+  * This is emphasized by keeping these IDs dynamically queried.
+  */
   func getReferenceApplicationConfigurationID(application: String) -> Int {
 
-    // If there's a more dense profile grid, it makes sense to make different interpolation, e.g. basing on the closest intersection of profiled axes.
-    // This is emphasized by keeping these IDs dynamically queried.
     var result: Int? = nil
 
     let sqliteQuery =
-      "SELECT appCfgID " + 
-      "  FROM AppsInputsConfigs " + 
-      "       INNER JOIN AppsInputs ON AppsInputs.app_appInpID = AppsInputsConfigs.app_appInpID " + 
-      "       INNER JOIN Applications ON Applications.appID = AppsInputs.appID " + 
-      " " + 
-      " WHERE AppsInputsConfigs.isReference = 1 " + 
-      "   AND Applications.appName = :1"
-
+    "SELECT appCfgId FROM " +
+    "(SELECT [ApplicationConfiguration].[id] AS appCfgId, " +
+    "        COUNT(*) AS numberOfKnobsWithReferenceValues " +
+    "        FROM   [Application] " +
+    "               INNER JOIN [Application_Knob] ON [Application].[id] = [Application_Knob].[applicationId] " +
+    "               INNER JOIN [ApplicationConfiguration_Application_Knob] ON [Application_Knob].[id] = [ApplicationConfiguration_Application_Knob].[applicationKnobId] " +
+    "               INNER JOIN [ApplicationConfiguration] ON [ApplicationConfiguration].[id] = [ApplicationConfiguration_Application_Knob].[applicationConfigurationId] " +
+    "        WHERE  [Application].[name] = :1 " +
+    "               AND [ApplicationConfiguration_Application_Knob].[knobValue] = [Application_Knob].[knobReferenceValue] " +
+    "        GROUP BY [ApplicationConfiguration].[id] " +
+    "HAVING numberOfKnobsWithReferenceValues = " +
+    "(SELECT COUNT(*) AS numberOfKnobs " +
+    "        FROM " +
+    "        (SELECT [Knob].[name] AS [knobName] " +
+    "        FROM   [Application] " +
+    "               INNER JOIN [Application_Knob] ON [Application].[id] = [Application_Knob].[applicationId] " +
+    "               INNER JOIN [Knob] ON [Knob].[id] = [Application_Knob].[knobId] " +
+    "        WHERE  [Application].[name] = :1)));"
     do {
-
       try database.forEachRow(statement: sqliteQuery, doBindings: {
-
-        (statement: SQLiteStmt) -> () in
-
-        try statement.bind(position: 1, application)
-
-      })  {(statement: SQLiteStmt, i:Int) -> () in
-
-        result = statement.columnInt(position: 0)
-
+        (s1: SQLiteStmt) -> () in 
+          try s1.bind(position: 1, application)
+      }) { 
+        (s2: SQLiteStmt, i:Int) -> () in result = s2.columnInt(position: 0)
       }
-
     } catch let exception {
       Log.error("Exception while reading the reference application configuration from the emulation database: \(exception).")
       fatalError()
@@ -282,105 +334,125 @@ public class Database: TextApiModule {
           
   }
 
-  /** Read the appropriate reference system configuration */
+  /** Read the appropriate reference system configuration 
+  * If there's a more dense profile grid, it makes sense to make different interpolation, 
+  * e.g. basing on the closest intersection of profiled axes.
+  * This is emphasized by keeping these IDs dynamically queried.
+  */
   func getReferenceSystemConfigurationID(architecture: String) -> Int {
 
-    // If there's a more dense profile grid, it makes sense to make different interpolation, e.g. basing on the closest intersection of profiled axes.
-    // This is emphasized by keeping these IDs dynamically queried.
-    var result = 0;
+    var result: Int? = nil
 
     let sqliteQuery =
-      "SELECT SystemsConfigs.sysCfgID " + 
-      "  FROM SystemsConfigs " + 
-      "       INNER JOIN Systems ON Systems.sysID = SystemsConfigs.sysID " + 
-      " " + 
-      " WHERE SystemsConfigs.isReference = 1 " + 
-      "   AND Systems.sysName = :1"
-
+    "SELECT sysCfgId " +
+    "FROM " +
+      "(SELECT [SystemConfiguration].[id] AS sysCfgId, " +
+              "COUNT(*) AS numberOfKnobsWithReferenceValues " +
+        "FROM   [System] " +
+          "INNER JOIN [System_Knob] ON [System].[id] = [System_Knob].[systemId] " +
+          "INNER JOIN [SystemConfiguration_System_Knob] ON [System_Knob].[id] = [SystemConfiguration_System_Knob].[systemKnobId] " +
+          "INNER JOIN [SystemConfiguration] ON [SystemConfiguration].[id] = [SystemConfiguration_System_Knob].[systemConfigurationId] " +
+        "WHERE  [System].[name] = :1 " +
+                "AND [SystemConfiguration_System_Knob].[knobValue] = [System_Knob].[knobReferenceValue] " +
+        "GROUP BY [SystemConfiguration].[id] " +
+    "HAVING numberOfKnobsWithReferenceValues = " +
+      "(SELECT COUNT(*) AS numberOfSystemKnobs " +
+      "FROM (SELECT [Knob].[name] AS [knobName] " +
+        "FROM   [System] " +
+            "INNER JOIN [System_Knob] ON [System].[id] = [System_Knob].[systemId] " +
+            "INNER JOIN [Knob] ON [Knob].[id] = [System_Knob].[knobId] " +
+        "WHERE  [System].[name] = :1)));"
     do {
-
       try database.forEachRow(statement: sqliteQuery, doBindings: {
-
-        (statement: SQLiteStmt) -> () in
-
-        try statement.bind(position: 1, architecture)
-
-      })  {(statement: SQLiteStmt, i:Int) -> () in
-
-        result = statement.columnInt(position: 0)
-
-      }
-
-    } catch let exception {
-      Log.error("Failed to read the reference system configuration from the emulation database: \(exception).")
-      fatalError()
+        (s1: SQLiteStmt) -> () in try s1.bind(position: 1, architecture)
+      })  { (s2: SQLiteStmt, i:Int) -> () in result = s2.columnInt(position: 0) }
+      } catch let exception {
+        Log.error("Failed to read the reference system configuration from the emulation database: \(exception).")
+        fatalError()
     }
 
-    return result
+    if let res = result {
+        Log.debug("Read reference system configuration from the emulation database: \(res).")
+        return res
+    }
+    else {
+        Log.error("Failed to read the reference system configuration from the emulation database.")
+        fatalError()
+    }
+
   }
 
   /** Read the number of warmupInputs */
   func getWarmupInputs(application: String) -> Int {
 
-    var result = 0
+    var result: Int? = nil
     
     let sqliteQuery =
-      "SELECT Applications.warmupJobNum " + 
-      "  FROM Applications " + 
-      " " + 
-      " WHERE Applications.appName = :1"
-
+      "SELECT Application.warmupInputNum " +
+      "FROM Application " +
+      "WHERE Application.name = :1;"
     do {
       try database.forEachRow(statement: sqliteQuery, doBindings: {
-
-        (statement: SQLiteStmt) -> () in
-
-        try statement.bind(position: 1, application)
-
-      })  { (statement: SQLiteStmt, i:Int) -> () in
-
-        result = statement.columnInt(position: 0)   
-
-      }
+        (s1: SQLiteStmt) -> () in try s1.bind(position: 1, application)
+      })  { (s2: SQLiteStmt, i:Int) -> () in result = s2.columnInt(position: 0) }
     } catch let exception {
       Log.error("Failed to read the number of warmupInputs from the emulation database: \(exception).")
       fatalError()
     }
-
-    return result
-
+    if let res = result {
+        Log.debug("Read number of warmup inputs from the emulation database: \(res).")
+        return res
+    }
+    else {
+        Log.error("Failed to read the number of warmup inputs from the emulation database.")
+        fatalError()
+    }
   }
 
-  /** Get number of inputs profiled */
+  /** Get number of inputs profiled 
+  *  Obtain the number of taped inputs
+  *  NOTE Asserts that from 1 to number all inputID-s are present and unique
+  */
   func getNumberOfInputsProfiled( application: String, 
                                   architecture: String, 
                                   appCfg applicationConfigurationID: Int, 
                                   appInp applicationInputID: Int, 
                                   sysCfg systemConfigurationID: Int) -> Int {
-   // Obtain the number of taped inputs
-   // NOTE Asserts that from 1 to number all inputID-s are present and unique
-
 
     var result = 0
     
-    let sqliteQuery =
-      "SELECT max(App_Sys_JobLogs.jobID) " + 
-      "  FROM AppsInputs " + 
-      "       INNER JOIN SystemsConfigs ON SystemsConfigs.sys_sysCfgID = App_Sys_JobLogs.sys_sysCfgID" + 
-      "       INNER JOIN Systems ON SystemsConfigs.sysID = Systems.sysID " + 
-      "       INNER JOIN AppsInputsConfigs ON AppsInputs.app_appInpID = AppsInputsConfigs.app_appInpID" + 
-      "       INNER JOIN App_Sys_JobLogs ON AppsInputsConfigs.app_appInp_appCfgID = App_Sys_JobLogs.app_appInp_appCfgID " + 
-      " " + 
-      " WHERE AppsInputs.appID = :1 " + 
-      "   AND AppsInputs.appInpID = :2 " + 
-      "   AND AppsInputsConfigs.appCfgID = :3 " + 
-      "   AND Systems.sysName = :4 " + 
-      "   AND SystemsConfigs.sysCfgID = :5"
-
+    let sqliteQuery =    
+    "SELECT MAX ([ApplicationSystemInputLog].[inputNumber]) AS [MaxInputNumber], " +
+    "       [Application].[name] AS [appName], " +
+    "       [System].[name] AS [sysName], " +
+    "       [ApplicationConfiguration].[id] AS [appCfgId], " +
+    "       [ApplicationInputStream].[id] AS [appInpStrmId], " +
+    "       [SystemConfiguration].[id] AS [sysConfigId] " +
+    "FROM   [Application] " +
+    "       INNER JOIN [ApplicationInputStream] ON [Application].[id] = [ApplicationInputStream].[applicationId] " +
+    "       INNER JOIN [Application_Knob] ON [Application].[id] = [Application_Knob].[applicationId] " +
+    "       INNER JOIN [ApplicationConfiguration_Application_Knob] ON [Application_Knob].[id] = [ApplicationConfiguration_Application_Knob].[applicationKnobId] " +
+    "       INNER JOIN [ApplicationInputStream_ApplicationConfiguration] ON [ApplicationInputStream].[id] = [ApplicationInputStream_ApplicationConfiguration].[applicationInputId] " +
+    "       INNER JOIN [ApplicationSystemInputLog] ON [ApplicationInputStream_ApplicationConfiguration].[id] = [ApplicationSystemInputLog].[applicationInputStream_applicationConfigurationId] " +
+    "       INNER JOIN [SystemConfiguration] ON [SystemConfiguration].[id] = [ApplicationSystemInputLog].[systemConfigurationId] " +
+    "       INNER JOIN [SystemConfiguration_System_Knob] ON [SystemConfiguration].[id] = [SystemConfiguration_System_Knob].[systemConfigurationId] " +
+    "       INNER JOIN [System_Knob] ON [System_Knob].[id] = [SystemConfiguration_System_Knob].[systemKnobId] " +
+    "       INNER JOIN [System] ON [System].[id] = [System_Knob].[systemId] " +
+    "       INNER JOIN [ApplicationConfiguration] ON [ApplicationConfiguration].[id] = [ApplicationConfiguration_Application_Knob].[applicationConfigurationId] " +
+    "       AND [ApplicationConfiguration].[id] = [ApplicationInputStream_ApplicationConfiguration].[applicationConfigurationID] " +
+    "WHERE  [Application].[name] = :1 " +
+    "       AND [System].[name] = :2 " +
+    "       AND [ApplicationConfiguration].[id] = :3 " +
+    "       AND [ApplicationInputStream].[id] = :4 " +
+    "       AND [SystemConfiguration].[id] = :5 " +
+    "GROUP  BY [Application].[name], " +
+    "          [System].[name],  " +
+    "          [ApplicationConfiguration].[id], " +
+    "          [ApplicationInputStream].[id], " +
+    "          [SystemConfiguration].[id];"
     do {
 
       try database.forEachRow(statement: sqliteQuery, doBindings: {
-
         (statement: SQLiteStmt) -> () in
 
         try statement.bind(position: 1, application)
@@ -390,9 +462,7 @@ public class Database: TextApiModule {
         try statement.bind(position: 5, systemConfigurationID)
 
       })  { (statement: SQLiteStmt, i:Int) -> () in
-
-        result = statement.columnInt(position: 0)
-            
+        result = statement.columnInt(position: 0)            
       }
 
     } catch let exception {
@@ -401,42 +471,37 @@ public class Database: TextApiModule {
     }
 
     return result
-
   }
 
   /** Obtain the Tape noise*/
   func getTapeNoise(application: String) -> Double {
-
-    var result = 0.0
+    var result: Double? = nil
     
     let sqliteQuery =
-       "SELECT JobLogs_Parameters.tapeNoise " + 
-       "  FROM Applications " + 
-       "       INNER JOIN JobLogs_Parameters ON JobLogs_Parameters.appID = Applications.appID " + 
-       " " + 
-       " WHERE Applications.appName = :1"
-
+       "SELECT JobLogParameter.tapeNoise   " +
+       "FROM Application  " +
+       "  INNER JOIN JobLogParameter ON JobLogParameter.applicationId = Application.id " +
+       " WHERE Application.name = :1;"
     do {
-
       try database.forEachRow(statement: sqliteQuery, doBindings: {
-
         (statement: SQLiteStmt) -> () in
-
         try statement.bind(position: 1, application)
-
       })  { (statement: SQLiteStmt, i:Int) -> () in
-
-        result = statement.columnDouble(position: 0)
-            
+        result = statement.columnDouble(position: 0)            
       }
-
     } catch let exception {
       Log.error("Failed to read the Tape noise from the emulation database: \(exception).")
       fatalError()
     }
 
-    return result
-            
+    if let res = result {
+        Log.debug("Read the tape noise from the emulation database: \(res).")
+        return res
+    }
+    else {
+        Log.error("Failed to read the tape noise from the emulation database.")
+        fatalError()
+    }
   }
 
   /** Select which input to read in Tape mode */
@@ -481,33 +546,23 @@ public class Database: TextApiModule {
     var result = (0.0, 0.0)
     
     let sqliteQuery =
-        "SELECT JobLogs_Parameters.timeOutlier, JobLogs_Parameters.energyOutlier " + 
-        "  FROM Applications " + 
-        "       INNER JOIN JobLogs_Parameters ON JobLogs_Parameters.appID = Applications.appID " + 
-        " " + 
-        " WHERE Applications.appName = :1"
-
+   "SELECT JobLogParameter.timeOutlier, JobLogParameter.energyOutlier  " +
+    "FROM Application " +
+    "INNER JOIN JobLogParameter ON JobLogParameter.applicationId = Application.id " +
+    " WHERE Application.name = :1;"
     do {
-
       try database.forEachRow(statement: sqliteQuery, doBindings: {
-
         (statement: SQLiteStmt) -> () in
-
         try statement.bind(position: 1, application)
-
       })  { (statement: SQLiteStmt, i:Int) -> () in
-
-        result = (statement.columnDouble(position: 0), statement.columnDouble(position: 1))
-            
+        result = (statement.columnDouble(position: 0), statement.columnDouble(position: 1))            
       }
-
     } catch let exception {
       Log.error("Failed to read the outliers for the application from the emulation database: \(exception).")
       fatalError()
     }
 
     return result
-
   }
 
   //-------------------------------
@@ -545,41 +600,41 @@ public class Database: TextApiModule {
         let entryID = getInputNumberToRead(inputID: progressCounter, maximalInputID: maximalInputID, warmupInputs: warmupInputs)
 
         let sqliteQuery =
-          "SELECT App_Sys_JobLogs.delta_time, App_Sys_JobLogs.delta_energy " + 
-          "  FROM AppsInputs " + 
-          "       INNER JOIN Applications      ON Applications.appID = AppsInputs.appID " + 
-          "       INNER JOIN AppsInputsConfigs ON AppsInputs.app_appInpID = AppsInputsConfigs.app_appInpID " + 
-          "       INNER JOIN App_Sys_JobLogs   ON AppsInputsConfigs.app_appInp_appCfgID = App_Sys_JobLogs.app_appInp_appCfgID " + 
-          "       INNER JOIN SystemsConfigs    ON SystemsConfigs.sys_sysCfgID = App_Sys_JobLogs.sys_sysCfgID " + 
-          "       INNER JOIN Systems           ON SystemsConfigs.sysID = Systems.sysID " + 
-          " " + 
-          " WHERE Applications.appName = :1 " + 
-          "   AND AppsInputs.appInpID = :2 " + 
-          "   AND AppsInputsConfigs.appCfgID = :3 " + 
-          "   AND Systems.sysName = :4 " + 
-          "   AND SystemsConfigs.sysCfgID = :5 " + 
-          "   AND App_Sys_JobLogs.jobID = :6"
-        
+        "SELECT DISTINCT [ApplicationSystemInputLog].[deltaTime], " +
+        "       [ApplicationSystemInputLog].[deltaEnergy] " +
+        "FROM   [Application] " +
+        "       INNER JOIN [Application_Knob] ON [Application].[id] = [Application_Knob].[applicationId] " +
+        "       INNER JOIN [ApplicationConfiguration_Application_Knob] ON [Application_Knob].[id] = [ApplicationConfiguration_Application_Knob].[applicationKnobId] " +
+        "       INNER JOIN [ApplicationConfiguration] ON [ApplicationConfiguration].[id] = [ApplicationConfiguration_Application_Knob].[applicationConfigurationId] " +
+        "       AND [ApplicationConfiguration].[id] = [ApplicationInputStream_ApplicationConfiguration].[applicationConfigurationId] " +
+        "       INNER JOIN [ApplicationInputStream] ON [Application].[id] = [ApplicationInputStream].[applicationId] " +
+        "       INNER JOIN [ApplicationInputStream_ApplicationConfiguration] ON [ApplicationInputStream].[id] = [ApplicationInputStream_ApplicationConfiguration].[applicationInputId] " +
+        "       INNER JOIN [ApplicationSystemInputLog] ON [ApplicationInputStream_ApplicationConfiguration].[id] = [ApplicationSystemInputLog].[applicationInputStream_applicationConfigurationId] " +
+        "       INNER JOIN [SystemConfiguration] ON [SystemConfiguration].[id] = [ApplicationSystemInputLog].[systemConfigurationId] " +
+        "       INNER JOIN [SystemConfiguration_System_Knob] ON [SystemConfiguration].[id] = [SystemConfiguration_System_Knob].[systemConfigurationId] " +
+        "       INNER JOIN [System_Knob] ON [System_Knob].[id] = [SystemConfiguration_System_Knob].[systemKnobId] " + 
+        "       INNER JOIN [System] ON [System].[id] = [System_Knob].[systemId] " +
+        "WHERE  [Application].[name] = :1 " +
+        "       AND [System].[name] = :2 " +
+        "       AND [ApplicationConfiguration].[id] = :3 " +
+        "       AND [ApplicationInputStream].[id] = :4 " +
+        "       AND [SystemConfiguration].[id] = :5 " +
+        "       AND [ApplicationSystemInputLog].[inputNumber] = :6;"             
         do {
-
           try database.forEachRow(statement: sqliteQuery, doBindings: {
-
             (statement: SQLiteStmt) -> () in
 
-              try statement.bind(position: 1, application)
-              try statement.bind(position: 2, applicationInputID)
-              try statement.bind(position: 3, applicationConfigurationID)
-              try statement.bind(position: 4, architecture)
-              try statement.bind(position: 5, systemConfigurationID)
-              try statement.bind(position: 6, entryID)
+                try statement.bind(position: 1, application)
+                try statement.bind(position: 2, architecture)
+                try statement.bind(position: 3, applicationConfigurationID)
+                try statement.bind(position: 4, applicationInputID)
+                try statement.bind(position: 5, systemConfigurationID)
+                try statement.bind(position: 6, entryID)
 
           })  {(statement: SQLiteStmt, i:Int) -> () in
-
             readTime = statement.columnInt(position: 0)
-            readEnergy = statement.columnInt(position: 1)
-                
+            readEnergy = statement.columnInt(position: 1)               
           }
-
         } catch let exception {
           Log.error("Failed to read the delta from the emulation database (in Tape reading mode): \(exception).")
           fatalError()
@@ -601,41 +656,50 @@ public class Database: TextApiModule {
         if progressCounter <= warmupInputs {
 
           sqliteQuery =
-            "SELECT App_Sys_JobLogs.delta_time, 0 AS StDevOfdelta_time, App_Sys_JobLogs.delta_energy, 0 AS StDevOfdelta_energy, " + 
-            "       App_Sys_JobLogs.instructionCount, 0 AS StDevOfinstructionCount " + 
-            "  FROM AppsInputs " + 
-            "       INNER JOIN Applications      ON Applications.appID = AppsInputs.appID " + 
-            "       INNER JOIN SystemsConfigs    ON SystemsConfigs.sys_sysCfgID = App_Sys_JobLogs.sys_sysCfgID" + 
-            "       INNER JOIN AppsInputsConfigs ON AppsInputs.app_appInpID = AppsInputsConfigs.app_appInpID" + 
-            "       INNER JOIN App_Sys_JobLogs   ON AppsInputsConfigs.app_appInp_appCfgID = App_Sys_JobLogs.app_appInp_appCfgID" + 
-            "       INNER JOIN Systems           ON SystemsConfigs.sysID = Systems.sysID " + 
-            " " + 
-            " WHERE Applications.appName = :1 " + 
-            "   AND AppsInputs.appInpID = :2 " + 
-            "   AND AppsInputsConfigs.appCfgID = :3 " + 
-            "   AND Systems.sysName = :4 " + 
-            "   AND SystemsConfigs.sysCfgID = :5 " + 
-            "   AND App_Sys_JobLogs.jobID = :6"
+        "SELECT DISTINCT [ApplicationSystemInputLog].[deltaTime], 0 AS VarOfDeltaTime," +
+        "       [ApplicationSystemInputLog].[deltaEnergy], 0 AS VarOfDeltaEnergy " +
+        "FROM   [Application] " +
+        "       INNER JOIN [Application_Knob] ON [Application].[id] = [Application_Knob].[applicationId] " +
+        "       INNER JOIN [ApplicationConfiguration_Application_Knob] ON [Application_Knob].[id] = [ApplicationConfiguration_Application_Knob].[applicationKnobId] " +
+        "       INNER JOIN [ApplicationConfiguration] ON [ApplicationConfiguration].[id] = [ApplicationConfiguration_Application_Knob].[applicationConfigurationId] " +
+        "       AND [ApplicationConfiguration].[id] = [ApplicationInputStream_ApplicationConfiguration].[applicationConfigurationId] " +
+        "       INNER JOIN [ApplicationInputStream] ON [Application].[id] = [ApplicationInputStream].[applicationId] " +
+        "       INNER JOIN [ApplicationInputStream_ApplicationConfiguration] ON [ApplicationInputStream].[id] = [ApplicationInputStream_ApplicationConfiguration].[applicationInputId] " +
+        "       INNER JOIN [ApplicationSystemInputLog] ON [ApplicationInputStream_ApplicationConfiguration].[id] = [ApplicationSystemInputLog].[applicationInputStream_applicationConfigurationId] " +
+        "       INNER JOIN [SystemConfiguration] ON [SystemConfiguration].[id] = [ApplicationSystemInputLog].[systemConfigurationId] " +
+        "       INNER JOIN [SystemConfiguration_System_Knob] ON [SystemConfiguration].[id] = [SystemConfiguration_System_Knob].[systemConfigurationId] " +
+        "       INNER JOIN [System_Knob] ON [System_Knob].[id] = [SystemConfiguration_System_Knob].[systemKnobId] " + 
+        "       INNER JOIN [System] ON [System].[id] = [System_Knob].[systemId] " +
+        "WHERE  [Application].[name] = :1 " +
+        "       AND [System].[name] = :2 " +
+        "       AND [ApplicationConfiguration].[id] = :3 " +
+        "       AND [ApplicationInputStream].[id] = :4 " +
+        "       AND [SystemConfiguration].[id] = :5 " +
+        "       AND [ApplicationSystemInputLog].[inputNumber] = :6;"     
 
         // post-warmup: given a global app ID, a global sys ID, find average delta time and energy and their corresponding stdev:
         } else {
 
           sqliteQuery =
-            "SELECT App_Sys_Logs_Avg_Stdev.AvgOfdelta_time, App_Sys_Logs_Avg_Stdev.StDevOfdelta_time, " + 
-            "       App_Sys_Logs_Avg_Stdev.AvgOfdelta_energy, App_Sys_Logs_Avg_Stdev.StDevOfdelta_energy " + 
-            "  FROM AppsInputs " + 
-            "       INNER JOIN Applications           ON Applications.appID = AppsInputs.appID " + 
-            "       INNER JOIN AppsInputsConfigs      ON AppsInputs.app_appInpID = AppsInputsConfigs.app_appInpID " +
-            "       INNER JOIN App_Sys_Logs_Avg_Stdev ON AppsInputsConfigs.app_appInp_appCfgID = App_Sys_Logs_Avg_Stdev.app_appInp_appCfgID " + 
-            "       INNER JOIN SystemsConfigs         ON SystemsConfigs.sys_sysCfgID = App_Sys_Logs_Avg_Stdev.sys_sysCfgID " + 
-            "       INNER JOIN Systems                ON SystemsConfigs.sysID = Systems.sysID " + 
-            " " + 
-            " WHERE Applications.appName = :1 " + 
-            "   AND AppsInputs.appInpID = :2 " + 
-            "   AND AppsInputsConfigs.appCfgID = :3 " + 
-            "   AND Systems.sysName = :4 " + 
-            "   AND SystemsConfigs.sysCfgID = :5 "
-
+        "SELECT DISTINCT [PostWarmup_ApplicationSystemInputLog_Avg_Var].[AvgOfDeltaTime], [PostWarmup_ApplicationSystemInputLog_Avg_Var].[VarOfDeltaTime], " +
+        "       [PostWarmup_ApplicationSystemInputLog_Avg_Var].[AvgOfDeltaEnergy], [PostWarmup_ApplicationSystemInputLog_Avg_Var].[VarOfDeltaEnergy] " +
+        "FROM   [Application] " +
+        "       INNER JOIN [Application_Knob] ON [Application].[id] = [Application_Knob].[applicationId] " +
+        "       INNER JOIN [ApplicationConfiguration_Application_Knob] ON [Application_Knob].[id] = [ApplicationConfiguration_Application_Knob].[applicationKnobId] " +
+        "       INNER JOIN [ApplicationConfiguration] ON [ApplicationConfiguration].[id] = [ApplicationConfiguration_Application_Knob].[applicationConfigurationId] " +
+        "       AND [ApplicationConfiguration].[id] = [ApplicationInputStream_ApplicationConfiguration].[applicationConfigurationId] " +
+        "       INNER JOIN [ApplicationInputStream] ON [Application].[id] = [ApplicationInputStream].[applicationId] " +
+        "       INNER JOIN [ApplicationInputStream_ApplicationConfiguration] ON [ApplicationInputStream].[id] = [ApplicationInputStream_ApplicationConfiguration].[applicationInputId] " +
+        "       INNER JOIN [PostWarmup_ApplicationSystemInputLog_Avg_Var] ON [ApplicationInputStream_ApplicationConfiguration].[id] = [PostWarmup_ApplicationSystemInputLog_Avg_Var].[applicationInputStream_applicationConfigurationId] " +
+        "       INNER JOIN [SystemConfiguration] ON [SystemConfiguration].[id] = [PostWarmup_ApplicationSystemInputLog_Avg_Var].[systemConfigurationId] " +
+        "       INNER JOIN [SystemConfiguration_System_Knob] ON [SystemConfiguration].[id] = [SystemConfiguration_System_Knob].[systemConfigurationId] " +
+        "       INNER JOIN [System_Knob] ON [System_Knob].[id] = [SystemConfiguration_System_Knob].[systemKnobId] " +
+        "       INNER JOIN [System] ON [System].[id] = [System_Knob].[systemId] " +
+        "WHERE  [Application].[name] = :1 " +
+        "       AND [System].[name] = :2 " +
+        "       AND [ApplicationConfiguration].[id] = :3" +
+        "       AND [ApplicationInputStream].[id] = :4 " +
+        "       AND [SystemConfiguration].[id] = :5;"
         }
 
         var meanDeltaTime = 0
@@ -649,11 +713,11 @@ public class Database: TextApiModule {
 
             (statement: SQLiteStmt) -> () in
 
-              try statement.bind(position: 1, application)
-              try statement.bind(position: 2, applicationInputID)
-              try statement.bind(position: 3, applicationConfigurationID)
-              try statement.bind(position: 4, architecture)
-              try statement.bind(position: 5, systemConfigurationID)
+                try statement.bind(position: 1, application)
+                try statement.bind(position: 2, architecture)
+                try statement.bind(position: 3, applicationConfigurationID)
+                try statement.bind(position: 4, applicationInputID)
+                try statement.bind(position: 5, systemConfigurationID)
 
               // warmup data requires the inputID
               if progressCounter <= warmupInputs {
