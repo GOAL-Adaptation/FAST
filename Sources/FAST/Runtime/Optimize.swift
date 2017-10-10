@@ -41,6 +41,16 @@ fileprivate func startRestServer() {
     }
 }
 
+internal func initializeRandomNumberGenerators() {
+    let seed = initialize(type: UInt64.self, name: "randomSeed", from: key)
+    if let mySeed = seed {
+        randomizerInit(seed: mySeed) 
+    }
+    else {
+        randomizerInit(seed: 0)  // DXN_DBG: forcing seed to be 0, if not read from the environment
+    }
+}
+
 /* Defines an optimization scope. Replaces a loop in a pure Swift program. */
 public func optimize
     ( _ id: String
@@ -50,7 +60,12 @@ public func optimize
     , _ labels: [String]
     , _ routine: @escaping (Void) -> Void ) {
 
+    /* Perform runtime initialization
+     * FIXME: This code should be moved into the initalizer for
+     *        the Runtime class, once it is made non-static.
+     */
     startRestServer()
+    initializeRandomNumberGenerators()
 
     /** Loop body for a given number of iterations (or infinitely, if iterations == nil) */
     func loop(iterations: UInt32? = nil, _ body: (Void) -> Void) {
