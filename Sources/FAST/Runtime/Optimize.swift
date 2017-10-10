@@ -218,113 +218,110 @@ public func optimize
         }
     }
 
-    func optimizeBasedOn(model: Model, intent: IntentSpec) {
+    func profile(intent: IntentSpec) {
 
-        // Initialize the controller with the knob-to-mesure model, intent and window size
-        Runtime.initializeController(model, intent, windowSize)
+        Log.info("Profiling optimize scope \(id).")
 
-        func runOnce() {
-            if let controllerModel = Runtime.controller.model {
-                // Initialize measuring device, that will update measures based on the samplingPolicy
-                let measuringDevice = MeasuringDevice(samplingPolicy, windowSize, labels)
-                var schedule: Schedule = Schedule(constant: controllerModel.getInitialConfiguration()!.knobSettings)
-                // FIXME what if the counter overflows
-                var iteration: UInt32 = 0 // iteration counter
-                var startTime = ProcessInfo.processInfo.systemUptime // used for runningTime counter
-                var runningTime = 0.0 // counts only time spent inside the loop body
-                Runtime.measure("iteration", Double(iteration))
-                Runtime.measure("runningTime", runningTime) // running time in seconds
-                loop(iterations: inputsToProcess) {
-                    startTime = ProcessInfo.processInfo.systemUptime // reset, in case something paused execution between iterations
-                    executeAndReportProgress(measuringDevice, routine)
-                    iteration += 1
-                    if iteration % windowSize == 0 {
-                        let measureWindowAverages = Dictionary(measuringDevice.stats.map{ (n,s) in (n, s.windowAverage) })
-                        schedule = Runtime.controller.getSchedule(intent, measureWindowAverages)
-                    }
-                    if Runtime.runtimeKnobs.applicationExecutionMode.get() == ApplicationExecutionMode.Adaptive {
-                        // FIXME This should only apply when the schedule actually needs to change knobs
-                        schedule[iteration % windowSize].apply()
-                    }
-                    Runtime.measure("iteration", Double(iteration))
-                    runningTime += ProcessInfo.processInfo.systemUptime - startTime
-                    Runtime.measure("runningTime", runningTime) // running time in seconds
-                    // FIXME maybe stalling in scripted mode should not be done inside of optimize but somewhere else in an independent and better way
-                    Runtime.reportProgress()
-                    
-                    if Runtime.executeWithTestHarness {
-                        RestClient.sendRequest(to: "status", withBody: Runtime.statusDictionary())
-                    }
-                } 
-            }
-            else {
-                Log.error("Attempt to execute using controller with undefined model.")
-                fatalError()
-            } 
-        }
+        // Initialize measuring device, that will update measures at every input
+        let measuringDevice = MeasuringDevice(ProgressSamplingPolicy(period: 1), windowSize, labels)
 
-        Log.info("Application executing in \(Runtime.runtimeKnobs.applicationExecutionMode.get()) mode.")
-        switch Runtime.runtimeKnobs.applicationExecutionMode.get() {
-            case .ExhaustiveProfiling:
+        // Number of inputs to process when profiling a configuration
+        let defaultProfileSize:         UInt64 = UInt64(1000)
+        // File prefix of knob- and measure tables
+        let defaultProfileOutputPrefix: String = Runtime.application?.name ?? "fast"
+        
+        let profileSize         = initialize(type: UInt64.self, name: "profileSize",         from: key, or: defaultProfileSize)
+        let profileOutputPrefix = initialize(type: String.self, name: "profileOutputPrefix", from: key, or: defaultProfileOutputPrefix) 
+        
+        withOpenFile(atPath: profileOutputPrefix + ".knobtable") { (knobTableOutputStream: Foundation.OutputStream) in
+            withOpenFile(atPath: profileOutputPrefix + ".measuretable") { (measureTableOutputStream: Foundation.OutputStream) in
 
-                // Initialize measuring device, that will update measures at every input
-                let measuringDevice = MeasuringDevice(ProgressSamplingPolicy(period: 1), windowSize, labels)
-
-                // Number of inputs to process when profiling a configuration
-                let defaultProfileSize:         UInt64 = UInt64(1000)
-                // File prefix of knob- and measure tables
-                let defaultProfileOutputPrefix: String = Runtime.application?.name ?? "fast"
+                let knobSpace = intent.knobSpace()
+                let knobNames = Array(knobSpace[0].settings.keys).sorted()
+                let measureNames = intent.measures
                 
-                let profileSize         = initialize(type: UInt64.self, name: "profileSize",         from: key, or: defaultProfileSize)
-                let profileOutputPrefix = initialize(type: String.self, name: "profileOutputPrefix", from: key, or: defaultProfileOutputPrefix) 
-                
-                withOpenFile(atPath: profileOutputPrefix + ".knobtable") { (knobTableOutputStream: Foundation.OutputStream) in
-                    withOpenFile(atPath: profileOutputPrefix + ".measuretable") { (measureTableOutputStream: Foundation.OutputStream) in
-
-                        let knobSpace = intent.knobSpace()
-                        let knobNames = Array(knobSpace[0].settings.keys).sorted()
-                        let measureNames = intent.measures
-                        
-                        func makeRow(id: Any, rest: [Any]) -> String {
-                            return "\(id)\(rest.reduce( "", { l,r in "\(l),\(r)" }))\n"
-                        }
-
-                        // Output headers for tables
-                        let knobTableHeader = makeRow(id: "id", rest: knobNames)
-                        knobTableOutputStream.write(knobTableHeader, maxLength: knobTableHeader.characters.count)
-                        let measureTableHeader = makeRow(id: "id", rest: measureNames)
-                        measureTableOutputStream.write(measureTableHeader, maxLength: measureTableHeader.characters.count)
-
-                        for i in 0 ..< knobSpace.count {
-
-                            let knobSettings = knobSpace[i]
-                            Log.info("Start profiling of configuration: \(knobSettings.settings).")
-                            knobSettings.apply()
-                            loop( iterations: profileSize
-                                , { executeAndReportProgress(measuringDevice, routine) } )
-
-                            // Output profile entry as line in knob table
-                            let knobValues = knobNames.map{ knobSettings.settings[$0]! }
-                            let knobTableLine = makeRow(id: i, rest: knobValues)
-                            knobTableOutputStream.write(knobTableLine, maxLength: knobTableLine.characters.count)
-                            
-                            // Output profile entry as line in measure table
-                            let measureValues = measureNames.map{ measuringDevice.stats[$0]!.totalAverage }
-                            let measureTableLine = makeRow(id: i, rest: measureValues)
-                            measureTableOutputStream.write(measureTableLine, maxLength: measureTableLine.characters.count)
-                            
-                        }
-
-                    }
+                func makeRow(id: Any, rest: [Any]) -> String {
+                    return "\(id)\(rest.reduce( "", { l,r in "\(l),\(r)" }))\n"
                 }
-                
-            // case .SelectiveProfiling(percentage: Int, extremeValues: Bool):
 
-            default: // .Adaptive and .NonAdaptive
-                runOnce()
+                // Output headers for tables
+                let knobTableHeader = makeRow(id: "id", rest: knobNames)
+                knobTableOutputStream.write(knobTableHeader, maxLength: knobTableHeader.characters.count)
+                let measureTableHeader = makeRow(id: "id", rest: measureNames)
+                measureTableOutputStream.write(measureTableHeader, maxLength: measureTableHeader.characters.count)
+
+                for i in 0 ..< knobSpace.count {
+
+                    let knobSettings = knobSpace[i]
+                    Log.info("Start profiling of configuration: \(knobSettings.settings).")
+                    knobSettings.apply()
+                    loop( iterations: profileSize
+                        , { executeAndReportProgress(measuringDevice, routine) } )
+
+                    // Output profile entry as line in knob table
+                    let knobValues = knobNames.map{ knobSettings.settings[$0]! }
+                    let knobTableLine = makeRow(id: i, rest: knobValues)
+                    knobTableOutputStream.write(knobTableLine, maxLength: knobTableLine.characters.count)
+                    
+                    // Output profile entry as line in measure table
+                    let measureValues = measureNames.map{ measuringDevice.stats[$0]!.totalAverage }
+                    let measureTableLine = makeRow(id: i, rest: measureValues)
+                    measureTableOutputStream.write(measureTableLine, maxLength: measureTableLine.characters.count)
+                    
+                }
+
+            }
         }
 
     }
+
+    func runOnce(model: Model, intent: IntentSpec) {
+
+        Log.info("Executing optimize scope \(id).")
+
+        // Initialize the controller with the knob-to-mesure model, intent and window size
+        Runtime.initializeController(model, intent, windowSize)
+        
+        if let controllerModel = Runtime.controller.model {
+            // Initialize measuring device, that will update measures based on the samplingPolicy
+            let measuringDevice = MeasuringDevice(samplingPolicy, windowSize, labels)
+            var schedule: Schedule = Schedule(constant: controllerModel.getInitialConfiguration()!.knobSettings)
+            // FIXME what if the counter overflows
+            var iteration: UInt32 = 0 // iteration counter
+            var startTime = ProcessInfo.processInfo.systemUptime // used for runningTime counter
+            var runningTime = 0.0 // counts only time spent inside the loop body
+            Runtime.measure("iteration", Double(iteration))
+            Runtime.measure("runningTime", runningTime) // running time in seconds
+            loop(iterations: inputsToProcess) {
+                startTime = ProcessInfo.processInfo.systemUptime // reset, in case something paused execution between iterations
+                executeAndReportProgress(measuringDevice, routine)
+                iteration += 1
+                if iteration % windowSize == 0 {
+                    let measureWindowAverages = Dictionary(measuringDevice.stats.map{ (n,s) in (n, s.windowAverage) })
+                    schedule = Runtime.controller.getSchedule(intent, measureWindowAverages)
+                }
+                if Runtime.runtimeKnobs.applicationExecutionMode.get() == ApplicationExecutionMode.Adaptive {
+                    // FIXME This should only apply when the schedule actually needs to change knobs
+                    schedule[iteration % windowSize].apply()
+                }
+                Runtime.measure("iteration", Double(iteration))
+                runningTime += ProcessInfo.processInfo.systemUptime - startTime
+                Runtime.measure("runningTime", runningTime) // running time in seconds
+                // FIXME maybe stalling in scripted mode should not be done inside of optimize but somewhere else in an independent and better way
+                Runtime.reportProgress()
+                
+                if Runtime.executeWithTestHarness {
+                    RestClient.sendRequest(to: "status", withBody: Runtime.statusDictionary())
+                }
+            } 
+        }
+        else {
+            Log.error("Attempt to execute using controller with undefined model.")
+            fatalError()
+        } 
+    }
+
+    Log.info("Application executing in \(Runtime.runtimeKnobs.applicationExecutionMode.get()) mode.")
 
     // Run the optimize loop, either based on initializaiton parameters 
     // from the Test Harness, or on data read from files.
@@ -342,7 +339,7 @@ public func optimize
             Log.info("Posting to TH/initialized.")
             RestClient.sendRequest(to: "initialized")
 
-            optimizeBasedOn(model: model, intent: ips.initialConditions.missionIntent)
+            runOnce(model: model, intent: ips.initialConditions.missionIntent)
 
         }
         else {
@@ -353,14 +350,29 @@ public func optimize
     }
     else {
         if let intent = Runtime.loadIntent(id) {
-            if let model = Runtime.loadModel(id) {
 
-                optimizeBasedOn(model: model, intent: intent)
+            switch Runtime.runtimeKnobs.applicationExecutionMode.get() {
+                
+                case .ExhaustiveProfiling:
+                
+                    profile(intent: intent)
+                
+                default: // .Adaptive and .NonAdaptive
 
-            } else {
-                Log.warning("No model loaded for optimize scope '\(id)'. Proceeding without adaptation.")
-                loop(routine)
-            }        
+                    if let model = Runtime.loadModel(id) {
+
+                        Log.info("Model loaded for optimize scope \(id).")
+                        runOnce(model: model, intent: intent)
+
+                    } else {
+
+                        Log.error("No model loaded for optimize scope '\(id)'. Cannot execute application in \(Runtime.runtimeKnobs.applicationExecutionMode.get()).")
+                        fatalError()
+
+                    } 
+
+            }
+   
         } else {
             Log.warning("No intent loaded for optimize scope '\(id)'. Proceeding without adaptation.")
             loop(routine)
