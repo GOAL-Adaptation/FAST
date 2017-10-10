@@ -21,7 +21,7 @@ func initialize<T>(type: T.Type, from key: [String]) -> T? {
 
     // TODO add readings from other places(xml,json,cfg,etc)
     // TODO log initialization in verbose mode 
-    Log.debug("Initializing value of type \(type): \(key.joined(separator: "_"))") // this is just to showcase the possibility
+    Log.debug("Initializing value of type \(type): \(key.joined(separator: "_")).") // this is just to showcase the possibility
 
     var newValue: T?
 
@@ -35,6 +35,10 @@ func initialize<T>(type: T.Type, from key: [String]) -> T? {
         }
     }
 
+    if let nv = newValue {
+        Log.verbose("Initializing value of type \(type): \(key.joined(separator: "_")) to '\(nv)'.")
+    }
+
     return newValue
 }
 
@@ -45,8 +49,13 @@ func initialize<T>(type: T.Type, from key: [String], or defaultValue: T) -> T {
     let newValue: T? = initialize(type: T.self, from: key)
     
     // If initialization failed, return the default value
-    if let nv = newValue { return nv           }
-    else                 { return defaultValue }
+    if let nv = newValue { 
+        return nv           
+    }
+    else { 
+        Log.verbose("Initializing value of type \(type): \(key.joined(separator: "_")) to default '\(newValue)'.")
+        return defaultValue 
+    }
 
 }
 
