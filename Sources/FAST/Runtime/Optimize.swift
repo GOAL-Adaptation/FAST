@@ -271,11 +271,11 @@ public func optimize
                 let measuringDevice = MeasuringDevice(ProgressSamplingPolicy(period: 1), windowSize, labels)
 
                 // Number of inputs to process when profiling a configuration
-                let defaultProfileSize:         UInt32 = UInt32(1000)
+                let defaultProfileSize:         UInt64 = UInt64(1000)
                 // File prefix of knob- and measure tables
                 let defaultProfileOutputPrefix: String = Runtime.application?.name ?? "fast"
                 
-                let profileSize         = initialize(type: UInt32.self, name: "profileSize",         from: key, or: defaultProfileSize)
+                let profileSize         = initialize(type: UInt64.self, name: "profileSize",         from: key, or: defaultProfileSize)
                 let profileOutputPrefix = initialize(type: String.self, name: "profileOutputPrefix", from: key, or: defaultProfileOutputPrefix) 
                 
                 withOpenFile(atPath: profileOutputPrefix + ".knobtable") { (knobTableOutputStream: Foundation.OutputStream) in
