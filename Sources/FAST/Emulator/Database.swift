@@ -455,11 +455,11 @@ WHERE sysCfgId NOT IN
       try database.forEachRow(statement: sqliteQuery, doBindings: {
         (statement: SQLiteStmt) -> () in
 
-        try statement.bind(position: 1, application)
-        try statement.bind(position: 2, applicationInputID)
-        try statement.bind(position: 3, applicationConfigurationID)
-        try statement.bind(position: 4, architecture)
-        try statement.bind(position: 5, systemConfigurationID)
+            try statement.bind(position: 1, application)
+            try statement.bind(position: 2, architecture)
+            try statement.bind(position: 3, applicationConfigurationID)
+            try statement.bind(position: 4, applicationInputID)
+            try statement.bind(position: 5, systemConfigurationID)
 
       })  { (statement: SQLiteStmt, i:Int) -> () in
         result = statement.columnInt(position: 0)            
@@ -677,7 +677,7 @@ WHERE sysCfgId NOT IN
         "       AND [SystemConfiguration].[id] = :5 " +
         "       AND [ApplicationSystemInputLog].[inputNumber] = :6;"     
 
-        // post-warmup: given a global app ID, a global sys ID, find average delta time and energy and their corresponding stdev:
+        // post-warmup: given a global app ID, a global sys ID, find average delta time and energy and their corresponding variances:
         } else {
 
           sqliteQuery =
@@ -727,10 +727,10 @@ WHERE sysCfgId NOT IN
           })  {(statement: SQLiteStmt, i:Int) -> () in
 
             meanDeltaTime = statement.columnInt(position: 0)
-            deviationDeltaTime = statement.columnInt(position: 1)
+            deviationDeltaTime = Int(sqrt(Double(statement.columnInt(position: 1))))
             meanDeltaEnergy = statement.columnInt(position: 2)
-            deviationDeltaEnergy = statement.columnInt(position: 3)
-                
+            deviationDeltaEnergy = Int(sqrt(Double(statement.columnInt(position: 3))))
+              
           }
 
         } catch let exception {
