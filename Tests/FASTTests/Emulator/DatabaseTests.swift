@@ -61,6 +61,46 @@ class DatabaseTests: XCTestCase {
 
     let dbFile = "/Users/dxnguyen/Documents/Proteus/FAST/Tests/FASTTests/Emulator/incrementer.db"
 
+    func testGetReferenceApplicationConfigurationID() {
+        
+        if let database = Database(databaseFile: dbFile) {
+            var referenceApplicationConfigurationId = database.getReferenceApplicationConfigurationID(application: "RADAR")
+            XCTAssertEqual(6, referenceApplicationConfigurationId)
+            referenceApplicationConfigurationId = database.getReferenceApplicationConfigurationID(application: "x264")
+            XCTAssertEqual(7, referenceApplicationConfigurationId)
+        }
+    }
+
+    func testGetReferenceSystemConfigurationID() {       
+        if let database = Database(databaseFile: dbFile) {
+            var referenceSystemConfigurationId = database.getReferenceSystemConfigurationID(architecture: "ARM-big.LITTLE")
+            XCTAssertEqual(1, referenceSystemConfigurationId)
+            referenceSystemConfigurationId = database.getReferenceSystemConfigurationID(architecture: "Xilinx")
+            XCTAssertEqual(2, referenceSystemConfigurationId)
+        }
+    }
+
+
+    func testObtainOutliers() {
+        if let database = Database(databaseFile: dbFile) {
+            var outliers = database.obtainOutliers(application: "RADAR")
+            XCTAssertEqual(16, outliers.0)
+            XCTAssertEqual(64, outliers.1)
+            outliers = database.obtainOutliers(application: "x264")
+            XCTAssertEqual(17, outliers.0)
+            XCTAssertEqual(65, outliers.1)
+        }
+    }
+
+    func testGetTapeNoise() {
+        if let database = Database(databaseFile: dbFile) {
+            var tapeNoise = database.getTapeNoise(application: "RADAR")
+            XCTAssertEqual(0.001953125, tapeNoise)
+            tapeNoise = database.getTapeNoise(application: "x264")
+            XCTAssertEqual(0.001953567, tapeNoise)
+        }
+    }
+
     func testGetWarmupInputs() {
         if let database = Database(databaseFile: dbFile) {
             var numberOfInputs = database.getWarmupInputs(application: "RADAR")
@@ -70,10 +110,37 @@ class DatabaseTests: XCTestCase {
         }
     }
 
+    func testGetNumberOfInputsProfiled() {
+        if let database = Database(databaseFile: dbFile) {
+            var numberOfInputs = database.getNumberOfInputsProfiled(application: "RADAR", architecture: "ARM-big.LITTLE", appCfg: 6, appInp: 1, sysCfg: 1)
+            XCTAssertEqual(3, numberOfInputs)
+            numberOfInputs = database.getNumberOfInputsProfiled(application: "x264", architecture: "ARM-big.LITTLE", appCfg: 7, appInp: 3, sysCfg: 1)
+            XCTAssertEqual(2, numberOfInputs)
+        }
+    }
+
+    func testReadDelta() {
+        if let database = Database(databaseFile: dbFile) {
+            var time_energy = database.readDelta(application: "RADAR", architecture: "ARM-big.LITTLE", appCfg: 6, appInp: 1, sysCfg: 1, processing: 3 )
+            XCTAssertEqual(-1584, time_energy.0)  // DXN_DBG: negative delta time for now
+            XCTAssertEqual(664, time_energy.1)
+            time_energy = database.readDelta(application: "x264", architecture: "ARM-big.LITTLE", appCfg: 7, appInp: 3, sysCfg: 1, processing: 2 )
+            XCTAssertEqual(5654, time_energy.0)
+            XCTAssertEqual(4218, time_energy.1)
+        }
+    }
+
     // TODO: more functions to be tested
 
     static var allTests = [
-        ("testGetWarmupInputs", testGetWarmupInputs)
+
+       ("testGetReferenceSystemConfigurationID", testGetReferenceSystemConfigurationID),
+        ("testGetReferenceApplicationConfigurationID", testGetReferenceApplicationConfigurationID),
+        ("testObtainOutliers", testObtainOutliers),
+        ("testGetTapeNoise", testGetTapeNoise),
+       ("testGetWarmupInputs", testGetWarmupInputs),
+       ("testGetNumberOfInputsProfiled", testGetNumberOfInputsProfiled),
+        ("testReadDelta", testReadDelta)
     ]
 
 }
