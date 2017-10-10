@@ -298,7 +298,7 @@ public func optimize
                         for i in 0 ..< knobSpace.count {
 
                             let knobSettings = knobSpace[i]
-                            Log.info("Start profiling of configuration: \(knobSettings).")
+                            Log.info("Start profiling of configuration: \(knobSettings.settings).")
                             knobSettings.apply()
                             loop( iterations: profileSize
                                 , { executeAndReportProgress(measuringDevice, routine) } )
