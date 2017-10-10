@@ -57,8 +57,6 @@ class DatabaseTests: XCTestCase {
 
     }
 
-    let incrementerApplication = Incrementer()
-
     let dbFile = "/Users/dxnguyen/Documents/Proteus/FAST/Tests/FASTTests/Emulator/incrementer.db"
 
     func testGetReferenceApplicationConfigurationID() {
@@ -75,7 +73,7 @@ class DatabaseTests: XCTestCase {
         if let database = Database(databaseFile: dbFile) {
             var referenceSystemConfigurationId = database.getReferenceSystemConfigurationID(architecture: "ARM-big.LITTLE")
             XCTAssertEqual(1, referenceSystemConfigurationId)
-            referenceSystemConfigurationId = database.getReferenceSystemConfigurationID(architecture: "Xilinx")
+            referenceSystemConfigurationId = database.getReferenceSystemConfigurationID(architecture: "XilinxZcu")
             XCTAssertEqual(2, referenceSystemConfigurationId)
         }
     }
@@ -130,9 +128,19 @@ class DatabaseTests: XCTestCase {
         }
     }
 
-    func testGetCurrentConfigurationId() {  
+    func testGetCurrentApplicationConfigurationId() {  
+        let incrementerApplication = Incrementer()
         if let database = Database(databaseFile: dbFile) {
-            var currentSystemConfigurationId = database.getCurrentConfigurationId(application: incrementerApplication)
+            let currentApplicationConfigurationId = database.getCurrentConfigurationId(application: incrementerApplication)
+            XCTAssertEqual(13, currentApplicationConfigurationId)
+        }
+    }
+
+    func testGetCurrentSystemConfigurationId() {  
+        let xilinxArchecture = XilinxZcu()
+        if let database = Database(databaseFile: dbFile) {
+            let currentSystemConfigurationId = database.getCurrentConfigurationId(architecture: xilinxArchecture)
+            XCTAssertEqual(2, currentSystemConfigurationId)
         }
     }
 
@@ -147,7 +155,8 @@ class DatabaseTests: XCTestCase {
        ("testGetWarmupInputs", testGetWarmupInputs),
        ("testGetNumberOfInputsProfiled", testGetNumberOfInputsProfiled),
         ("testReadDelta", testReadDelta),
-        ("testGetCurrentConfigurationId", testGetCurrentConfigurationId)
+        ("testGetCurrentSystemConfigurationId", testGetCurrentSystemConfigurationId),
+        ("testGetCurrentApplicationConfigurationId", testGetCurrentApplicationConfigurationId)
     ]
 
 }

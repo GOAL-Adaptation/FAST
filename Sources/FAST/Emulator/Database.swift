@@ -119,14 +119,13 @@ public class Database: TextApiModule {
     }
   }
 
-  /** Get the configuration Id of the current application knobs and their corresponding values 
-  from the database. 
+  /** Get the configuration Id of the current application knobs and their corresponding values from the database. 
   */
   public func getCurrentConfigurationId(application: Application) -> Int {
 
     var result: Int? = nil
 
-    // First, create a temporary view of the application configuration with all the knob names and corresponding values:
+    // Create a temporary view of all the application configurations with all the knob names and their corresponding values:
     var sqliteQuery =
       "CREATE TEMPORARY VIEW AllAppCfgIdView AS " +
       "SELECT [ApplicationConfiguration].[id] AS [appCfgId], " +
@@ -143,11 +142,11 @@ public class Database: TextApiModule {
     do {
       try database.execute(statement: sqliteQuery)
     } catch let exception {
-      Log.error("Exception creating temporary view of current application configuration ID: \(exception).")
-      fatalError("Cannot execute query creating temporary view of current application configuration ID: \(sqliteQuery)")
+      Log.error("Exception creating temporary view of all application configurations: \(exception).")
+      fatalError("Cannot execute query creating temporary view of  all application configurations: \(sqliteQuery)")
     }
     
-    // Now, dynamically create a query containing all the knob names and corresponding values that match with the current application configuration:
+    // Dynamically create a query containing all the knob names and corresponding values that match with the current application configuration:
     sqliteQuery = 
       "SELECT DISTINCT appCfgId FROM AllAppCfgIdView " +
       "WHERE appCfgId NOT IN (" +
@@ -171,8 +170,7 @@ public class Database: TextApiModule {
     // Execute the query:
     do {
       try database.forEachRow(statement: sqliteQuery, handleRow: {
-            (s: SQLiteStmt, i:Int) -> () in 
-            result = s.columnInt(position: 0)
+            (s: SQLiteStmt, i:Int) -> () in result = s.columnInt(position: 0)
           })
     } catch let exception {
       Log.error("Exception getting the current application configuration ID: \(exception).")
@@ -181,47 +179,84 @@ public class Database: TextApiModule {
 
     // Return the application configuration ID if it exists:
     if let res = result {
-      Log.debug("Read reference application configuration from the emulation database: \(res).")
+      Log.debug("Read current application configuration ID from the emulation database: \(res).")
       return res
     }
     else {
-      Log.error("Failed to read the reference application configuration from the emulation database.")
-      fatalError("Failed to read the reference application configuration from the emulation database: \(sqliteQuery)")
+      Log.error("Failed to read the current application configuration ID from the emulation database.")
+      fatalError("Failed to read the reference application configuration ID from the emulation database: \(sqliteQuery)")
     }
   }
 
-/** Get the configuration Id of the current system knobs and their corresponding values 
-    from the database. 
+/** Get the configuration Id of the current system knobs and their corresponding values from the database. 
 */
 func getCurrentConfigurationId(architecture: Architecture) -> Int {
-// TODO
-/*
-  var sqliteQuery = 
-  "CREATE TEMPORARY VIEW  AllSysCfgIdView AS
-SELECT [SystemConfiguration].[id] AS [sysCfgId], 
-       [Knob].[name] AS [knobName], 
-       [SystemConfiguration_System_Knob].[knobValue] AS [knobValue] 
-FROM   [Knob]
-       INNER JOIN [System_Knob] ON [Knob].[id] = [System_Knob].[knobId]
-       INNER JOIN [System] ON [System].[id] = [System_Knob].[systemId]
-       INNER JOIN [SystemConfiguration_System_Knob] ON [System_Knob].[id] = [SystemConfiguration_System_Knob].[systemKnobId]
-       INNER JOIN [SystemConfiguration] ON [SystemConfiguration].[id] = [SystemConfiguration_System_Knob].[systemConfigurationId]
-WHERE  [System].[name] = 'Xilinx';
 
-SELECT DISTINCT sysCfgId FROM AllSysCfgIdView
-WHERE sysCfgId NOT IN 
-(
- SELECT sysCfgId FROM AllSysCfgIdView
- WHERE sysCfgId NOT IN 
- (
-       SELECT sysCfgId FROM AllSysCfgIdView WHERE knobName = 'numberOfCores' AND knobValue = 3
-       INTERSECT
-       SELECT sysCfgId FROM AllSysCfgIdView WHERE knobName = 'frequency' AND knobValue = 400
- )
-)"
-*/
-  return -1 // TODO
-}
+   var result: Int? = nil
+
+  // Create a temporary view of all the system configurations with all the knob names and their corresponding values:
+  var sqliteQuery =
+  "CREATE TEMPORARY VIEW  AllSysCfgIdView AS " + 
+  "SELECT [SystemConfiguration].[id] AS [sysCfgId], " +
+  "       [Knob].[name] AS [knobName], " +
+  "       [SystemConfiguration_System_Knob].[knobValue] AS [knobValue] " +
+  "FROM   [Knob] " +
+  "       INNER JOIN [System_Knob] ON [Knob].[id] = [System_Knob].[knobId] " +
+  "       INNER JOIN [System] ON [System].[id] = [System_Knob].[systemId] " +
+  "       INNER JOIN [SystemConfiguration_System_Knob] ON [System_Knob].[id] = [SystemConfiguration_System_Knob].[systemKnobId] " +
+  "       INNER JOIN [SystemConfiguration] ON [SystemConfiguration].[id] = [SystemConfiguration_System_Knob].[systemConfigurationId] " +
+  "WHERE  [System].[name] = '\(architecture.name)';"
+
+  // Execute the query:
+  do {
+    try database.execute(statement: sqliteQuery)
+  } catch let exception {
+    Log.error("Exception creating temporary view of all system configurations: \(exception).")
+    fatalError("Cannot execute query creating temporary view of all system configurations: \(sqliteQuery)")
+  }
+
+  // Dynamically create a query containing all the knob names and corresponding values that match with the current application configuration:
+  sqliteQuery = 
+  "SELECT DISTINCT sysCfgId FROM AllSysCfgIdView " +
+  "WHERE sysCfgId NOT IN (" +
+  "SELECT sysCfgId FROM AllSysCfgIdView " +
+  " WHERE sysCfgId NOT IN (" 
+    var sysKnobs = architecture.getStatus()!["systemConfigurationKnobs"] as! [String : Any]
+    if let (firstKnobName, firstKnobValueAny) = sysKnobs.first,
+       let firstKnobValueDict = firstKnobValueAny as? [String : Any],
+       let firstKnobValue = firstKnobValueDict["value"] {
+      sqliteQuery += "SELECT sysCfgId FROM AllSysCfgIdView WHERE knobName = '\(firstKnobName)' AND knobValue =  \(firstKnobValue) "
+      sysKnobs.removeValue(forKey: firstKnobName)
+    }
+    for (knobName, knobValueAny) in sysKnobs {
+      if let knobValueDict = knobValueAny as? [String : Any],
+         let knobValue = knobValueDict["value"] {
+        sqliteQuery += "INTERSECT SELECT sysCfgId FROM AllSysCfgIdView WHERE knobName = '\(knobName)' AND knobValue = \(knobValue) "
+      }
+    }
+    sqliteQuery += ") )"
+
+    // Execute the query:
+    do {
+      try database.forEachRow(statement: sqliteQuery, handleRow: {
+            (s: SQLiteStmt, i:Int) -> () in  result = s.columnInt(position: 0)
+          })
+    } catch let exception {
+      Log.error("Exception getting the current system configuration ID: \(exception).")
+      fatalError("Cannot execute query getting the current system configuration ID: \(sqliteQuery)")
+    }
+
+    // Return the application configuration ID if it exists:
+    if let res = result {
+      Log.debug("Read the current system configuration ID from the emulation database: \(res).")
+      return res
+    }
+    else {
+      Log.error("Failed to read the current system configuration ID from the emulation database.")
+      fatalError("Failed to read the current system configuration ID from the emulation database: \(sqliteQuery)")
+    }
+  }
+
   /** Create Statistical Views */
   func createStatisticalViews() {
     do {  
@@ -382,7 +417,7 @@ WHERE sysCfgId NOT IN
     }
     else {
         Log.error("Failed to read the reference system configuration from the emulation database.")
-        fatalError()
+        fatalError("Failed to read the reference system configuration from the emulation database: \(sqliteQuery)")
     }
 
   }

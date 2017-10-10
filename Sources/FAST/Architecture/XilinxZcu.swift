@@ -48,14 +48,14 @@ class XilinxZcuSystemConfigurationKnobs: TextApiModule {
 
     init() {
         utilizedCores         = Knob(name: "utilizedCores",         from: key, or:       4)
-        utilizedCoreFrequency = Knob(name: "utilizedCoreFrequency", from: key, or: 1199999)
+        utilizedCoreFrequency = Knob(name: "utilizedCoreFrequency", from: key, or: 1200)
 
         self.addSubModule(newModules: [utilizedCores, utilizedCoreFrequency])
     }
 
     init(maintainedState: XilinxZcuSystemConfigurationKnobs) {
         utilizedCores         = Knob(name: "utilizedCores",         from: key, or:        4, preSetter: {_, newValue in maintainedState.utilizedCores.set(newValue)})
-        utilizedCoreFrequency = Knob(name: "utilizedCoreFrequency", from: key, or:  1199999, preSetter: {_, newValue in maintainedState.utilizedCoreFrequency.set(newValue)})
+        utilizedCoreFrequency = Knob(name: "utilizedCoreFrequency", from: key, or:  1200, preSetter: {_, newValue in maintainedState.utilizedCoreFrequency.set(newValue)})
 
         self.addSubModule(newModules: [utilizedCores, utilizedCoreFrequency])
     }
