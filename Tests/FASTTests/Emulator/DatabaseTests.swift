@@ -14,10 +14,15 @@ import XCTest
 
 //---------------------------------------
 
+
 class DatabaseTests: XCTestCase {
 
+    override func setUp() {
+        initializeRandomNumberGenerators()
+    }
+
     /** Incrementer Application instance */
-    class Incrementer: Application, EmulateableApplication {
+    class Incrementer: EmulateableApplication {
 
         let name = "incrementer"
         var subModules = [String : TextApiModule]()
@@ -40,7 +45,6 @@ class DatabaseTests: XCTestCase {
         required init() {
             Runtime.registerApplication(application: self)
             Runtime.initializeArchitecture(name: "ArmBigLittle")
-            Runtime.establishCommuncationChannel()
             self.addSubModule(newModule: applicationKnobs)
             self.applicationKnobs.addSubModule(newModule: threshold)
             self.applicationKnobs.addSubModule(newModule: step)
