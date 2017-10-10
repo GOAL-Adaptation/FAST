@@ -160,6 +160,8 @@ extension ClockAndEnergyArchitecture {
         else {
           Log.warning("Zero time passed between two measurements of time. Power consumption cannot be computed.")
         }
+        lastEnergy = energy
+        lastTime = time
         usleep(1000) // Register system measures every millisecond
       }
     }
