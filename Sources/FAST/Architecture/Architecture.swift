@@ -141,14 +141,25 @@ public protocol ClockAndEnergyArchitecture: Architecture {
 extension ClockAndEnergyArchitecture {
 
   // Architecture has system measures: time and energy
-  var systemMeasures: Array<String> { return ["time", "energy"] } 
+  var systemMeasures: Array<String> { return ["time", "energy", "powerConsumption"] } 
 
   // Register System Measures
   func registerSystemMeasures() -> Void {      
     DispatchQueue.global(qos: .utility).async {
+      var lastEnergy = Double(self.energyMonitor.readEnergy())
+      var lastTime = self.clockMonitor.readClock()
       while true {
-        Runtime.measure("energy", Double(self.energyMonitor.readEnergy()))
-        Runtime.measure("time",          self.clockMonitor.readClock())
+        let time = self.clockMonitor.readClock()
+        let timeDelta = time - lastTime
+        let energy = Double(self.energyMonitor.readEnergy())
+        Runtime.measure("time", time)
+        Runtime.measure("energy", energy)
+        if timeDelta != 0.0 {
+          Runtime.measure("powerConsumption", (energy - lastEnergy) / (time - lastTime))
+        }
+        else {
+          Log.warning("Zero time passed between two measurements of time. Power consumption cannot be computed.")
+        }
         usleep(1000) // Register system measures every millisecond
       }
     }

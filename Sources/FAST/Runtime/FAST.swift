@@ -313,6 +313,7 @@ public class Runtime {
 
         if let runningTime               = Runtime.getMeasure("runningTime"),
             let energy                   = Runtime.getMeasure("energy"),
+            let powerConsumption         = Runtime.getMeasure("powerConsumption"),
             let numberOfProcessedInputs  = Runtime.getMeasure("iteration") {
 
             let architecture             = Runtime.architecture?.name ?? "NOT CONFIGURED"
