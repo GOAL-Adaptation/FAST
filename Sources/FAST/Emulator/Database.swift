@@ -126,6 +126,7 @@ public class Database: TextApiModule {
 
     var result: Int? = nil
 
+    // First, create a temporary view of the application configuration with all the knob names and corresponding values:
     var sqliteQuery =
       "CREATE TEMPORARY VIEW AllAppCfgIdView AS " +
       "SELECT [ApplicationConfiguration].[id] AS [appCfgId], " +
@@ -136,16 +137,23 @@ public class Database: TextApiModule {
       "       INNER JOIN [Application] ON [Application].[id] = [Application_Knob].[applicationId] " +
       "       INNER JOIN [ApplicationConfiguration_Application_Knob] ON [Application_Knob].[id] = [ApplicationConfiguration_Application_Knob].[applicationKnobId] " +
       "       INNER JOIN [ApplicationConfiguration] ON [ApplicationConfiguration].[id] = [ApplicationConfiguration_Application_Knob].[applicationConfigurationId] " +
-      "WHERE  [Application].[name] =  '\(application.name)'; " +
+      "WHERE  [Application].[name] =  '\(application.name)'; "
+
+    // Execute the query:
+    do {
+      try database.execute(statement: sqliteQuery)
+    } catch let exception {
+      Log.error("Exception creating temporary view of current application configuration ID: \(exception).")
+      fatalError("Cannot execute query creating temporary view of current application configuration ID: \(sqliteQuery)")
+    }
+    
+    // Now, dynamically create a query containing all the knob names and corresponding values that match with the current application configuration:
+    sqliteQuery = 
       "SELECT DISTINCT appCfgId FROM AllAppCfgIdView " +
       "WHERE appCfgId NOT IN (" +
       " SELECT appCfgId FROM AllAppCfgIdView " +
       " WHERE appCfgId NOT IN ("
-
     var appKnobs = application.getStatus()!["applicationKnobs"] as! [String : Any]
-
-  //  let threshold: Int = (appKnobs["threshold"]! as! [String : Any])["value"]! as! Int
-
     if let (firstKnobName, firstKnobValueAny) = appKnobs.first,
        let firstKnobValueDict = firstKnobValueAny as? [String : Any],
        let firstKnobValue = firstKnobValueDict["value"] {
@@ -160,28 +168,25 @@ public class Database: TextApiModule {
     }
     sqliteQuery += ") )"
 
+    // Execute the query:
     do {
-      print(">>> query:\n\n \(sqliteQuery)")
-      print(">>> before query")
       try database.forEachRow(statement: sqliteQuery, handleRow: {
             (s: SQLiteStmt, i:Int) -> () in 
-                  print(">>> in query \((s,i))")
             result = s.columnInt(position: 0)
           })
-      print(">>> after query")
-    } catch {
-      //Log.error("Exception getting the current application configuration ID: \(exception).")
-      fatalError("Cannot execute query: \(sqliteQuery)")
+    } catch let exception {
+      Log.error("Exception getting the current application configuration ID: \(exception).")
+      fatalError("Cannot execute query getting the current application configuration ID: \(sqliteQuery)")
     }
 
+    // Return the application configuration ID if it exists:
     if let res = result {
       Log.debug("Read reference application configuration from the emulation database: \(res).")
       return res
     }
     else {
-      // Log.error("Failed to read the reference application configuration from the emulation database.")
-      // fatalError("sqliteQuery: \(sqliteQuery)")
-      return -1
+      Log.error("Failed to read the reference application configuration from the emulation database.")
+      fatalError("Failed to read the reference application configuration from the emulation database: \(sqliteQuery)")
     }
   }
 

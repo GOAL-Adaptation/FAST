@@ -130,6 +130,12 @@ class DatabaseTests: XCTestCase {
         }
     }
 
+    func testGetCurrentConfigurationId() {  
+        if let database = Database(databaseFile: dbFile) {
+            var currentSystemConfigurationId = database.getCurrentConfigurationId(application: incrementerApplication)
+        }
+    }
+
     // TODO: more functions to be tested
 
     static var allTests = [
@@ -140,7 +146,8 @@ class DatabaseTests: XCTestCase {
         ("testGetTapeNoise", testGetTapeNoise),
        ("testGetWarmupInputs", testGetWarmupInputs),
        ("testGetNumberOfInputsProfiled", testGetNumberOfInputsProfiled),
-        ("testReadDelta", testReadDelta)
+        ("testReadDelta", testReadDelta),
+        ("testGetCurrentConfigurationId", testGetCurrentConfigurationId)
     ]
 
 }
