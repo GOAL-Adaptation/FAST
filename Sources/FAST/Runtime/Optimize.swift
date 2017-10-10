@@ -197,14 +197,16 @@ public func optimize
     let logLevel = initialize(type: LoggerMessageType.self, name: "logLevel", from: key, or: .verbose)
     HeliumLogger.use(logLevel)
 
+    let inputsToProcess = initialize(type: UInt64.self, name: "inputsToProcess", from: key)
+
     // Start the FAST REST API, possibly obtaining initalization parameters
     // by posting to brass-th/ready
     let (restServer, initializationParameters) = startRestServer()
 
     /** Loop body for a given number of iterations (or infinitely, if iterations == nil) */
-    func loop(iterations: UInt32? = nil, _ body: (Void) -> Void) {
+    func loop(iterations: UInt64? = nil, _ body: (Void) -> Void) {
         if let i = iterations {
-            var localIteration: UInt32 = 0
+            var localIteration: UInt64 = 0
             while localIteration < i && !shouldTerminate() && !Runtime.shouldTerminate {
                 body()
                 localIteration += 1
@@ -232,7 +234,7 @@ public func optimize
                 var runningTime = 0.0 // counts only time spent inside the loop body
                 Runtime.measure("iteration", Double(iteration))
                 Runtime.measure("runningTime", runningTime) // running time in seconds
-                loop {
+                loop(iterations: inputsToProcess) {
                     startTime = ProcessInfo.processInfo.systemUptime // reset, in case something paused execution between iterations
                     executeAndReportProgress(measuringDevice, routine)
                     iteration += 1
