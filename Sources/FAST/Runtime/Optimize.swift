@@ -311,7 +311,8 @@ public func optimize
                 Runtime.reportProgress()
                 
                 if Runtime.executeWithTestHarness {
-                    RestClient.sendRequest(to: "status", withBody: Runtime.statusDictionary())
+                    // FIXME handle error from request
+                    let _ = RestClient.sendRequest(to: "status", withBody: Runtime.statusDictionary())
                 }
             } 
         }
@@ -337,7 +338,8 @@ public func optimize
             // FIXME Use initialization parameters to initialize the Runtime
 
             Log.info("Posting to TH/initialized.")
-            RestClient.sendRequest(to: "initialized")
+            // FIXME handle error from request
+            let _ = RestClient.sendRequest(to: "initialized")
 
             runOnce(model: model, intent: ips.initialConditions.missionIntent)
 
