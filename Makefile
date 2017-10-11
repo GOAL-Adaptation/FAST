@@ -11,7 +11,7 @@ UNAME := $(shell uname)
 SPM_FLAGS_ALL := \
   -Xlinker -L/usr/local/lib \
   -Xlinker -lenergymon-default
-RESOURCE_PATH := Sources/ExampleIncrementer
+RESOURCE_PATH := Sources/${APPNAME}
 RESOURCE_TARGET_PATH := .build/debug
 
 ifeq ($(UNAME), Linux)
@@ -70,7 +70,7 @@ execute:              export proteus_armBigLittle_utilizedLittleCores         :=
 execute:              export proteus_armBigLittle_utilizedBigCoreFrequency    := 2000000
 execute:              export proteus_armBigLittle_utilizedLittleCoreFrequency := 1400000
 execute:
-	.build/debug/ExampleIncrementer
+	.build/debug/${APPNAME}
 
 go:                   build run
                    

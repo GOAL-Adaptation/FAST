@@ -4,7 +4,7 @@ let package = Package(
     name: "FAST",
     targets: [
       Target(name: "FAST", dependencies: []),
-      Target(name: "ExampleIncrementer", dependencies: ["FAST"])
+      Target(name: "incrementer", dependencies: ["FAST"])
     ],
     dependencies: [
       .Package(url: "https://github.com/Zewo/Venice", majorVersion: 0, minor: 14),
