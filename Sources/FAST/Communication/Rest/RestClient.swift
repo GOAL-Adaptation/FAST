@@ -40,8 +40,6 @@ class RestClient {
         ) -> [String: Any]? {
         
         let urlString = "\(protocl)://\(path):\(port)/\(endpoint)"
-        var request = URLRequest(url: URL(string: urlString)!)
-        request.httpMethod = "\(method)"
     
         func nilAndLogError(_ message: String) -> [String: Any]? {
             if logErrors {
@@ -54,35 +52,18 @@ class RestClient {
 
         do {
 
-            // If the body is nil or and empty dictionary, do not set the request body
-
             if body == nil || body!.isEmpty {
                 Log.info("Sending \(method) request to \(urlString) with empty body.")
             }
-
-            // Otherwise JSON-encode (as Data) the body dictionary and set the request body
-
             else {
-                do {
-                    let bodyData = try JSONSerialization.data(withJSONObject: body! as Any, options: .prettyPrinted)
-                    if let bodyString = String(data: bodyData, encoding: String.Encoding.utf8) {
-                        request.httpBody = bodyData
-                        Log.info("Sending \(method) request to \(urlString).")
-                        Log.debug("Sending \(method) request to \(urlString) with body: \(bodyString).")
-                    }
-                    else {
-                        return nilAndLogError("Failed to UTF-encode request body data: \(body!).")
-                    }
-                }
-                catch let jsonSerializationError {
-                    return nilAndLogError("Failed to serialize request body dictionary as JSON data: \(body!). Error: \(jsonSerializationError.localizedDescription).")
-                }
+                Log.info("Sending \(method) request to \(urlString).")
+                Log.debug("Sending \(method) request to \(urlString) with body: \(body).")
             }
 
             // Send the request
 
-            KituraRequest.request(method, urlString).response {
-                request, response, maybeResponseData, maybeError in
+            KituraRequest.request(method, urlString, parameters: body, encoding: JSONEncoding.default).response {
+                _, response, maybeResponseData, maybeError in
 
                 // If the response decodes to a dictionary, return that, otherwise log an error and return nil
 
