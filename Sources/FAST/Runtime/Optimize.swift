@@ -354,7 +354,7 @@ public func optimize
             switch Runtime.runtimeKnobs.applicationExecutionMode.get() {
                 
                 case .ExhaustiveProfiling:
-                
+
                     profile(intent: intent)
                 
                 default: // .Adaptive and .NonAdaptive
