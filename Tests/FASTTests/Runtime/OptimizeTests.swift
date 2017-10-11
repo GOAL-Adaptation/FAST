@@ -10,6 +10,7 @@
 
 import Dispatch
 import XCTest
+import KituraRequest
 @testable import FAST
 
 //---------------------------------------
@@ -25,13 +26,13 @@ class OptimizeTests: XCTestCase {
             thMockServer = ThMockRestServer(port: RestClient.serverPort)
             thMockServer!.start()
         }
-        waitUntilUp(endpoint: "ready", host: OptimizeTests.localhost, port: RestClient.serverPort, method: .POST, description: "TH mock REST")
+        waitUntilUp(endpoint: "ready", host: OptimizeTests.localhost, port: RestClient.serverPort, method: .post, description: "TH mock REST")
         return thMockServer!
     }
 
     func stopThMockRestServer(server: RestServer) {
         server.stop()
-        waitUntilDown(endpoint: "ready", host: OptimizeTests.localhost, port: RestClient.serverPort, method: .POST, description: "TH mock REST")
+        waitUntilDown(endpoint: "ready", host: OptimizeTests.localhost, port: RestClient.serverPort, method: .post, description: "TH mock REST")
     }
 
     /** 
@@ -81,7 +82,7 @@ class OptimizeTests: XCTestCase {
                                             , over       : "http"
                                             , at         : OptimizeTests.localhost
                                             , onPort     : Runtime.restServerPort
-                                            , withMethod : .POST
+                                            , withMethod : .post
                                             , withBody   : [:]
                                             , logErrors  : false
                                             )

@@ -14,7 +14,7 @@ let package = Package(
       .Package(url: "git@github.mit.edu:proteus/FASTController", majorVersion: 1),
       .Package(url: "https://github.com/adamduracz/Nifty.git", majorVersion: 99),
       .Package(url: "https://github.com/barfer/Perfect-SQLite.git", majorVersion: 2),
-      .Package(url: "https://github.com/IBM-Swift/BlueSocket", majorVersion: 0),
+      .Package(url: "https://github.com/IBM-Swift/Kitura-Request.git", majorVersion: 0),
       .Package(url: "https://github.com/PerfectlySoft/Perfect-HTTPServer", majorVersion: 2),
       .Package(url: "https://github.com/ryuichis/swift-ast", majorVersion: 0)
     ]

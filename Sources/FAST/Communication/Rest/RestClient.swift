@@ -11,7 +11,7 @@
 
 import Foundation
 import LoggerAPI
-import PerfectLib
+import KituraRequest
 
 //---------------------------------------
 
@@ -20,10 +20,6 @@ fileprivate let key = ["proteus","client","rest"]
 
 /** Functions for interacting with RESTful APIs */
 class RestClient {
-
-    public enum Method : String {
-        case GET, POST
-    }
 
     static let serverProtocol = initialize(type: String.self, name: "serverProtocol", from: key, or: "http")
     static let serverPath     = initialize(type: String.self, name: "serverPath"    , from: key, or: "brass-th")
@@ -38,7 +34,7 @@ class RestClient {
         , over       protocl  : String          = serverProtocol  
         , at         path     : String          = serverPath
         , onPort     port     : UInt16          = serverPort
-        , withMethod method   : Method          = .POST
+        , withMethod method   : Request.Method  = .post
         , withBody   body     : [String : Any]? = nil
         , logErrors           : Bool            = true
         ) -> [String: Any]? {
@@ -53,6 +49,8 @@ class RestClient {
             }
             return nil
         }
+
+        var res: [String: Any]? = nil
 
         do {
 
@@ -83,40 +81,44 @@ class RestClient {
 
             // Send the request
 
-            let session = URLSession.shared
-            let (maybeResponseData, response, maybeError) = session.synchronousDataTask(urlRequest: request)
+            KituraRequest.request(method, urlString).response {
+                request, response, maybeResponseData, maybeError in
 
-            // If the response decodes to a dictionary, return that, otherwise log an error and return nil
+                // If the response decodes to a dictionary, return that, otherwise log an error and return nil
 
-            if let responseData = maybeResponseData {
-                if let responseDataString = String(data: responseData, encoding: String.Encoding.utf8) {
-                    
-                    if responseDataString.isEmpty {
-                        Log.verbose("Successfully received empty response from \(method) to \(path).")
-                        return [:]
-                    }
-                    else {
-                        if let maybeResponseDataJson = try? responseDataString.jsonDecode(),
-                           let responseDataJson      = maybeResponseDataJson as? [String:Any] {
-                            
-                            Log.verbose("Successfully JSON decoded response from \(method) to \(path): \(responseDataJson).")
-                            return responseDataJson
-
+                if let responseData = maybeResponseData {
+                    if let responseDataString = String(data: responseData, encoding: String.Encoding.utf8) {
+                        
+                        if responseDataString.isEmpty {
+                            Log.verbose("Successfully received empty response from \(method) to \(path).")
+                            res = [:]
                         }
                         else {
-                            return nilAndLogError("Error JSON-decoding \(method) response from \(path). Error: \(maybeError).")
+                            if let maybeResponseDataJson = try? responseDataString.jsonDecode(),
+                            let responseDataJson      = maybeResponseDataJson as? [String:Any] {
+                                
+                                Log.verbose("Successfully JSON decoded response from \(method) to \(path): \(responseDataJson).")
+                                res = responseDataJson
+
+                            }
+                            else {
+                                res = nilAndLogError("Error JSON-decoding \(method) response from \(path). Error: \(maybeError).")
+                            }
                         }
+                        
                     }
-                    
+                    else {
+                        res = nilAndLogError("Error UTF8-decoding \(method) response from \(path). Error: \(maybeError).")
+                    }
+                } else {
+                    res = nilAndLogError("Error sending \(method) request to \(path) with body: \(body). Error: \(maybeError).")
                 }
-                else {
-                    return nilAndLogError("Error UTF8-decoding \(method) response from \(path). Error: \(maybeError).")
-                }
-            } else {
-                return nilAndLogError("Error sending \(method) request to \(path) with body: \(body). Error: \(maybeError).")
+
             }
 
         }
+
+        return res
 
     }
 

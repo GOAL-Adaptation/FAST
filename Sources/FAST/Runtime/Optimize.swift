@@ -158,7 +158,7 @@ fileprivate func startRestServer() -> (RestServer, InitializationParameters?) {
         server!.start()
     }
 
-    waitUntilUp(endpoint: "alive", host: "127.0.0.1", port: Runtime.restServerPort, method: .GET, description: "REST")
+    waitUntilUp(endpoint: "alive", host: "127.0.0.1", port: Runtime.restServerPort, method: .get, description: "REST")
 
     if Runtime.executeWithTestHarness {
 

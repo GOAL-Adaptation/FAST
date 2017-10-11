@@ -12,6 +12,7 @@
 import Foundation
 import Dispatch
 import LoggerAPI
+import KituraRequest
 import PerfectLib
 import PerfectHTTP
 import PerfectHTTPServer
@@ -22,7 +23,7 @@ import PerfectHTTPServer
 fileprivate let key = ["proteus","server","rest"]
 
 /** Blocks until endpoint responds. */
-func waitUntilUp(endpoint: String, host: String, port: UInt16, method: RestClient.Method, description: String, body: [String : Any] = [:]) {
+func waitUntilUp(endpoint: String, host: String, port: UInt16, method: Request.Method, description: String, body: [String : Any] = [:]) {
 
     var response: [String: Any]? = nil
     var backoff: UInt32 = 100 // backoff delay in ms
@@ -37,7 +38,7 @@ func waitUntilUp(endpoint: String, host: String, port: UInt16, method: RestClien
                                   , withBody   : body
                                   , logErrors  : false
                                   )
-        Log.verbose("Wait \(backoff) ms before checking if \(description) server is open on port \(RestClient.serverPort) \(RestClient.Method.GET).")
+        Log.verbose("Wait \(backoff) ms before checking if \(description) server is open on port \(RestClient.serverPort) \(Request.Method.get).")
         usleep(backoff * 1000) // wait before checking if REST server is up again
         backoff *= 2
     }
@@ -47,7 +48,7 @@ func waitUntilUp(endpoint: String, host: String, port: UInt16, method: RestClien
 }
 
 /** Blocks until endpoint stops responding. */
-func waitUntilDown(endpoint: String, host: String, port: UInt16, method: RestClient.Method, description: String, body: [String : Any] = [:]) {
+func waitUntilDown(endpoint: String, host: String, port: UInt16, method: Request.Method, description: String, body: [String : Any] = [:]) {
 
     var response: [String: Any]? = nil
     var backoff: UInt32 = 100 // backoff delay in ms
@@ -62,7 +63,7 @@ func waitUntilDown(endpoint: String, host: String, port: UInt16, method: RestCli
                                   , withBody   : body
                                   , logErrors  : false
                                   )
-        Log.verbose("Wait \(backoff) ms before checking if \(description) server is down on port \(RestClient.serverPort) \(RestClient.Method.GET).")
+        Log.verbose("Wait \(backoff) ms before checking if \(description) server is down on port \(RestClient.serverPort) \(Request.Method.get).")
         usleep(backoff * 1000) // wait before checking if REST server is down again
         backoff *= 2
     }
@@ -122,22 +123,22 @@ public class RestServer {
     func start() {
         do {
             try server.start()
-            Log.info("\(String(describing: name)) open on port \(server.serverPort).")
+            Log.info("\(String(describing: name())) open on port \(server.serverPort).")
         } catch PerfectError.networkError(let err, let msg) {
-            Log.error("Network error thrown while starting \(String(describing: name)) on port \(server.serverPort): \(err) \(msg).")
+            Log.error("Network error thrown while starting \(String(describing: name())) on port \(server.serverPort): \(err) \(msg).")
         } catch let err {
-            Log.error("Error thrown while starting \(String(describing: name)) on port \(server.serverPort): \(err).")
+            Log.error("Error thrown while starting \(String(describing: name())) on port \(server.serverPort): \(err).")
         }
     }
 
     func stop() {
         do {
             try server.stop()
-            Log.info("\(String(describing: name)) stopped (was using port \(server.serverPort)).")
+            Log.info("\(String(describing: name())) stopped (was using port \(server.serverPort)).")
         } catch PerfectError.networkError(let err, let msg) {
-            Log.error("Network error thrown while stopping \(String(describing: name)) (on port \(server.serverPort)): \(err) \(msg).")
+            Log.error("Network error thrown while stopping \(String(describing: name())) (on port \(server.serverPort)): \(err) \(msg).")
         } catch let err {
-            Log.error("Error thrown while stopping \(String(describing: name)) (on port \(server.serverPort)): \(err).")
+            Log.error("Error thrown while stopping \(String(describing: name())) (on port \(server.serverPort)): \(err).")
         }
     }
 
