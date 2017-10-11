@@ -368,7 +368,7 @@ public func optimize
 
                     } else {
 
-                        Log.error("No model loaded for optimize scope '\(id)'. Cannot execute application in \(Runtime.runtimeKnobs.applicationExecutionMode.get()).")
+                        Log.error("No model loaded for optimize scope '\(id)'. Cannot execute application in application execution mode \(Runtime.runtimeKnobs.applicationExecutionMode.get()).")
                         fatalError()
 
                     } 
