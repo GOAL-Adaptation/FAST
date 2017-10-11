@@ -30,7 +30,7 @@ extension Knob: TextApiModule {
             if let value = newValue {
                 self.init(name, value, preSetter, postSetter)
             } else { // Failed to initialize the knob
-                Log.error("Failed to initailze knob of type \(T.self) from key: \(key).")
+                Log.verbose("Failed to initailze knob of type \(T.self) from key: \(key). Using default value: \(defaultValue).")
                 self.init(name, defaultValue, preSetter, postSetter)
             }
         }
