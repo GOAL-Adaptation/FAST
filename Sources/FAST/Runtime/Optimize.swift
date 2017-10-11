@@ -343,6 +343,9 @@ public func optimize
 
             runOnce(model: model, intent: ips.initialConditions.missionIntent)
 
+            // FIXME handle error from request
+            let _ = RestClient.sendRequest(to: "done", withBody: Runtime.statusDictionary())
+
         }
         else {
             Log.error("No initalization parameters received from brass-th/ready.")
