@@ -96,16 +96,16 @@ class RestClient {
 
                             }
                             else {
-                                res = nilAndLogError("Error JSON-decoding \(method) response from \(path). Error: \(maybeError!).")
+                                res = nilAndLogError("Error JSON-decoding \(method) response from \(path). Error: \(String(describing: maybeError)).")
                             }
                         }
                         
                     }
                     else {
-                        res = nilAndLogError("Error UTF8-decoding \(method) response from \(path). Error: \(maybeError!).")
+                        res = nilAndLogError("Error UTF8-decoding \(method) response from \(path). Error: \(String(describing: maybeError)).")
                     }
                 } else {
-                    res = nilAndLogError("Error sending \(method) request to \(path) with body: \(body). Error: \(maybeError!).")
+                    res = nilAndLogError("Error sending \(method) request to \(path) with body: \(body). Error: \(String(describing: maybeError)).")
                 }
 
             }
