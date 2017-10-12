@@ -160,7 +160,7 @@ extension InitializationParameters.ArchitectureName : InitializableFromString {
         switch text {
             case "ArmBigLittle": 
                 self = .ArmBigLittle
-            case "XilinxZcu": 
+            case "XilinxZcu", "Xilinx": 
                 self = .XilinxZcu
             default:
                 failedToInitialize("ArchitectureName", from: text)
