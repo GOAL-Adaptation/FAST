@@ -69,7 +69,7 @@ execute:              export proteus_armBigLittle_utilizedBigCores            :=
 execute:              export proteus_armBigLittle_utilizedLittleCores         := 0
 execute:              export proteus_armBigLittle_utilizedBigCoreFrequency    := 2000000
 execute:              export proteus_armBigLittle_utilizedLittleCoreFrequency := 1400000
-execute:
+execute: copy-resources-build
 	.build/debug/${APPNAME}
 
 go:                   build run
