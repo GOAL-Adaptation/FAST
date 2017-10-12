@@ -179,7 +179,7 @@ extension InitializationParameters.ApplicationName : InitializableFromString {
                 self = .radar
             case "x264": 
                 self = .x264
-            case "CaPSuLe": 
+            case "CaPSuLe", "capsule": 
                 self = .CaPSuLe
             case "incrementer": 
                 self = .incrementer

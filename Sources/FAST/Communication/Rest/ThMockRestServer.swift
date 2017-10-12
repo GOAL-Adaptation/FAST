@@ -53,7 +53,10 @@ class ThMockRestServer : RestServer {
 
     static let initializationParameters: [String : Any] = 
         [ "architecture"            : "ArmBigLittle"
-        , "application"             : "incrementer"
+        , "application"             : 
+            [ "applicationName" : "incrementer"
+            , "InputFileName"   : ""
+            ]
         , "numberOfInputsToProcess" : 567
         , "adaptationEnabled"       : "true"
         , "statusInterval"          : 1
