@@ -57,12 +57,25 @@ class RestClient {
             }
             else {
                 Log.info("Sending \(method) request to \(urlString).")
-                Log.debug("Sending \(method) request to \(urlString) with body: \(body).")
+                Log.debug("Sending \(method) request to \(urlString) with body: \(body!).")
             }
 
             // Send the request
 
-            KituraRequest.request(method, urlString, parameters: body, encoding: JSONEncoding.default).response {
+            /** 
+             *  Custom JSON encoding, used in place of the built-in KituraRequest JSONEncoding,
+             *  to work around https://bugs.swift.org/browse/SR-4783.
+             */
+            struct SR4783WorkAroundJSONEncoding: Encoding {
+                public static let `default` = SR4783WorkAroundJSONEncoding()
+                public func encode(_ request: inout URLRequest, parameters: Request.Parameters?) throws {
+                    request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+                    guard let parameters = parameters, !parameters.isEmpty else { return }
+                    request.httpBody = convertToJsonSR4783(from: parameters).data(using: .utf8)
+                }
+            }
+
+            KituraRequest.request(method, urlString, parameters: body, encoding: SR4783WorkAroundJSONEncoding.default).response {
                 _, response, maybeResponseData, maybeError in
 
                 // If the response decodes to a dictionary, return that, otherwise log an error and return nil
@@ -83,16 +96,16 @@ class RestClient {
 
                             }
                             else {
-                                res = nilAndLogError("Error JSON-decoding \(method) response from \(path). Error: \(maybeError).")
+                                res = nilAndLogError("Error JSON-decoding \(method) response from \(path). Error: \(maybeError!).")
                             }
                         }
                         
                     }
                     else {
-                        res = nilAndLogError("Error UTF8-decoding \(method) response from \(path). Error: \(maybeError).")
+                        res = nilAndLogError("Error UTF8-decoding \(method) response from \(path). Error: \(maybeError!).")
                     }
                 } else {
-                    res = nilAndLogError("Error sending \(method) request to \(path) with body: \(body). Error: \(maybeError).")
+                    res = nilAndLogError("Error sending \(method) request to \(path) with body: \(body). Error: \(maybeError!).")
                 }
 
             }

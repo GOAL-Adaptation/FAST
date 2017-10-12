@@ -1,9 +1,9 @@
-    /*
+/*
  *  FAST: An implicit programing language based on SWIFT
  *
  *        JSON Conversions
  *
- *  author: Ferenc A Bartha
+ *  authors: Ferenc A Bartha, Adam Duracz
  *
  *  SWIFT implementation is based on the C library [pemu] implemented by
  *  Ferenc A Bartha, Dung X Nguyen, Jason Miller, Adam Duracz
@@ -38,6 +38,33 @@ func convertToJson(from rawData: Any) -> Data? {
 
         return nil
     }
+}
+
+/** 
+ *  Custom Json conversion, as a temporary workaround to:
+ *    https://bugs.swift.org/browse/SR-4783
+ *
+ *  NOTE: Does not attempt to handle encoding of strings.
+ */    
+func convertToJsonSR4783(from rawData: Any) -> String {
+
+    if let dict = rawData as? [String : Any] {
+        return "{" + dict.map { (s,a) in "\"\(s)\": " + convertToJsonSR4783(from: a) }.joined(separator: ", ") + "}"
+    }
+    else {
+        if let arr = rawData as? [Any] {
+            return "\(arr.map { a in convertToJsonSR4783(from: a) })"
+        }
+        else {
+            if let s = rawData as? String {
+                return "\"\(s)\""
+            }
+            else {
+                return "\(rawData)"
+            }
+        }
+    }
+
 }
 
 //-------------------------------
