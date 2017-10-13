@@ -34,7 +34,13 @@ class RestServerTests: XCTestCase {
     /** An intent encoded in JSON should compile to the correct IntentSpec. */
     func testMkIntentString() {
 
-        if let intentJsonFileContent = readFile(withName: "incrementer", ofType: "json", fromBundle: Bundle(for: type(of: self))),
+        #if os(Linux)
+        let bundle = Bundle.main
+        #else
+        let bundle = Bundle(for: type(of: self))
+        #endif
+
+        if let intentJsonFileContent = readFile(withName: "incrementer", ofType: "json", fromBundle: bundle),
            let intentJson            = try? intentJsonFileContent.jsonDecode(),
            let intentJsonDictionary  = intentJson as? [String:Any] {
             

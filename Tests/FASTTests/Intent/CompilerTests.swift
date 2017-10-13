@@ -24,7 +24,13 @@ class CompilerTests: XCTestCase {
      */
     func testCompileIntentSpec() {
 
-        if let intentFileContent = readFile(withName: "incrementer", ofType: "intent", fromBundle: Bundle(for: type(of: self))),
+        #if os(Linux)
+        let bundle = Bundle.main
+        #else
+        let bundle = Bundle(for: type(of: self))
+        #endif
+
+        if let intentFileContent = readFile(withName: "incrementer", ofType: "intent", fromBundle: bundle),
            let intentSpec = CompilerTests.compiler.compileIntentSpec(source: intentFileContent) {
 
             CompilerTests.checkIncrementer(spec: intentSpec)
