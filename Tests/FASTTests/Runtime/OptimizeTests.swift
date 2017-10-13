@@ -111,8 +111,6 @@ class OptimizeTests: XCTestCase {
     }
 
     static var allTests = [
-        ("testThatOptimizeBringsUpTheRestServer", testThatOptimizeBringsUpTheRestServer),
-        ("testOptimizeWithoutIntentAndModel", testOptimizeWithoutIntentAndModel),
         ("testPerturbationInit", testPerturbationInit)
     ]
 
