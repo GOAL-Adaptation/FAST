@@ -72,34 +72,34 @@ execute:              export proteus_armBigLittle_utilizedLittleCoreFrequency :=
 execute: copy-resources-build
 	.build/debug/${APPNAME}
 
-go:                   build run
-                   
-all:                  rebuild run
-                   
+go:                     build run
+
+all:                    rebuild run
+
 run:               		export proteus_runtime_applicationExecutionMode         := Adaptive
-run:               		execute                                                 
-                   		                                                        
+run:               		execute
+
 run-scripted:      		export proteus_runtime_interactionMode                  := Scripted
-run-scripted:      		run                                                     
-                   		                                                        
+run-scripted:      		run
+
 run-harness:       		export proteus_runtime_executeWithTestHarness           := true
-run-harness:       		run                                                     
-                                                                              
-run-harness-scripted: export proteus_runtime_executeWithTestHarness           := true
-run-harness-scripted: run                                                     
+run-harness:       		run
+
+run-harness-scripted:   export proteus_runtime_executeWithTestHarness           := true
+run-harness-scripted:   run-scripted
                                                                               
 emulate:           		export proteus_armBigLittle_executionMode               := Emulated
-emulate:           		run                                                     
-                   		                                                        
+emulate:           		run
+
 emulate-scripted:  		export proteus_armBigLittle_executionMode               := Emulated
-emulate-scripted:  		run-scripted                                            
-                   		                                                        
+emulate-scripted:  		run-scripted
+
 evaluate:          		export proteus_runtime_executeWithTestHarness           := true
-evaluate:          		emulate                                                 
-                   		                                                        
+evaluate:          		emulate
+
 evaluate-scripted: 		export proteus_runtime_executeWithTestHarness           := true
-evaluate-scripted: 		emulate-scripted                                        
-                   		                                                        
+evaluate-scripted: 		emulate-scripted
+
 profile:           		export proteus_runtime_logLevel                         := Info
 profile:           		export proteus_runtime_applicationExecutionMode         := ExhaustiveProfiling
 profile:           		export proteus_runtime_profileSize                      := $(if $(TEST),$(TEST),100)
