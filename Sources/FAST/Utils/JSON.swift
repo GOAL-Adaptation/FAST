@@ -53,7 +53,7 @@ func convertToJsonSR4783(from rawData: Any) -> String {
     }
     else {
         if let arr = rawData as? [Any] {
-            return "\(arr.map { a in convertToJsonSR4783(from: a) })"
+            return "[" + arr.map{ a in convertToJsonSR4783(from: a) }.joined(separator: ", ") + "]"
         }
         else {
             if let s = rawData as? String {
