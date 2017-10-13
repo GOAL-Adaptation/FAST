@@ -418,6 +418,7 @@ components:
             - scenarioKnobs
             - runningTime
             - energy
+            - powerConsumption
             - numberOfProcessedInputs
             - measures
           properties:
@@ -458,6 +459,10 @@ components:
               type: number
               minimum: 0
               description: Energy consumed (in microjoules).
+            powerConsumption:
+              type: number
+              minimum: 0
+              description: Power consumption (in microjoules per second).
             numberOfProcessedInputs:
               type: integer
               minimum: 0

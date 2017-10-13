@@ -311,26 +311,29 @@ public class Runtime {
             return (module?.getStatus()?[subModule] as? [String: Any]).map{ unwrapValues($0) } ?? [:]
         }
 
-        if let runningTime               = Runtime.getMeasure("runningTime"),
-            let energy                   = Runtime.getMeasure("energy"),
-            let powerConsumption         = Runtime.getMeasure("powerConsumption"),
-            let numberOfProcessedInputs  = Runtime.getMeasure("iteration") {
+        if let application               = Runtime.application?.name
+         , let runningTime               = Runtime.getMeasure("runningTime")
+         , let energy                    = Runtime.getMeasure("energy")
+         , let powerConsumption          = Runtime.getMeasure("powerConsumption")
+         , let numberOfProcessedInputs   = Runtime.getMeasure("iteration") {
 
+            let applicationKnobs         = extractStatus(of: "applicationKnobs",         from: Runtime.application  )
             let architecture             = Runtime.architecture?.name ?? "NOT CONFIGURED"
             let systemConfigurationKnobs = extractStatus(of: "systemConfigurationKnobs", from: Runtime.architecture ) 
-            let applicationKnobs         = extractStatus(of: "applicationKnobs",         from: Runtime.application  )
             let scenarioKnobs            = extractStatus(                                from: Runtime.scenarioKnobs)
 
             let status : [String : Any] =
                 [ "time"      : utcDateFormatter.string(from: Date())
                 , "arguments" : 
-                    [ "architecture"             : architecture
-                    , "runningTime"              : runningTime
-                    , "energy"                   : energy
-                    , "numberOfProcessedInputs"  : numberOfProcessedInputs
+                    [ "application"              : application
                     , "applicationKnobs"         : toArrayOfPairDicts(applicationKnobs)
+                    , "architecture"             : architecture
                     , "systemConfigurationKnobs" : toArrayOfPairDicts(systemConfigurationKnobs)
                     , "scenarioKnobs"            : toArrayOfPairDicts(scenarioKnobs)
+                    , "runningTime"              : runningTime
+                    , "energy"                   : energy
+                    , "powerConsumption"         : powerConsumption
+                    , "numberOfProcessedInputs"  : numberOfProcessedInputs
                     , "measures"                 : toArrayOfPairDicts(Runtime.getMeasures())
                     ]
                 ]
