@@ -10,29 +10,26 @@
 
 import Dispatch
 import XCTest
-import KituraRequest
 @testable import FAST
 
 //---------------------------------------
 
 class OptimizeTests: XCTestCase {
 
-    static let localhost = "127.0.0.1"
-
     func startThMockRestServer() -> RestServer {
         var thMockServer: RestServer? = nil
         // Start ThMockRestServer in a background thread
         DispatchQueue.global(qos: .utility).async {
-            thMockServer = ThMockRestServer(port: RestClient.serverPort)
+            thMockServer = ThMockRestServer(port: RestClient.serverPort, address: RestClient.serverAddress)
             thMockServer!.start()
         }
-        waitUntilUp(endpoint: "ready", host: OptimizeTests.localhost, port: RestClient.serverPort, method: .post, description: "TH mock REST")
+        waitUntilUp(endpoint: "ready", host: RestClient.serverAddress, port: RestClient.serverPort, method: .post, description: "TH mock REST")
         return thMockServer!
     }
 
     func stopThMockRestServer(server: RestServer) {
         server.stop()
-        waitUntilDown(endpoint: "ready", host: OptimizeTests.localhost, port: RestClient.serverPort, method: .post, description: "TH mock REST")
+        waitUntilDown(endpoint: "ready", host: RestClient.serverAddress, port: RestClient.serverPort, method: .post, description: "TH mock REST")
     }
 
     /** 
@@ -80,7 +77,7 @@ class OptimizeTests: XCTestCase {
                 nil !=
                     RestClient.sendRequest( to         : "alive"
                                             , over       : "http"
-                                            , at         : OptimizeTests.localhost
+                                            , at         : RestClient.serverAddress
                                             , onPort     : Runtime.restServerPort
                                             , withMethod : .post
                                             , withBody   : [:]
@@ -111,6 +108,8 @@ class OptimizeTests: XCTestCase {
     }
 
     static var allTests = [
+        ("testThatOptimizeBringsUpTheRestServer", testThatOptimizeBringsUpTheRestServer),
+        ("testOptimizeWithoutIntentAndModel", testOptimizeWithoutIntentAndModel),
         ("testPerturbationInit", testPerturbationInit)
     ]
 

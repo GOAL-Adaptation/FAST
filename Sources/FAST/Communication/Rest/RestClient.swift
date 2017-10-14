@@ -22,7 +22,7 @@ fileprivate let key = ["proteus","client","rest"]
 class RestClient {
 
     static let serverProtocol = initialize(type: String.self, name: "serverProtocol", from: key, or: "http")
-    static let serverPath     = initialize(type: String.self, name: "serverPath"    , from: key, or: "brass-th")
+    static let serverAddress  = initialize(type: String.self, name: "serverAddress" , from: key, or: "brass-th")
     static let serverPort     = initialize(type: UInt16.self, name: "serverPort"    , from: key, or: 80)
 
     /**
@@ -32,7 +32,7 @@ class RestClient {
     static func sendRequest
         ( to         endpoint : String
         , over       protocl  : String          = serverProtocol  
-        , at         path     : String          = serverPath
+        , at         path     : String          = serverAddress
         , onPort     port     : UInt16          = serverPort
         , withMethod method   : Request.Method  = .post
         , withBody   body     : [String : Any]? = nil

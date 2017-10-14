@@ -66,9 +66,9 @@ class ThMockRestServer : RestServer {
 
     /* Route configuration */
 
-    @discardableResult override init(port: UInt16) {
+    @discardableResult override init(port: UInt16, address: String) {
   
-        super.init(port: port)
+        super.init(port: port, address: address)
 
         addSerialRoute(method: .post, uri: "/ready", handler: {
             request, response in

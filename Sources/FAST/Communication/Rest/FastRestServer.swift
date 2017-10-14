@@ -27,9 +27,9 @@ class FastRestServer : RestServer {
         return "REST server"
     }
 
-    @discardableResult override init(port: UInt16) {
+    @discardableResult override init(port: UInt16, address: String) {
 
-        super.init(port: port)
+        super.init(port: port, address: address)
 
         routes.add(method: .get, uri: "/alive", handler: {
             _, response in

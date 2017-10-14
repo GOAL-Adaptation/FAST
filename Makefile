@@ -31,10 +31,10 @@ endif
 build: copy-resources-build
 	swift build $(SPM_FLAGS)
 
-test: export proteus_runtime_logLevel        := Error
-test: export proteus_runtime_inputsToProcess := 1000
-test: export proteus_client_rest_serverPath  := 127.0.0.1
-test: export proteus_client_rest_serverPort  := 8080
+test: export proteus_runtime_logLevel           := Error
+test: export proteus_runtime_inputsToProcess    := 1000
+test: export proteus_client_rest_serverAddress  := 127.0.0.1
+test: export proteus_client_rest_serverPort     := 8080
 test: copy-resources-test
 	swift test $(SPM_FLAGS)
 
@@ -55,7 +55,7 @@ rebuild: clean build
 execute:              export proteus_runtime_inputsToProcess                  := 100
 execute:              export proteus_runtime_missionLength                    := 1000
 execute:              export proteus_runtime_sceneObfuscation                 := 0.0
-execute:              export proteus_client_rest_serverPath                   := brass-th
+execute:              export proteus_client_rest_serverAddress                := brass-th
 execute:              export proteus_client_rest_serverPort                   := 8080
 execute:              export proteus_emulator_database_db                     := /Users/adam/project/FAST/Sources/ExampleIncrementer/incrementer.db
 execute:              export proteus_emulator_database_readingMode            := Statistics

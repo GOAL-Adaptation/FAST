@@ -112,10 +112,10 @@ public class RestServer {
         }
     }
 
-    @discardableResult init(port: UInt16) {
+    @discardableResult init(port: UInt16, address: String) {
 
         self.requestQueue = DispatchQueue(label: "requestQueueAtPort\(port)") // A serial queue
-
+        server.serverAddress = address
         server.serverPort = port
         
     }

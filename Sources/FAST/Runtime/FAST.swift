@@ -169,7 +169,8 @@ public class Runtime {
 
     private init() {}
 
-    internal static let restServerPort = initialize(type: UInt16.self, name: "port", from: key, or: 1338)
+    internal static let restServerPort    = initialize(type: UInt16.self, name: "port",    from: key, or: 1338)
+    internal static let restServerAddress = initialize(type: String.self, name: "address", from: key, or: "127.0.0.1")
     // Controls whether or not the test harness is involved in the execution. 
     // This includes obtaining initialization parameters are obtained from response to post to brass-th/ready, 
     // and posting to brass-th/status after the processing of each input.
