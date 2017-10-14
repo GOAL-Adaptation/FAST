@@ -95,16 +95,11 @@ public class RestServer {
     /** Add a JSON object as the body of the HTTPResponse parameter. */
     func addJsonBody(toResponse response: HTTPResponse, json: [String : Any], jsonDescription: String, endpointName: String) {
         do {
-            let jsonData = try JSONSerialization.data(withJSONObject: json)
-            if let jsonString = String(data: jsonData, encoding: String.Encoding.utf8) {
-                response.setBody(string: jsonString)
-                Log.verbose("Successfully responded to request on /\(endpointName) REST endpoint: \(jsonString).")
-                response.completed() // HTTP 202
-            }
-            else {
-                response.status = .notAcceptable // HTTP 406
-                Log.error("Error while UTF8-encoding JSON \(jsonDescription) in response to request on /\(endpointName) REST endpoint: \(json).")                        
-            }
+            let jsonString = convertToJsonSR4783(from: json)
+            response.setBody(string: jsonString)
+            Log.verbose("Successfully responded to request on /\(endpointName) REST endpoint: \(jsonString).")
+            response.completed() // HTTP 202
+
         } 
         catch let e {
             response.status = .notAcceptable // HTTP 406
