@@ -214,16 +214,16 @@ public class RestServer {
         // FIXME Use (definitions section of) Swagger specification to validate the input,
         //       to make indexing and casts fail there instead, with detailed error information.
 
-        let missionIntent           = json["missionIntent"]!        as! [String: Any]
-        let knobs                   = missionIntent["knobs"]!       as! [[String: Any]]
-        let measures                = missionIntent["measures"]!    as! [[String: Any]]
-        let intent                  = missionIntent["intent"]!      as! [String: Any]
+        let missionIntent            = json["missionIntent"]!        as! [String: Any]
+        let knobs                    = missionIntent["knobs"]!       as! [[String: Any]]
+        let measures                 = missionIntent["measures"]!    as! [[String: Any]]
+        let intent                   = missionIntent["intent"]!      as! [String: Any]
 
-        let intentName              = intent["name"]!               as! String
-        let intentOptimizationType  = intent["optimizationType"]!   as! String
-        let intentObjectiveFunction = intent["objectiveFunction"]!  as! [String: Any]
-        let intentConstraintMeasure = intent["constraintMeasure"]!  as! String
-        let intentConstraintValue   = intent["constraintValue"]!    as! Double
+        let intentName               = intent["name"]!               as! String
+        let intentOptimizationType   = intent["optimizationType"]!   as! String
+        let intentObjectiveFunction  = intent["objectiveFunction"]!  as! [String: Any]
+        let intentConstraintVariable = intent["constraintVariable"]! as! String
+        let intentConstraintValue    = intent["constraintValue"]!    as! Double
 
         let measuresString: String = measures.map { 
             "\($0["name"]! as! String): Double" 
@@ -243,7 +243,7 @@ public class RestServer {
             "knobs \(knobsString) \n" +
             "measures \(measuresString) \n" +
             "intent \(intentName) \(intentOptimizationType)(\(intentObjectiveFunctionString)) " +
-                "such that \(intentConstraintMeasure) == \(intentConstraintValue) \n" +
+                "such that \(intentConstraintVariable) == \(intentConstraintValue) \n" +
             "trainingSet []"
     }
 
