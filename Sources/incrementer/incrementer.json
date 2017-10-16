@@ -38,7 +38,7 @@
                     "literal": 2.0
                 }
 			},
-			"constraintMeasure": "latency",
+			"constraintVariable": "latency",
 			"constraintValue": 0.1
 		}
 	},
