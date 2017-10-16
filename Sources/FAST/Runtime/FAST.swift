@@ -297,7 +297,7 @@ public class Runtime {
         utcDateFormatter.timeZone = TimeZone(identifier: "GMT")
         
         func toArrayOfPairDicts(_ dict: [String : Any]) -> [[String : Any]] {
-            return Array(dict).map { (s , a) in [s : a] }
+            return Array(dict).map { (s , a) in ["name" : s, "value" : a] }
         }
 
         func unwrapValues(_ dict: [String: Any]) -> [String: Any] {
