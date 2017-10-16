@@ -293,7 +293,7 @@ public class Runtime {
     static func statusDictionary() -> [String : Any]? {
 
         let utcDateFormatter = DateFormatter()
-        utcDateFormatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
+        utcDateFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ssZ"
         utcDateFormatter.timeZone = TimeZone(identifier: "GMT")
         
         func toArrayOfPairDicts(_ dict: [String : Any]) -> [[String : Any]] {
