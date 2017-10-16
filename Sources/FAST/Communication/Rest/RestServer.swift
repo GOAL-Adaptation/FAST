@@ -165,6 +165,10 @@ public class RestServer {
 
         switch json.count {
             case 1:
+                // Expression wrapper
+                if let expression = json["expression"] as? [String : Any] {
+                    return mkExpressionString(from: expression)
+                }
                 // Literal Double
                 if let literal = json["literal"] as? Double {
                     return "\(literal)"

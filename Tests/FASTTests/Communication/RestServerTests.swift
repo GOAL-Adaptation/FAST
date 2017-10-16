@@ -23,11 +23,13 @@ class RestServerTests: XCTestCase {
         let variableName   = try! "{ \"variableName\": \"x\" }".jsonDecode() as! [String: Any]
         let unaryOperator  = try! "{ \"operator\": \"-\", \"expression\": { \"literal\": 3.0 }  }".jsonDecode() as! [String: Any]
         let binaryOperator = try! "{ \"operator\": \"/\", \"leftExpression\": { \"literal\": 1.0 }, \"rightExpression\": { \"variableName\": \"x\" } }".jsonDecode() as! [String: Any]
+        let expression     = try! "{ \"expression\": { \"variableName\": \"x\" } }".jsonDecode() as! [String: Any]
 
         XCTAssertEqual("2.0",       RestServer.mkExpressionString(from: literal))
         XCTAssertEqual("x",         RestServer.mkExpressionString(from: variableName))
         XCTAssertEqual("(-3.0)",    RestServer.mkExpressionString(from: unaryOperator))
         XCTAssertEqual("(1.0 / x)", RestServer.mkExpressionString(from: binaryOperator))
+        XCTAssertEqual("x",         RestServer.mkExpressionString(from: expression))
 
     }
 
