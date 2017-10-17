@@ -34,8 +34,7 @@ class FastRestServer : RestServer {
         routes.add(method: .get, uri: "/alive", handler: {
             _, response in
             response.status = Runtime.shouldTerminate ? .serviceUnavailable : .ok
-            response.setHeader(.contentType, value: self.contentTypeTextPlain)
-            response.completed()
+            self.addJsonBody(toResponse: response, json: [:], jsonDescription: "empty", endpointName: "alive")
             }
         )
 
@@ -58,8 +57,8 @@ class FastRestServer : RestServer {
             else {
                 response.status = .notAcceptable // HTTP 406
             }
-            response.setHeader(.contentType, value: self.contentTypeTextPlain)
-            response.completed()
+            
+            self.addJsonBody(toResponse: response, json: [:], jsonDescription: "empty", endpointName: "process")
         })
 
         addSerialRoute(method: .post, uri: "/perturb", handler: {
@@ -95,8 +94,9 @@ class FastRestServer : RestServer {
             else {
                 response.status = .notAcceptable // HTTP 406
             }
-            response.setHeader(.contentType, value: self.contentTypeTextPlain)
-            response.completed()
+
+            self.addJsonBody(toResponse: response, json: [:], jsonDescription: "empty", endpointName: "perturb")
+
         })
 
         routes.add(method: .get, uri: "/query", handler: {
@@ -108,6 +108,7 @@ class FastRestServer : RestServer {
                 else {
                     response.status = .notAcceptable // HTTP 406
                     Log.info("Error while extracting status in response to request on /query REST endpoint.")
+                    self.addJsonBody(toResponse: response, json: [:], jsonDescription: "empty", endpointName: "query")
                 }
 
             }
@@ -128,8 +129,7 @@ class FastRestServer : RestServer {
                         Runtime.runtimeKnobs.applicationExecutionMode.set(.Adaptive)
                         Log.info("Successfully received request on /enable REST endpoint. Adaptation turned on.")
                 }
-            response.setHeader(.contentType, value: self.contentTypeTextPlain)
-            response.completed()
+                self.addJsonBody(toResponse: response, json: [:], jsonDescription: "empty", endpointName: "enable")
         })
 
         routes.add(method: .post, uri: "/changeIntent", handler: {
@@ -143,8 +143,7 @@ class FastRestServer : RestServer {
                 else {
                     Log.error("Did not receive valid JSON on /perturb endpoint: \(request)")
                 }
-                response.setHeader(.contentType, value: self.contentTypeTextPlain)
-                response.completed()
+                self.addJsonBody(toResponse: response, json: [:], jsonDescription: "empty", endpointName: "changeIntent")
             }
         )
 
@@ -152,8 +151,7 @@ class FastRestServer : RestServer {
             _, response in
             Runtime.shouldTerminate = true
             Log.info("Application termination requested through /terminate endpoint.")
-            response.setHeader(.contentType, value: self.contentTypeTextPlain)
-            response.completed() // HTTP 202
+            self.addJsonBody(toResponse: response, json: [:], jsonDescription: "empty", endpointName: "terminate")
             }
         )
 
