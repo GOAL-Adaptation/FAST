@@ -69,23 +69,33 @@ class FastRestServer : RestServer {
 
                 let missionIntentString = RestServer.mkIntentString(from: json)
 
-                // FIXME Set scenario knobs listed in the Perturbation JSON Schema: 
-                //       availableCores, availableCoreFrequency, missionLength, sceneObfuscation. 
-                //       This requires:
-                //       1) extending the Runtime with a handler for scenario knob setting,
-                //       2) adding missionLength and sceneObfuscation knobs, perhaps to a new 
-                //          "Environment" TextApiModule.
-                let availableCores         =    Int(json["availableCores"]!         as! Int32)
-                let availableCoreFrequency =    Int(json["availableCoreFrequency"]! as! Int64)
-                let missionLength          =    Int(json["missionLength"]!          as! Int64)
-                let sceneObfuscation       = Double(json["sceneObfuscation"]!       as! Double)
+                if let availableCoresInt         = json["availableCores"]         as? Int
+                 , let availableCoreFrequencyInt = json["availableCoreFrequency"] as? Int
+                 , let missionLengthInt          = json["missionLength"]          as? Int
+                 , let sceneObfuscation          = json["sceneObfuscation"]       as? Double {
+
+                    // FIXME Set scenario knobs listed in the Perturbation JSON Schema: 
+                    //       availableCores, availableCoreFrequency, missionLength, sceneObfuscation. 
+                    //       This requires:
+                    //       1) extending the Runtime with a handler for scenario knob setting,
+                    //       2) adding missionLength and sceneObfuscation knobs, perhaps to a new 
+                    //          "Environment" TextApiModule.
+                    let availableCores           = Int32(availableCoresInt)
+                    let availableCoreFrequency   = Int64(availableCoreFrequencyInt)
+                    let missionLength            = Int64(missionLengthInt)
+
+                    response.status = self.changeIntent(missionIntentString, accumulatedStatus: response.status)
+                }
+                else {
+                    Log.error("Failed to extract scenario knobs from request sent to /perturb endpoint: \(json)")
+                    response.status = .notAcceptable // HTTP 406
+                }
             
-                response.status = self.changeIntent(missionIntentString, accumulatedStatus: response.status)
             }
             else {
                 response.status = .notAcceptable // HTTP 406
             }
-            response.setHeader(.contentType, value: contentTypeTextPlain)
+            response.setHeader(.contentType, value: self.contentTypeTextPlain)
             response.completed()
         })
 
