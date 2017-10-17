@@ -197,9 +197,9 @@ fileprivate func startRestServer() -> (RestServer, InitializationParameters?) {
                 return (server!, ips)
             }
             else {
-                let errorMessage = "Failed to parse InitializationParameters from response from post to TH/ready: \(initializationParametersJson)."
-                Log.error(errorMessage)
-                postErrorToTh(errorMessage)
+                let errorMessage = "Failed to parse InitializationParameters from response from post to TH/ready"
+                Log.error(errorMessage + ": \(initializationParametersJson).")
+                postErrorToTh(errorMessage + ".")
                 fatalError()
             }
         } else {
