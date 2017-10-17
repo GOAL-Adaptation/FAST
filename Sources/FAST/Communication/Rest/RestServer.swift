@@ -74,6 +74,9 @@ func waitUntilDown(endpoint: String, host: String, port: UInt16, method: Request
 
 public class RestServer {
 
+    let contentTypeTextPlain       = "text/plain"
+    let contentTypeApplicationJson = "application/json"
+
     func name() -> String? {
         return nil
     }
@@ -97,6 +100,7 @@ public class RestServer {
         do {
             let jsonString = convertToJsonSR4783(from: json)
             response.setBody(string: jsonString)
+            response.setHeader(.contentType, value: contentTypeApplicationJson)
             Log.verbose("Successfully responded to request on /\(endpointName) REST endpoint: \(jsonString).")
             response.completed() // HTTP 202
 

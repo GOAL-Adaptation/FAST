@@ -34,6 +34,7 @@ class FastRestServer : RestServer {
         routes.add(method: .get, uri: "/alive", handler: {
             _, response in
             response.status = Runtime.shouldTerminate ? .serviceUnavailable : .ok
+            response.setHeader(.contentType, value: self.contentTypeTextPlain)
             response.completed()
             }
         )
@@ -57,6 +58,7 @@ class FastRestServer : RestServer {
             else {
                 response.status = .notAcceptable // HTTP 406
             }
+            response.setHeader(.contentType, value: self.contentTypeTextPlain)
             response.completed()
         })
 
@@ -83,6 +85,7 @@ class FastRestServer : RestServer {
             else {
                 response.status = .notAcceptable // HTTP 406
             }
+            response.setHeader(.contentType, value: contentTypeTextPlain)
             response.completed()
         })
 
@@ -115,7 +118,8 @@ class FastRestServer : RestServer {
                         Runtime.runtimeKnobs.applicationExecutionMode.set(.Adaptive)
                         Log.info("Successfully received request on /enable REST endpoint. Adaptation turned on.")
                 }
-             response.completed()
+            response.setHeader(.contentType, value: self.contentTypeTextPlain)
+            response.completed()
         })
 
         routes.add(method: .post, uri: "/changeIntent", handler: {
@@ -129,6 +133,7 @@ class FastRestServer : RestServer {
                 else {
                     Log.error("Did not receive valid JSON on /perturb endpoint: \(request)")
                 }
+                response.setHeader(.contentType, value: self.contentTypeTextPlain)
                 response.completed()
             }
         )
@@ -137,6 +142,7 @@ class FastRestServer : RestServer {
             _, response in
             Runtime.shouldTerminate = true
             Log.info("Application termination requested through /terminate endpoint.")
+            response.setHeader(.contentType, value: self.contentTypeTextPlain)
             response.completed() // HTTP 202
             }
         )
