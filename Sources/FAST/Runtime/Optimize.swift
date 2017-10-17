@@ -224,8 +224,6 @@ public func optimize
     let logLevel = initialize(type: LoggerMessageType.self, name: "logLevel", from: key, or: .verbose)
     HeliumLogger.use(logLevel)
 
-    let inputsToProcess = initialize(type: UInt64.self, name: "inputsToProcess", from: key)
-
     // Start the FAST REST API, possibly obtaining initalization parameters
     // by posting to brass-th/ready
     let (restServer, initializationParameters) = startRestServer()
@@ -302,7 +300,7 @@ public func optimize
 
     }
 
-    func runOnce(model: Model, intent: IntentSpec) {
+    func run(model: Model, intent: IntentSpec, numberOfInputsToProcess: UInt64? = nil) {
 
         Log.info("Executing optimize scope \(id).")
 
@@ -319,7 +317,7 @@ public func optimize
             var runningTime = 0.0 // counts only time spent inside the loop body
             Runtime.measure("iteration", Double(iteration))
             Runtime.measure("runningTime", runningTime) // running time in seconds
-            loop(iterations: inputsToProcess) {
+            loop(iterations: numberOfInputsToProcess) {
                 startTime = ProcessInfo.processInfo.systemUptime // reset, in case something paused execution between iterations
                 executeAndReportProgress(measuringDevice, routine)
                 iteration += 1
@@ -368,7 +366,7 @@ public func optimize
             // FIXME handle error from request
             let _ = RestClient.sendRequest(to: "initialized")
 
-            runOnce(model: model, intent: ips.initialConditions.missionIntent)
+            run(model: model, intent: ips.initialConditions.missionIntent, numberOfInputsToProcess: ips.numberOfInputsToProcess)
 
             // FIXME handle error from request
             let _ = RestClient.sendRequest(to: "done", withBody: Runtime.statusDictionary())
@@ -394,7 +392,10 @@ public func optimize
                     if let model = Runtime.loadModel(id) {
 
                         Log.info("Model loaded for optimize scope \(id).")
-                        runOnce(model: model, intent: intent)
+
+                        let numberOfInputsToProcess = initialize(type: UInt64.self, name: "inputsToProcess", from: key)
+
+                        run(model: model, intent: intent, numberOfInputsToProcess: numberOfInputsToProcess)
 
                     } else {
 
