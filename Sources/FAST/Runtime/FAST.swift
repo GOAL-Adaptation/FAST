@@ -291,10 +291,6 @@ public class Runtime {
 
     /** Status in the form of a dictionary, for easy conversion to JSON. */
     static func statusDictionary() -> [String : Any]? {
-
-        let utcDateFormatter = DateFormatter()
-        utcDateFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ssZ"
-        utcDateFormatter.timeZone = TimeZone(identifier: "GMT")
         
         func toArrayOfPairDicts(_ dict: [String : Any]) -> [[String : Any]] {
             return Array(dict).map { (s , a) in ["name" : s, "value" : a] }
@@ -324,7 +320,7 @@ public class Runtime {
             let scenarioKnobs            = extractStatus(                                from: Runtime.scenarioKnobs)
 
             let status : [String : Any] =
-                [ "time"      : utcDateFormatter.string(from: Date())
+                [ "time"      : utcDateString()
                 , "arguments" : 
                     [ "application"              : application
                     , "applicationKnobs"         : toArrayOfPairDicts(applicationKnobs)

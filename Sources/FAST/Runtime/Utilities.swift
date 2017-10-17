@@ -1,5 +1,6 @@
 import Foundation
 import LoggerAPI
+import PerfectHTTP
 
 func synchronized<L: NSLocking>(_ lock: L, routine: () -> ()) {
     lock.lock()
@@ -38,4 +39,18 @@ func withOpenFile( atPath path: String
     } else {
         Log.error("Unable to open file '\(path)'")
     }
+}
+
+func utcDateString() -> String {
+    let utcDateFormatter = DateFormatter()
+    utcDateFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ssZ"
+    utcDateFormatter.timeZone = TimeZone(identifier: "GMT")
+    return utcDateFormatter.string(from: Date())
+}
+
+@discardableResult func postErrorToTh(_ errorMessage: String) -> [String : Any]? {
+    return RestClient.sendRequest(to: "error", withBody: [
+        "time"    : utcDateString(),
+        "message" : errorMessage
+    ])
 }

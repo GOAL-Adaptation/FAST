@@ -197,7 +197,9 @@ fileprivate func startRestServer() -> (RestServer, InitializationParameters?) {
                 return (server!, ips)
             }
             else {
-                Log.error("Failed to parse InitializationParameters from response from post to TH/ready: \(initializationParametersJson).")
+                let errorMessage = "Failed to parse InitializationParameters from response from post to TH/ready: \(initializationParametersJson)."
+                Log.error(errorMessage)
+                postErrorToTh(errorMessage)
                 fatalError()
             }
         } else {
@@ -373,7 +375,9 @@ public func optimize
 
         }
         else {
-            Log.error("No initalization parameters received from brass-th/ready.")
+            let errorMessage =  "Invalid initalization parameters received from /ready endpoint."
+            Log.error(errorMessage)
+            postErrorToTh(errorMessage)
             fatalError()
         }
 
