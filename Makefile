@@ -28,7 +28,6 @@ endif
 build: copy-resources-build
 	swift build $(SPM_FLAGS)
 
-test: export proteus_runtime_randomSeed := 0
 test: copy-resources-test
 	swift test $(SPM_FLAGS)
 

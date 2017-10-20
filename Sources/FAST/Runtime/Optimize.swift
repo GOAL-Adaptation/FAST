@@ -42,13 +42,8 @@ fileprivate func startRestServer() {
 }
 
 internal func initializeRandomNumberGenerators() {
-    let seed = initialize(type: UInt64.self, name: "randomSeed", from: key)
-    if let mySeed = seed {
-        randomizerInit(seed: mySeed) 
-    }
-    else {
-        randomizerInit(seed: 0)  // DXN_DBG: forcing seed to be 0, if not read from the environment
-    }
+    let s = initialize(type: Int.self, name: "randomSeed", from: key, or: 0)
+    randomizerInit(seed: UInt64(s))
 }
 
 /* Defines an optimization scope. Replaces a loop in a pure Swift program. */
