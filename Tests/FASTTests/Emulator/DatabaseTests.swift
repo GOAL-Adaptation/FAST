@@ -152,10 +152,10 @@ class DatabaseTests: XCTestCase {
 
     func testReadDelta() {
         if let database = Database(databaseFile: dbFile) {
-            var time_energy = database.readDelta(application: "RADAR", architecture: "ARM-big.LITTLE", appCfg: 6, appInp: 1, sysCfg: 1, processing: 3 )
-            XCTAssertEqual(-1584, time_energy.0)  // DXN_DBG: negative delta time for now
+            var time_energy = database.readDelta(application: "RADAR", architecture: "ARM-big.LITTLE", appCfg: 6, appInp: 1, sysCfg: 1, processing: 3)
+            XCTAssertEqual(-1584, time_energy.0)  // DXN_DBG: The delta time is negative because we are using synthetic test data
             XCTAssertEqual(664, time_energy.1)
-            time_energy = database.readDelta(application: "x264", architecture: "ARM-big.LITTLE", appCfg: 7, appInp: 3, sysCfg: 1, processing: 2 )
+            time_energy = database.readDelta(application: "x264", architecture: "ARM-big.LITTLE", appCfg: 7, appInp: 3, sysCfg: 1, processing: 2)
             XCTAssertEqual(5654, time_energy.0)
             XCTAssertEqual(4218, time_energy.1)
         }
@@ -177,19 +177,17 @@ class DatabaseTests: XCTestCase {
         }
     }
 
-    // TODO: more functions to be tested
-
     static var allTests = [
 
        ("testGetReferenceSystemConfigurationID", testGetReferenceSystemConfigurationID),
-        ("testGetReferenceApplicationConfigurationID", testGetReferenceApplicationConfigurationID),
-        ("testObtainOutliers", testObtainOutliers),
-        ("testGetTapeNoise", testGetTapeNoise),
+       ("testGetReferenceApplicationConfigurationID", testGetReferenceApplicationConfigurationID),
+       ("testObtainOutliers", testObtainOutliers),
+       ("testGetTapeNoise", testGetTapeNoise),
        ("testGetWarmupInputs", testGetWarmupInputs),
        ("testGetNumberOfInputsProfiled", testGetNumberOfInputsProfiled),
-        ("testReadDelta", testReadDelta),
-        ("testGetCurrentSystemConfigurationId", testGetCurrentSystemConfigurationId),
-        ("testGetCurrentApplicationConfigurationId", testGetCurrentApplicationConfigurationId)
+       ("testReadDelta", testReadDelta),
+       ("testGetCurrentSystemConfigurationId", testGetCurrentSystemConfigurationId),
+       ("testGetCurrentApplicationConfigurationId", testGetCurrentApplicationConfigurationId)
     ]
 
 }
