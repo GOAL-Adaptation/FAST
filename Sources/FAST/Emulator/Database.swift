@@ -119,6 +119,14 @@ public class Database: TextApiModule {
     }
   }
 
+  public func execute(script: String) throws {
+      for statementInScript in script.components(separatedBy: ";") {
+          if statementInScript.characters.count > 0 {
+              try database.execute(statement: statementInScript)
+          }
+      }
+  }
+
   /** Get the configuration Id of the current application knobs and their corresponding values from the database. 
   */
   public func getCurrentConfigurationId(application: Application) -> Int {

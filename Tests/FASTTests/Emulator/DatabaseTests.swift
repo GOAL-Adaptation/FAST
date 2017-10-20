@@ -10,6 +10,7 @@
 
 import Source
 import XCTest
+import LoggerAPI
 @testable import FAST
 
 //---------------------------------------
@@ -19,7 +20,10 @@ class DatabaseTests: XCTestCase {
 
     override func setUp() {
         initializeRandomNumberGenerators()
+        recreateTestDatabase()
     }
+
+    let dbFile = "DatabaseTests.db"
 
     /** Incrementer Application instance */
     class Incrementer: EmulateableApplication {
@@ -57,7 +61,36 @@ class DatabaseTests: XCTestCase {
 
     }
 
-    let dbFile = "/Users/dxnguyen/Documents/Proteus/FAST/Tests/FASTTests/Emulator/incrementer.db"
+    @discardableResult func recreateTestDatabase() -> Database {
+
+        if !FileManager.default.fileExists(atPath: dbFile) {
+            FileManager.default.createFile(atPath: dbFile, contents: nil)
+        }
+        
+        if let loadSchemaQuery = readFile(withName: "Database", ofType: "sql", fromBundle: Bundle(for: type(of: self))),
+           let insertDataQuery = readFile(withName: "DatabaseTests", ofType: "sql", fromBundle: Bundle(for: type(of: self))),
+           let db = Database(databaseFile: dbFile) {            
+            do {
+                try db.execute(script: loadSchemaQuery)
+                try db.execute(script: insertDataQuery)
+                db.database.close()
+                Log.info("Test database recreated.")
+            }
+            catch let error {
+                let errorMessage = "Unable to execute test database schema and data files: \(error)."
+                Log.error(errorMessage)
+                fatalError(errorMessage)
+            }
+            
+            return db
+
+        }
+        else {
+            let errorMessage = "Unable to load test database schema and data files."
+            Log.error(errorMessage)
+            fatalError(errorMessage)
+        }
+    }
 
     func testGetReferenceApplicationConfigurationID() {
         
