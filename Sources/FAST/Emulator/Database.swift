@@ -135,7 +135,7 @@ public class Database: TextApiModule {
 
     // Create a temporary view of all the application configurations with all the knob names and their corresponding values:
     var sqliteQuery =
-      "CREATE TEMPORARY VIEW AllAppCfgIdView AS " +
+      "CREATE TEMPORARY VIEW IF NOT EXISTS AllAppCfgIdView AS " +
       "SELECT [ApplicationConfiguration].[id] AS [appCfgId], " +
       "       [Knob].[name] AS [knobName], " +
       "       [ApplicationConfiguration_Application_Knob].[knobValue] AS [knobValue] " +
@@ -204,7 +204,7 @@ func getCurrentConfigurationId(architecture: Architecture) -> Int {
 
   // Create a temporary view of all the system configurations with all the knob names and their corresponding values:
   var sqliteQuery =
-  "CREATE TEMPORARY VIEW  AllSysCfgIdView AS " + 
+  "CREATE TEMPORARY VIEW IF NOT EXISTS AllSysCfgIdView AS " + 
   "SELECT [SystemConfiguration].[id] AS [sysCfgId], " +
   "       [Knob].[name] AS [knobName], " +
   "       [SystemConfiguration_System_Knob].[knobValue] AS [knobValue] " +
