@@ -45,7 +45,9 @@ copy-resources-build:
 	
 copy-resources-test:
 	mkdir -p $(TEST_RESOURCE_TARGET_PATH)
-	cp $(RESOURCE_PATH)/${APPNAME}.* $(TEST_RESOURCE_TARGET_PATH)/
+	cp Sources/FAST/Emulator/Database.sql $(TEST_RESOURCE_TARGET_PATH)/
+	cp Tests/FASTTests/Emulator/DatabaseTests.sql $(TEST_RESOURCE_TARGET_PATH)/
+	cp $(RESOURCE_PATH)/incrementer.* $(TEST_RESOURCE_TARGET_PATH)/
 
 clean:
 	rm Package.pins

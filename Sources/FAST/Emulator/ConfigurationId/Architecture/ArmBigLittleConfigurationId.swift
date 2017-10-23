@@ -21,7 +21,7 @@ import LoggerAPI
 /** ARM bigLITTLE Configuration ID from the Database */
 extension Database {
 
-    func getConfigurationId(architecture: ArmBigLittle) -> Int {
+    func getCurrentConfigurationId(architecture: ArmBigLittle) -> Int {
 
         var result: Int = 0
 
@@ -67,8 +67,8 @@ extension Database {
 /** ARM bigLITTLE gets the Configuration Id from the Database*/
 extension ArmBigLittle {
     
-    func getConfigurationId(database: Database) -> Int {
-        return database.getConfigurationId(architecture: self)
+    func getCurrentConfigurationId(database: Database) -> Int {
+        return database.getCurrentConfigurationId(architecture: self)
     }
 }
 

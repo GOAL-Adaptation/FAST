@@ -59,9 +59,9 @@ class Incrementer: Application, EmulateableApplication {
         self.addSubModule(newModule: applicationKnobs)
     }
 
-    /** Identifier used to look up  */
-    func getConfigurationId(database: Database) -> Int {
-        return database.getConfigurationId(application: self)
+    /** Look up the id (in the database) of the current application configuration. */
+    func getCurrentConfigurationId(database: Database) -> Int {
+        return database.getCurrentConfigurationId(application: self)
     }
 
 }

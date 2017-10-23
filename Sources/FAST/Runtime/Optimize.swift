@@ -214,6 +214,11 @@ fileprivate func startRestServer() -> (RestServer, InitializationParameters?) {
 
 }
 
+internal func initializeRandomNumberGenerators() {
+    let s = initialize(type: Int.self, name: "randomSeed", from: key, or: 0)
+    randomizerInit(seed: UInt64(s))
+}
+
 /* Defines an optimization scope. Replaces a loop in a pure Swift program. */
 public func optimize
     ( _ id: String
@@ -226,8 +231,12 @@ public func optimize
     let logLevel = initialize(type: LoggerMessageType.self, name: "logLevel", from: key, or: .verbose)
     HeliumLogger.use(logLevel)
 
+    initializeRandomNumberGenerators()
+
     // Start the FAST REST API, possibly obtaining initalization parameters
     // by posting to brass-th/ready
+    // FIXME: This code should be moved into the initalizer for
+    //        the Runtime class, once it is made non-static.
     let (restServer, initializationParameters) = startRestServer()
 
     /** Loop body for a given number of iterations (or infinitely, if iterations == nil) */
