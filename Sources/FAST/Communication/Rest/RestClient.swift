@@ -22,7 +22,7 @@ fileprivate let key = ["proteus","client","rest"]
 class RestClient {
 
     static let serverProtocol = initialize(type: String.self, name: "serverProtocol", from: key, or: "http")
-    static let serverAddress  = initialize(type: String.self, name: "serverAddress" , from: key, or: "brass-th")
+    static let serverAddress  = initialize(type: String.self, name: "serverAddress" , from: key, or: "127.0.0.1")
     static let serverPort     = initialize(type: UInt16.self, name: "serverPort"    , from: key, or: 80)
 
     /**
