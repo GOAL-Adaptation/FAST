@@ -53,7 +53,7 @@ func initialize<T>(type: T.Type, from key: [String], or defaultValue: T) -> T {
         return nv           
     }
     else { 
-        Log.verbose("Initializing value of type \(type): \(key.joined(separator: "_")) to default '\(newValue)'.")
+        Log.verbose("Initializing value of type \(type): \(key.joined(separator: "_")) to default '\(defaultValue)'.")
         return defaultValue 
     }
 
