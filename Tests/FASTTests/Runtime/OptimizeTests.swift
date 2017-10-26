@@ -49,35 +49,41 @@ class OptimizeTests: FASTTestCase {
                                 )
     }
 
+    func withThMockRestServer(_ test: (RestServer) -> ()) {
+        let thMockServer = startThMockRestServer()
+        test(thMockServer)
+        stopThMockRestServer(server: thMockServer)
+    }
+
     /** 
      * If FAST is unable to load the intent or model files, an optimize should 
      * behave like a while(true) loop.
      */
     func testOptimizeWithoutIntentAndModel() {
         
-        let thMockServer = startThMockRestServer()
+        withThMockRestServer { _ in
 
-        let threshold = 100
-        var optimizeState: Int = 0
-        var whileState: Int = 0
+            let threshold = 100
+            var optimizeState: Int = 0
+            var whileState: Int = 0
 
-        optimize("NO_SUCH_INTENT", []) {
-            if optimizeState < threshold {
-                optimizeState += 1
+            optimize("NO_SUCH_INTENT", []) {
+                if optimizeState < threshold {
+                    optimizeState += 1
+                }
+                else { Runtime.shouldTerminate = true }
             }
-            else { Runtime.shouldTerminate = true }
-        }
 
-        while(true) {
-            if whileState < threshold { 
-                whileState += 1
+            while(true) {
+                if whileState < threshold { 
+                    whileState += 1
+                }
+                else { break }
             }
-            else { break }
+
+            XCTAssertEqual(optimizeState, whileState)
+
         }
-
-        stopThMockRestServer(server: thMockServer)
-
-        XCTAssertEqual(optimizeState, whileState)
 
     }
 
@@ -86,18 +92,18 @@ class OptimizeTests: FASTTestCase {
      */
     func testThatOptimizeBringsUpTheRestServer() {
         
-        let thMockServer = startThMockRestServer()
+        withThMockRestServer { _ in
 
-        optimize("NO_SUCH_INTENT", []) {
+            optimize("NO_SUCH_INTENT", []) {
 
-            let fastRestServerIsUp = nil != self.callFastRestServer(endpoint: "alive")
+                let fastRestServerIsUp = nil != self.callFastRestServer(endpoint: "alive")
 
-            XCTAssertTrue(fastRestServerIsUp)
+                XCTAssertTrue(fastRestServerIsUp)
 
-            Runtime.shouldTerminate = true
+                Runtime.shouldTerminate = true
+            }
+
         }
-
-        stopThMockRestServer(server: thMockServer)
 
     }
 
@@ -107,18 +113,18 @@ class OptimizeTests: FASTTestCase {
      */
     func testBasicLLTestScenario() {
         
-        let thMockServer = startThMockRestServer()
+        withThMockRestServer { _ in
 
-        optimize("NO_SUCH_INTENT", []) {
+            optimize("NO_SUCH_INTENT", []) {
 
-            let fastRestServerIsUp = nil != self.callFastRestServer(endpoint: "alive")
+                let fastRestServerIsUp = nil != self.callFastRestServer(endpoint: "alive")
 
-            XCTAssertTrue(fastRestServerIsUp)
+                XCTAssertTrue(fastRestServerIsUp)
 
-            Runtime.shouldTerminate = true
+                Runtime.shouldTerminate = true
+            }
+
         }
-
-        stopThMockRestServer(server: thMockServer)
 
     }
 
@@ -137,7 +143,7 @@ class OptimizeTests: FASTTestCase {
     }
 
     static var allTests = [
-        // ("testThatOptimizeBringsUpTheRestServer", testThatOptimizeBringsUpTheRestServer),
+        ("testThatOptimizeBringsUpTheRestServer", testThatOptimizeBringsUpTheRestServer),
         ("testBasicLLTestScenario", testBasicLLTestScenario),
         ("testOptimizeWithoutIntentAndModel", testOptimizeWithoutIntentAndModel),
         ("testPerturbationInit", testPerturbationInit)
