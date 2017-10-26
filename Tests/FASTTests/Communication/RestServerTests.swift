@@ -14,7 +14,7 @@ import XCTest
 
 //---------------------------------------
 
-class RestServerTests: XCTestCase {
+class RestServerTests: FASTTestCase {
 
     /** Expressinons encoded in JSON should serialize to the corresponding string representation. */
     func testMkExpressionString() {

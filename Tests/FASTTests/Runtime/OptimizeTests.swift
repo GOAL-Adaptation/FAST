@@ -10,11 +10,12 @@
 
 import Dispatch
 import XCTest
+import KituraRequest
 @testable import FAST
 
 //---------------------------------------
 
-class OptimizeTests: XCTestCase {
+class OptimizeTests: FASTTestCase {
 
     func startThMockRestServer() -> RestServer {
         var thMockServer: RestServer? = nil
@@ -30,6 +31,22 @@ class OptimizeTests: XCTestCase {
     func stopThMockRestServer(server: RestServer) {
         server.stop()
         waitUntilDown(endpoint: "ready", host: RestClient.serverAddress, port: RestClient.serverPort, method: .post, description: "TH mock REST")
+    }
+
+    func callFastRestServer
+        ( endpoint      : String
+        , method        : Request.Method  = .get
+        , withBody json : [String : Any]? = [:]
+        ) -> [String: Any]? {
+        return 
+            RestClient.sendRequest( to         : endpoint
+                                , over       : "http"
+                                , at         : "0.0.0.0" //RestClient.serverAddress
+                                , onPort     : Runtime.restServerPort
+                                , withMethod : method
+                                , withBody   : json
+                                , logErrors  : true
+                                )
     }
 
     /** 
@@ -60,7 +77,7 @@ class OptimizeTests: XCTestCase {
 
         stopThMockRestServer(server: thMockServer)
 
-        XCTAssertTrue(optimizeState == whileState)
+        XCTAssertEqual(optimizeState, whileState)
 
     }
 
@@ -73,16 +90,28 @@ class OptimizeTests: XCTestCase {
 
         optimize("NO_SUCH_INTENT", []) {
 
-            let fastRestServerIsUp = 
-                nil !=
-                    RestClient.sendRequest( to         : "alive"
-                                            , over       : "http"
-                                            , at         : RestClient.serverAddress
-                                            , onPort     : Runtime.restServerPort
-                                            , withMethod : .post
-                                            , withBody   : [:]
-                                            , logErrors  : false
-                                            )
+            let fastRestServerIsUp = nil != self.callFastRestServer(endpoint: "alive")
+
+            XCTAssertTrue(fastRestServerIsUp)
+
+            Runtime.shouldTerminate = true
+        }
+
+        stopThMockRestServer(server: thMockServer)
+
+    }
+
+
+    /** 
+     * Ensure that the REST API is brought up by the optimize construct.
+     */
+    func testBasicLLTestScenario() {
+        
+        let thMockServer = startThMockRestServer()
+
+        optimize("NO_SUCH_INTENT", []) {
+
+            let fastRestServerIsUp = nil != self.callFastRestServer(endpoint: "alive")
 
             XCTAssertTrue(fastRestServerIsUp)
 
@@ -108,7 +137,8 @@ class OptimizeTests: XCTestCase {
     }
 
     static var allTests = [
-        ("testThatOptimizeBringsUpTheRestServer", testThatOptimizeBringsUpTheRestServer),
+        // ("testThatOptimizeBringsUpTheRestServer", testThatOptimizeBringsUpTheRestServer),
+        ("testBasicLLTestScenario", testBasicLLTestScenario),
         ("testOptimizeWithoutIntentAndModel", testOptimizeWithoutIntentAndModel),
         ("testPerturbationInit", testPerturbationInit)
     ]

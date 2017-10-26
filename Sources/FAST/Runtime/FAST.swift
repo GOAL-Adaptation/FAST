@@ -168,6 +168,35 @@ extension InteractionMode: CustomStringConvertible {
 public class Runtime {
 
     private init() {}
+    
+    // FIXME: Replace by initializer, after making static var:s into instance variables.
+    static func reset() {
+        Runtime.measures                 = [:]
+        Runtime.measuresLock             = NSLock()
+        
+        Runtime.knobSetters              = [:]
+        Runtime.knobSettersLock          = NSLock()
+        
+        Runtime.intents                  = [:]
+        Runtime.models                   = [:]
+        Runtime.controller               = ConstantController()
+        Runtime.controllerLock           = NSLock()
+        
+        Runtime.architecture             = DefaultArchitecture()
+        Runtime.application              = nil
+
+        Runtime.communicationChannel     = nil
+
+        Runtime.runtimeKnobs             = RuntimeKnobs()
+
+        Runtime.scenarioKnobs            = ScenarioKnobs()
+
+        Runtime.scriptedCounter          = 0
+
+        Runtime.shouldTerminate          = false
+
+        Runtime.apiModule                = RuntimeApiModule()
+    }
 
     internal static let restServerPort    = initialize(type: UInt16.self, name: "port",    from: key, or: 1338)
     internal static let restServerAddress = initialize(type: String.self, name: "address", from: key, or: "0.0.0.0")
