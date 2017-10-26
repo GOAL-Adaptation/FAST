@@ -52,7 +52,7 @@ class RestClient {
 
         do {
 
-            if body == nil || body!.isEmpty {
+            if body == nil {
                 Log.info("Sending \(method) request to \(urlString) with empty body.")
             }
             else {
@@ -89,27 +89,30 @@ class RestClient {
                         }
                         else {
                             if let maybeResponseDataJson = try? responseDataString.jsonDecode(),
-                            let responseDataJson      = maybeResponseDataJson as? [String:Any] {
+                            let responseDataJson         = maybeResponseDataJson as? [String:Any] {
                                 
-                                Log.verbose("Successfully JSON decoded response from \(method) to \(path): \(responseDataJson).")
+                                Log.verbose("Successfully JSON decoded response from \(method) to \(urlString): \(responseDataJson).")
                                 res = responseDataJson
 
                             }
                             else {
-                                res = nilAndLogError("Error JSON-decoding \(method) response from \(path). Error: \(String(describing: maybeError)).")
+                                res = nilAndLogError("Error JSON-decoding \(method) response data from \(urlString): '\(responseDataString)'. Error: \(String(describing: maybeError)).")
                             }
                         }
                         
                     }
                     else {
-                        res = nilAndLogError("Error UTF8-decoding \(method) response from \(path). Error: \(String(describing: maybeError)).")
+                        res = nilAndLogError("Error UTF8-decoding \(method) response from \(urlString). Error: \(String(describing: maybeError)).")
                     }
                 } else {
-                    res = nilAndLogError("Error sending \(method) request to \(path) with body: \(body). Error: \(String(describing: maybeError)).")
+                    res = nilAndLogError("Error sending \(method) request to \(urlString) with body: \(body). Error: \(String(describing: maybeError)).")
                 }
 
             }
 
+        }
+        catch let err {
+            res = nilAndLogError("Exception while sending \(method) request to \(urlString) with body: \(body). Error: \(err).")
         }
 
         return res
