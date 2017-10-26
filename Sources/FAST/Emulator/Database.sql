@@ -44,7 +44,8 @@ DROP TABLE IF EXISTS [main].[ApplicationInputStream];
 CREATE TABLE [main].[ApplicationInputStream](
     [id] INTEGER PRIMARY KEY NOT NULL, 
     [name] TEXT NOT NULL, 
-    [applicationId] INTEGER NOT NULL REFERENCES Application([id]) ON DELETE CASCADE ON UPDATE CASCADE);
+    [applicationId] INTEGER NOT NULL REFERENCES Application([id]) ON DELETE CASCADE ON UPDATE CASCADE,
+    UNIQUE([applicationId], [name]));
 
 /* Drop table [ApplicationInputStream_ApplicationConfiguration] */
 DROP TABLE IF EXISTS [main].[ApplicationInputStream_ApplicationConfiguration];
