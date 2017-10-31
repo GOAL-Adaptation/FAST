@@ -20,3 +20,7 @@ public protocol Application: TextApiModule {
 }
 
 //---------------------------------------
+
+public protocol StreamApplication {
+  func initializeStream()
+}

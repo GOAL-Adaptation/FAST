@@ -291,6 +291,9 @@ public func optimize
                     let knobSettings = knobSpace[i]
                     Log.info("Start profiling of configuration: \(knobSettings.settings).")
                     knobSettings.apply()
+                    if let streamingApplication = Runtime.application as? StreamApplication {
+                        streamingApplication.initializeStream()
+                    }
                     loop( iterations: profileSize
                         , { executeAndReportProgress(measuringDevice, routine) } )
 
