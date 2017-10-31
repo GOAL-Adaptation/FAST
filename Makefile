@@ -27,7 +27,7 @@ SPM_FLAGS := $(SPM_FLAGS_ALL) \
   -Xlinker -F/Library/Frameworks -Xlinker -framework -Xlinker IntelPowerGadget
 TEST_RESOURCE_TARGET_PATH := $(RESOURCE_TARGET_PATH)/FASTPackageTests.xctest/Contents/Resources
 endif
-	
+
 build: copy-resources-build
 	swift build $(SPM_FLAGS)
 
@@ -42,7 +42,7 @@ test: copy-resources-test
 copy-resources-build:
 	mkdir -p $(RESOURCE_TARGET_PATH)
 	cp $(RESOURCE_PATH)/${APPNAME}.* $(RESOURCE_TARGET_PATH)/
-	
+
 copy-resources-test:
 	mkdir -p $(TEST_RESOURCE_TARGET_PATH)
 	cp Sources/FAST/Emulator/Database.sql $(TEST_RESOURCE_TARGET_PATH)/
@@ -50,7 +50,7 @@ copy-resources-test:
 	cp $(RESOURCE_PATH)/incrementer.* $(TEST_RESOURCE_TARGET_PATH)/
 
 clean:
-	rm Package.pins
+	rm -f Package.pins
 	rm -rf .build/
 
 rebuild: clean build
@@ -80,17 +80,17 @@ execute:              export proteus_xilinxZcu_availableCores                 :=
 execute:              export proteus_xilinxZcu_maximalCoreFrequency           := 1400000
 execute:              export proteus_xilinxZcu_utilizedCores                  := 0
 execute:              export proteus_xilinxZcu_utilizedCoreFrequency          := 1400000
-	
+
 execute: copy-resources-build
 	.build/debug/${APPNAME}
 
 go:                     build run
-                   
+
 all:                    rebuild run
-                   
+
 run:               		export proteus_runtime_applicationExecutionMode         := Adaptive
 run:               		execute                                                 
-                   		                                                        
+
 run-scripted:      		export proteus_runtime_interactionMode                  := Scripted
 run-scripted:      		run                                                     
 
@@ -102,16 +102,16 @@ run-harness-scripted:   run-scripted
 
 emulate:           		export proteus_armBigLittle_executionMode               := Emulated
 emulate:           		run                                                     
-                   		                                                        
+
 emulate-scripted:  		export proteus_armBigLittle_executionMode               := Emulated
 emulate-scripted:  		run-scripted                                            
-                   		                                                        
+
 evaluate:          		export proteus_runtime_executeWithTestHarness           := true
 evaluate:          		emulate                                                 
-                   		                                                        
+
 evaluate-scripted: 		export proteus_runtime_executeWithTestHarness           := true
 evaluate-scripted: 		emulate-scripted                                        
-                   		                                                        
+
 profile:           		export proteus_runtime_logLevel                         := Info
 profile:           		export proteus_runtime_applicationExecutionMode         := ExhaustiveProfiling
 profile:           		export proteus_runtime_profileSize                      := $(if $(TEST),$(TEST),100)
