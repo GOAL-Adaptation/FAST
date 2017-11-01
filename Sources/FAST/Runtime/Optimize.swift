@@ -348,10 +348,13 @@ public func optimize
                 // FIXME maybe stalling in scripted mode should not be done inside of optimize but somewhere else in an independent and better way
                 Runtime.reportProgress()
                 
+                let statusDictionary = Runtime.statusDictionary()
+                Log.debug("Current status: \(convertToJsonSR4783(from: statusDictionary)).")
                 if Runtime.executeWithTestHarness {
                     // FIXME handle error from request
-                    let _ = RestClient.sendRequest(to: "status", withBody: Runtime.statusDictionary())
+                    let _ = RestClient.sendRequest(to: "status", withBody: statusDictionary)
                 }
+
                 iteration += 1
             } 
         }
