@@ -22,8 +22,10 @@ import LoggerAPI
 
 /* A collection of knob values that can be applied to control the system. */
 class KnobSettings {
+    let kid: Int // The id of the configuration given in the knobtable
     let settings: [String : Any]
-    init(_ settings: [String : Any]) {
+    init(kid: Int, _ settings: [String : Any]) {
+        self.kid = kid
         self.settings = settings
     }
     func apply() {
@@ -91,7 +93,7 @@ open class Model {
         var configurations: [Configuration] = []      
         for configId in 0 ..< knobTable.rows.count {
             let knobNameValuePairs = Array(zip(knobNames, knobTable.rows[configId].dropFirst().map{ parseKnobSetting($0) }))
-            let knobSettings = KnobSettings([String:Any](knobNameValuePairs))
+            let knobSettings = KnobSettings(kid: configId, [String:Any](knobNameValuePairs))
             let measureNameValuePairs = Array(zip(measureNames, measureTable.rows[configId].dropFirst().map{ Double($0)! })) // FIXME Add error handling
             let measures = [String:Double](measureNameValuePairs)
             configurations.append(Configuration(configId, knobSettings, measures))

@@ -32,7 +32,9 @@ class ConstantController : Controller {
 
     func getSchedule(_ intent: IntentSpec, _ measureValues: [String : Double]) -> Schedule {
         return Schedule({ (_: UInt32) -> KnobSettings in 
-            return KnobSettings([:]) 
+            // FIXME Eliminate undefined-value representations (-1 and [:]) below
+            //       by making the Runtime.controller optional.
+            return KnobSettings(kid: -1, [:]) 
         })
     }
 

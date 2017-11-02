@@ -326,13 +326,15 @@ public func optimize
             // Initialize measuring device, that will update measures based on the samplingPolicy
             let measuringDevice = MeasuringDevice(samplingPolicy, windowSize, labels)
             Runtime.measuringDevices[id] = measuringDevice
-            var schedule: Schedule = Schedule(constant: controllerModel.getInitialConfiguration()!.knobSettings)
+            var currentKnobSettings = controllerModel.getInitialConfiguration()!.knobSettings
+            var schedule: Schedule = Schedule(constant: currentKnobSettings)
             // FIXME what if the counter overflows
             var iteration: UInt32 = 0 // iteration counter
             var startTime = ProcessInfo.processInfo.systemUptime // used for runningTime counter
             var runningTime = 0.0 // counts only time spent inside the loop body
             Runtime.measure("iteration", Double(iteration))
             Runtime.measure("runningTime", runningTime) // running time in seconds
+            Runtime.measure("currentConfiguration", Double(currentKnobSettings.kid)) // The id of the configuration given in the knobtable
             loop(iterations: numberOfInputsToProcess) {
                 startTime = ProcessInfo.processInfo.systemUptime // reset, in case something paused execution between iterations
                 executeAndReportProgress(measuringDevice, routine)
@@ -340,8 +342,10 @@ public func optimize
                     schedule = Runtime.controller.getSchedule(intent, measuringDevice.windowAverages())
                 }
                 if Runtime.runtimeKnobs.applicationExecutionMode.get() == ApplicationExecutionMode.Adaptive {
+                    currentKnobSettings = schedule[iteration % windowSize]                    
+                    Runtime.measure("currentConfiguration", Double(currentKnobSettings.kid)) // The id of the configuration given in the knobtable
                     // FIXME This should only apply when the schedule actually needs to change knobs
-                    schedule[iteration % windowSize].apply()
+                    currentKnobSettings.apply()
                 }
                 Runtime.measure("iteration", Double(iteration))
                 runningTime += ProcessInfo.processInfo.systemUptime - startTime

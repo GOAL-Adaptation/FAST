@@ -71,7 +71,11 @@ extension IntentSpec {
         let spaceWithFirstKnobsValuesOnly = firstKnobValues.map{ [firstKnobName: $0] }
         return build( space: spaceWithFirstKnobsValuesOnly
                     , remainingKnobs: Array(knobNames.dropFirst(1))
-                    ).map{ KnobSettings($0) } 
+                    ).map{ 
+                        // FIXME Eliminate undefined-value representations (-1 and [:]) below
+                        //       by making the Runtime.controller optional.
+                        KnobSettings(kid: -1, $0) 
+                    } 
     }
 
   }
