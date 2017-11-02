@@ -112,7 +112,7 @@ extension IntentSpec {
     ]
     
     // If a model is loaded for this intent, compute the current objectiveFunction value
-    // and insert a property for it into the JSON object
+    // and, if the value is not Double.nan, insert a property for it into the JSON object
     if let model = Runtime.models[name] {
         guard let measuringDevice = Runtime.measuringDevices[name] else {
             Log.error("No measuring device registered for intent \(name).")
@@ -131,7 +131,10 @@ extension IntentSpec {
                 fatalError()
             }
         }
-        intentJson["objectiveFunction"] = costOrValue(measureValueArray)
+        let objectiveFunction = costOrValue(measureValueArray)
+        if !objectiveFunction.isNaN {
+            intentJson["objectiveFunction"] = objectiveFunction
+        }
     }
 
     return [
