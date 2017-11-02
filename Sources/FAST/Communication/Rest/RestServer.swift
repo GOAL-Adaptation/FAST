@@ -97,18 +97,11 @@ public class RestServer {
 
     /** Add a JSON object as the body of the HTTPResponse parameter. */
     func addJsonBody(toResponse response: HTTPResponse, json: [String : Any], jsonDescription: String, endpointName: String) {
-        do {
-            let jsonString = convertToJsonSR4783(from: json)
-            response.setBody(string: jsonString)
-            response.setHeader(.contentType, value: contentTypeApplicationJson)
-            Log.verbose("Successfully responded to request on /\(endpointName) REST endpoint: \(jsonString).")
-            response.completed() // HTTP 202
-
-        } 
-        catch let e {
-            response.status = .notAcceptable // HTTP 406
-            Log.error("Exception while serializing JSON in response to request on /\(endpointName) REST endpoint: \(json). Exception: \(e).")
-        }
+        let jsonString = convertToJsonSR4783(from: json)
+        response.setBody(string: jsonString)
+        response.setHeader(.contentType, value: contentTypeApplicationJson)
+        Log.verbose("Successfully responded to request on /\(endpointName) REST endpoint: \(jsonString).")
+        response.completed() // HTTP 202
     }
 
     @discardableResult init(port: UInt16, address: String) {
