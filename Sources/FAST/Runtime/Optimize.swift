@@ -260,6 +260,7 @@ public func optimize
 
         // Initialize measuring device, that will update measures at every input
         let measuringDevice = MeasuringDevice(ProgressSamplingPolicy(period: 1), windowSize, labels)
+        Runtime.measuringDevices[id] = measuringDevice
 
         // Number of inputs to process when profiling a configuration
         let defaultProfileSize:         UInt64 = UInt64(1000)
@@ -324,6 +325,7 @@ public func optimize
         if let controllerModel = Runtime.controller.model {
             // Initialize measuring device, that will update measures based on the samplingPolicy
             let measuringDevice = MeasuringDevice(samplingPolicy, windowSize, labels)
+            Runtime.measuringDevices[id] = measuringDevice
             var schedule: Schedule = Schedule(constant: controllerModel.getInitialConfiguration()!.knobSettings)
             // FIXME what if the counter overflows
             var iteration: UInt32 = 0 // iteration counter
@@ -335,8 +337,7 @@ public func optimize
                 startTime = ProcessInfo.processInfo.systemUptime // reset, in case something paused execution between iterations
                 executeAndReportProgress(measuringDevice, routine)
                 if iteration % windowSize == 0 {
-                    let measureWindowAverages = Dictionary(measuringDevice.stats.map{ (n,s) in (n, s.windowAverage) })
-                    schedule = Runtime.controller.getSchedule(intent, measureWindowAverages)
+                    schedule = Runtime.controller.getSchedule(intent, measuringDevice.windowAverages())
                 }
                 if Runtime.runtimeKnobs.applicationExecutionMode.get() == ApplicationExecutionMode.Adaptive {
                     // FIXME This should only apply when the schedule actually needs to change knobs

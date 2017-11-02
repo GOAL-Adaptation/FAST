@@ -70,6 +70,7 @@ class IntentPreservingController : Controller {
 
     func getSchedule(_ intent: IntentSpec, _ measureValues: [String : Double]) -> Schedule {
         // FIXME Replace global measure store with custom ordered collection that avoids this conversion
+        // FIXME This code duplicates code in Intent.swift. Generalize both when doing the above.
         var values = [Double]()
         for measureName in self.model!.measureNames {
             if let v = measureValues[measureName] {

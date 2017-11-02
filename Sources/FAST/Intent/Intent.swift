@@ -1,10 +1,17 @@
-/**
+/*
+ *  FAST: An implicit programing language based on SWIFT
+ *
+ *        Representation of an intent specification
+ *
+ *  author: Adam Duracz
+ */
 
-  Representation of an intent specification.
+//---------------------------------------
 
-*/
-
+import LoggerAPI
 import FASTController
+
+//---------------------------------------
 
 public protocol IntentSpec {
 
@@ -66,6 +73,68 @@ extension IntentSpec {
                     , remainingKnobs: Array(knobNames.dropFirst(1))
                     ).map{ KnobSettings($0) } 
     }
+
+  }
+
+  /** 
+   * JSON serializable dictionary that of:
+   * - Knob names, ranges and reference values
+   * - Measure names
+   * - Current state of the intent components: 
+   *   - optimization type
+   *   - objective function
+   *   - constraint variable
+   *   - constraint value
+   */
+  func toJson() -> [String : Any] {
+
+    let knobsJson = 
+        Array(knobs.map{ (name: String, rangeAndReferenceValue: ([Any],Any)) in 
+            [
+                "name"           : name,
+                "range"          : rangeAndReferenceValue.0,
+                "referenceValue" : rangeAndReferenceValue.1
+            ]
+        })
+    
+    let measuresJson = 
+        Array(measures.map{ name in [ "name" : name ] })
+
+    var intentJson: [String : Any] = [
+        "name"               : name,
+        "optimizationType"   : optimizationType,
+        "constraintVariable" : constraintName,
+        "constraintValue"    : constraint
+    ]
+    
+    // If a model is loaded for this intent, compute the current objectiveFunction value
+    // and insert a property for it into the JSON object
+    if let model = Runtime.models[name] {
+        guard let measuringDevice = Runtime.measuringDevices[name] else {
+            Log.error("No measuring device registered for intent \(name).")
+            fatalError()
+        }
+        let measureValuesDict = measuringDevice.windowAverages()
+        // FIXME Replace global measure store with custom ordered collection that avoids this conversion
+        // FIXME This code duplicates code in Controller.swift. Generalize both when doing the above.
+        var measureValueArray = [Double]()
+        for measureName in model.measureNames {
+            if let v = measureValuesDict[measureName] {
+                measureValueArray.append(v)
+            }
+            else {
+                Log.error("Measure '\(measureName)', present in model, has not been registered in the application.")
+                fatalError()
+            }
+        }
+        intentJson["objectiveFunction"] = costOrValue(measureValueArray)
+    }
+
+    return [
+        "knobs"    : knobsJson,
+        "measures" : measuresJson,
+        "intent"   : intentJson
+    ]
 
   }
 

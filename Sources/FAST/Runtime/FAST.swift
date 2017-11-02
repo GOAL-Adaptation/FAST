@@ -207,6 +207,7 @@ public class Runtime {
 
     private static var measures: [String : Double] = [:]
     private static var measuresLock = NSLock()
+    internal static var measuringDevices: [String : MeasuringDevice] = [:]
 
     internal static var knobSetters: [String : (Any) -> Void] = [:]
     internal static var knobSettersLock = NSLock()
@@ -361,6 +362,7 @@ public class Runtime {
                     , "powerConsumption"         : powerConsumption
                     , "numberOfProcessedInputs"  : numberOfProcessedInputs
                     , "measures"                 : toArrayOfPairDicts(Runtime.getMeasures())
+                    , "intents"                  : Dictionary(intents.map{ (n,i) in (n,i.toJson()) })
                     ]
                 ]
 
@@ -709,6 +711,10 @@ internal class MeasuringDevice {
                 s.observe(measure)
             }            
         }
+    }
+
+    public func windowAverages() -> [String : Double] {
+        return Dictionary(stats.map{ (n,s) in (n, s.windowAverage) })
     }
 
     func reportProgress() {
