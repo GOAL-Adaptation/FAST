@@ -338,11 +338,7 @@ public class Runtime {
             return (module?.getStatus()?[subModule] as? [String: Any]).map{ unwrapValues($0) } ?? [:]
         }
 
-        if let application               = Runtime.application?.name
-         , let runningTime               = Runtime.getMeasure("runningTime")
-         , let energy                    = Runtime.getMeasure("energy")
-         , let powerConsumption          = Runtime.getMeasure("powerConsumption")
-         , let numberOfProcessedInputs   = Runtime.getMeasure("iteration") {
+        if let application               = Runtime.application?.name {
 
             let applicationKnobs         = extractStatus(of: "applicationKnobs",         from: Runtime.application  )
             let architecture             = Runtime.architecture?.name ?? "NOT CONFIGURED"
@@ -357,10 +353,6 @@ public class Runtime {
                     , "architecture"             : architecture
                     , "systemConfigurationKnobs" : toArrayOfPairDicts(systemConfigurationKnobs)
                     , "scenarioKnobs"            : toArrayOfPairDicts(scenarioKnobs)
-                    , "runningTime"              : runningTime
-                    , "energy"                   : energy
-                    , "powerConsumption"         : powerConsumption
-                    , "numberOfProcessedInputs"  : numberOfProcessedInputs
                     , "measures"                 : toArrayOfPairDicts(Runtime.getMeasures())
                     , "intents"                  : Dictionary(intents.map{ (n,i) in (n,i.toJson()) })
                     ]
