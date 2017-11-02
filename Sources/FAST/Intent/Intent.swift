@@ -106,7 +106,7 @@ extension IntentSpec {
 
     var intentJson: [String : Any] = [
         "name"               : name,
-        "optimizationType"   : optimizationType,
+        "optimizationType"   : optimizationType == .minimize ? "min" : "max",
         "constraintVariable" : constraintName,
         "constraintValue"    : constraint
     ]
