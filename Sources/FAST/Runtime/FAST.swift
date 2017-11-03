@@ -344,6 +344,14 @@ public class Runtime {
             let architecture             = Runtime.architecture?.name ?? "NOT CONFIGURED"
             let systemConfigurationKnobs = extractStatus(of: "systemConfigurationKnobs", from: Runtime.architecture ) 
             let scenarioKnobs            = extractStatus(                                from: Runtime.scenarioKnobs)
+            
+            let verdictComponents: [String : Any] = 
+                Dictionary(measuringDevices.map{ 
+                    (intentName, measuringDevice) in 
+                    let windowAverages = measuringDevice.windowAverages()
+                    let constraintMeasureValue = windowAverages[intents[intentName]!.constraintName]!
+                    return ( intentName, [ "constraintMeasureValue" : constraintMeasureValue ] )
+                })
 
             let status : [String : Any] =
                 [ "time"      : utcDateString()
@@ -355,6 +363,7 @@ public class Runtime {
                     , "scenarioKnobs"            : toArrayOfPairDicts(scenarioKnobs)
                     , "measures"                 : toArrayOfPairDicts(Runtime.getMeasures())
                     , "intents"                  : Dictionary(intents.map{ (n,i) in (n,i.toJson()) })
+                    , "verdictComponents"        : verdictComponents
                     ]
                 ]
 

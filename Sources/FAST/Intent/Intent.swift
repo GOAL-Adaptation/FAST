@@ -111,6 +111,8 @@ extension IntentSpec {
         "constraintValue"    : constraint
     ]
     
+    // FIXME Move the objectiveFunction value into the verdictComponents field of the statusDictionary
+
     // If a model is loaded for this intent, compute the current objectiveFunction value
     // and, if the value is not Double.nan, insert a property for it into the JSON object
     if let model = Runtime.models[name] {
