@@ -326,8 +326,10 @@ public func optimize
             // Initialize measuring device, that will update measures based on the samplingPolicy
             let measuringDevice = MeasuringDevice(samplingPolicy, windowSize, labels)
             Runtime.measuringDevices[id] = measuringDevice
-            var currentKnobSettings = controllerModel.getInitialConfiguration()!.knobSettings
-            var schedule: Schedule = Schedule(constant: currentKnobSettings)
+            let currentConfiguration = controllerModel.getInitialConfiguration()!
+            var currentKnobSettings = currentConfiguration.knobSettings
+            let measureValuesOfReferenceConfiguration = Dictionary(Array(zip(currentConfiguration.measureNames, currentConfiguration.measureValues)))
+            var schedule: Schedule = Runtime.controller.getSchedule(intent, measureValuesOfReferenceConfiguration)
             // FIXME what if the counter overflows
             var iteration: UInt32 = 0 // iteration counter
             var startTime = ProcessInfo.processInfo.systemUptime // used for runningTime counter
