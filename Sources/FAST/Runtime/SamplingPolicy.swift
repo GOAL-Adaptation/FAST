@@ -24,7 +24,7 @@ public class TimingSamplingPolicy : SamplingPolicy {
 
     let samplingPeriod: Double
 
-    init(_ samplingPeriod: Double) {
+    public init(_ samplingPeriod: Double) {
         self.samplingPeriod = samplingPeriod
     }
 
@@ -49,7 +49,7 @@ public class ProgressSamplingPolicy : SamplingPolicy {
     private let period: UInt32
     private var sample: () -> Void = { }
 
-    init(period: UInt32) {
+    public init(period: UInt32) {
         self.period = period
     }
 
