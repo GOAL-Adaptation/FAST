@@ -134,7 +134,7 @@ class FastRestServer : RestServer {
 
         routes.add(method: .post, uri: "/changeIntent", handler: {
             request, response in
-                if let json = self.readRequestBody(request: request, fromEndpoint: "/perturb") {
+                if let json = self.readRequestBody(request: request, fromEndpoint: "/changeIntent") {
                     Log.debug("Received valid JSON on /perturb endpoint: \(json)")
                     let missionIntent = json["missionIntent"]! as! String
                     response.status = self.changeIntent(missionIntent, accumulatedStatus: response.status)
