@@ -338,7 +338,9 @@ public func optimize
             loop(iterations: numberOfInputsToProcess) {
                 startTime = ProcessInfo.processInfo.systemUptime // reset, in case something paused execution between iterations
                 executeAndReportProgress(measuringDevice, routine)
+                iteration += 1
                 if iteration % windowSize == 0 {
+                    Log.debug("Computing schedule from window averages: \(measuringDevice.windowAverages()).")
                     schedule = Runtime.controller.getSchedule(intent, measuringDevice.windowAverages())
                 }
                 if Runtime.runtimeKnobs.applicationExecutionMode.get() == ApplicationExecutionMode.Adaptive {
@@ -359,8 +361,6 @@ public func optimize
                     // FIXME handle error from request
                     let _ = RestClient.sendRequest(to: "status", withBody: statusDictionary)
                 }
-
-                iteration += 1
             } 
         }
         else {
