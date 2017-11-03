@@ -33,11 +33,8 @@ internal class Statistics {
         get { return _totalAverage }
     }
 
-    /** Returns the moving average, computed over the last N observations, where
-        N is the windowSize passed to init(). When less than windowSize
-        observations have been made, returns Double.nan. */
     var windowAverage: Double {
-        get { return windowIsComplete ? _windowAverage : Double.nan }
+        get { return _windowAverage }
     }
 
     init(measure: String, windowSize: Int) {
@@ -79,7 +76,7 @@ internal class Statistics {
                 _windowAverage = _windowAverage + (value - window[windowHead]) / Double(windowSize)
             }
             else {
-                _windowAverage = cumulativeMovingAverage(current: _windowAverage, count: windowHead, newValue: value)
+                _windowAverage = _totalAverage
                 if windowHead == windowSize - 1 {
                     windowIsComplete = true
                 }
