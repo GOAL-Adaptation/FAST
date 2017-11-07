@@ -6,5 +6,6 @@ XCTMain([
     testCase(FASTTests.allTests),
     testCase(IntentTests.allTests),
     testCase(OptimizeTests.allTests),
-    testCase(RestServerTests.allTests)
+    testCase(RestServerTests.allTests),
+    testCase(StatisticsTest.allTests)
 ])
