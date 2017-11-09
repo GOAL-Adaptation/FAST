@@ -224,7 +224,7 @@ public func optimize
     ( _ id: String
     , until shouldTerminate: @escaping @autoclosure () -> Bool = false
     , across windowSize: UInt32 = 20
-    , samplingPolicy: SamplingPolicy = TimingSamplingPolicy(100.millisecond)
+    , samplingPolicy: SamplingPolicy = ProgressSamplingPolicy(period: 1)
     , _ labels: [String]
     , _ routine: @escaping (Void) -> Void ) {
 
