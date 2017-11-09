@@ -353,6 +353,12 @@ public class Runtime {
                     return ( intentName, [ "constraintMeasureValue" : constraintMeasureValue ] )
                 })
 
+            let currentKnobSettingsId = Int(Runtime.getMeasure("currentConfiguration")!) // kid of the currently active KnobSettings
+            let currentConfiguration = models[application]!.configurations.first(where: { $0.knobSettings.kid == currentKnobSettingsId })!
+            let currentMeasurePredictions = zip( currentConfiguration.measureNames
+                                               , currentConfiguration.measureValues
+                                               ).map{ [ "name" : $0, "value" : $1 ] }
+
             let status : [String : Any] =
                 [ "time"      : utcDateString()
                 , "arguments" : 
@@ -362,6 +368,7 @@ public class Runtime {
                     , "systemConfigurationKnobs" : toArrayOfPairDicts(systemConfigurationKnobs)
                     , "scenarioKnobs"            : toArrayOfPairDicts(scenarioKnobs)
                     , "measures"                 : toArrayOfPairDicts(Runtime.getMeasures())
+                    , "measurePredictions"       : currentMeasurePredictions
                     , "intents"                  : Dictionary(intents.map{ (n,i) in (n,i.toJson()) })
                     , "verdictComponents"        : verdictComponents
                     ]

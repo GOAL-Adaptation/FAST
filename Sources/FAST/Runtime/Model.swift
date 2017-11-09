@@ -67,7 +67,7 @@ struct Configuration {
 /* A list of configurations. */
 open class Model {
 
-    private let configurations: [Configuration]
+    internal let configurations: [Configuration]
     public let initialConfigurationIndex: Int?
     public let measureNames: [String]
 
