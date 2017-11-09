@@ -626,10 +626,11 @@ public class Runtime {
 //------------------- end of very new stuff
 
     /** Intialize intent preserving controller with the given model, intent and window. */
-    public static func initializeController(_ model: Model, _ intent: IntentSpec, _ window: UInt32 = 20) {
+    public static func initializeController(_ model: Model, _ spec: IntentSpec, _ window: UInt32 = 20) {
         synchronized(controllerLock) {
-            if let c = IntentPreservingController(model, intent, window) {
+            if let c = IntentPreservingController(model, spec, window) {
                 controller = c
+                setIntent(spec)
                 Log.info("Controller initialized.")
             } 
             else {
@@ -640,7 +641,6 @@ public class Runtime {
 
     /** Intialize intent preserving controller with the intent, keeping the previous model and window */
     public static func reinitializeController(_ spec: IntentSpec) {
-        setIntent(spec)
         if let model = Runtime.controller.model {
             // FIXME Check that the model and updated intent are consistent (that measure and knob sets coincide)
             initializeController(model, spec, Runtime.controller.window)
