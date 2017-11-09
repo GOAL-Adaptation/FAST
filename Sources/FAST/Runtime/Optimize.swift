@@ -337,6 +337,7 @@ public func optimize
             Runtime.measure("iteration", Double(iteration))
             Runtime.measure("runningTime", runningTime) // running time in seconds
             Runtime.measure("currentConfiguration", Double(currentKnobSettings.kid)) // The id of the configuration given in the knobtable
+            Runtime.measure("windowSize", Double(windowSize))
             loop(iterations: numberOfInputsToProcess) {
                 startTime = ProcessInfo.processInfo.systemUptime // reset, in case something paused execution between iterations
                 executeAndReportProgress(measuringDevice, routine)
@@ -354,6 +355,7 @@ public func optimize
                 Runtime.measure("iteration", Double(iteration))
                 runningTime += ProcessInfo.processInfo.systemUptime - startTime
                 Runtime.measure("runningTime", runningTime) // running time in seconds
+                Runtime.measure("windowSize", Double(windowSize))
                 // FIXME maybe stalling in scripted mode should not be done inside of optimize but somewhere else in an independent and better way
                 Runtime.reportProgress()
                 
