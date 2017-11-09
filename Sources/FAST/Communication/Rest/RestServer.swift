@@ -253,7 +253,7 @@ public class RestServer {
         if let intentSpec = Runtime.intentCompiler.compileIntentSpec(source: missionIntent) {
             // TODO Figure out if it is better to delay intent change/controller re-init until the end of the window
             Runtime.reinitializeController(intentSpec)
-            Log.info("Successfully received request on /perturb REST endpoint.")
+            Log.info("Successfully received request on /changeIntent REST endpoint.")
             return accumulatedStatus
         }
         else {
