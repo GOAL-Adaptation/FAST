@@ -1,0 +1,204 @@
+{
+  "autoPin": true,
+  "pins": [
+    {
+      "package": "Axis",
+      "reason": null,
+      "repositoryURL": "https://github.com/Zewo/Axis.git",
+      "version": "0.14.0"
+    },
+    {
+      "package": "CCurl",
+      "reason": null,
+      "repositoryURL": "https://github.com/IBM-Swift/CCurl.git",
+      "version": "0.4.1"
+    },
+    {
+      "package": "CEnergymon",
+      "reason": null,
+      "repositoryURL": "git@github.mit.edu:proteus/CEnergymon",
+      "version": "1.0.1"
+    },
+    {
+      "package": "CEpoll",
+      "reason": null,
+      "repositoryURL": "https://github.com/IBM-Swift/CEpoll.git",
+      "version": "0.1.1"
+    },
+    {
+      "package": "CLibvenice",
+      "reason": null,
+      "repositoryURL": "https://github.com/Zewo/CLibvenice.git",
+      "version": "0.14.0"
+    },
+    {
+      "package": "COpenSSL",
+      "reason": null,
+      "repositoryURL": "https://github.com/PerfectlySoft/Perfect-COpenSSL-Linux.git",
+      "version": "2.0.4"
+    },
+    {
+      "package": "CPOSIX",
+      "reason": null,
+      "repositoryURL": "https://github.com/Zewo/CPOSIX.git",
+      "version": "0.14.0"
+    },
+    {
+      "package": "CSwiftV",
+      "reason": null,
+      "repositoryURL": "https://github.com/Daniel1of1/CSwiftV",
+      "version": "0.0.7"
+    },
+    {
+      "package": "CYAJL",
+      "reason": null,
+      "repositoryURL": "https://github.com/Zewo/CYAJL.git",
+      "version": "0.14.0"
+    },
+    {
+      "package": "FASTController",
+      "reason": null,
+      "repositoryURL": "git@github.mit.edu:proteus/FASTController",
+      "version": "1.0.0"
+    },
+    {
+      "package": "HeliumLogger",
+      "reason": null,
+      "repositoryURL": "https://github.com/IBM-Swift/HeliumLogger",
+      "version": "1.7.1"
+    },
+    {
+      "package": "Kitura-net",
+      "reason": null,
+      "repositoryURL": "https://github.com/IBM-Swift/Kitura-net.git",
+      "version": "1.7.16"
+    },
+    {
+      "package": "KituraRequest",
+      "reason": null,
+      "repositoryURL": "https://github.com/IBM-Swift/Kitura-Request.git",
+      "version": "0.8.2"
+    },
+    {
+      "package": "LinuxBridge",
+      "reason": null,
+      "repositoryURL": "https://github.com/PerfectlySoft/Perfect-LinuxBridge.git",
+      "version": "2.0.2"
+    },
+    {
+      "package": "LoggerAPI",
+      "reason": null,
+      "repositoryURL": "https://github.com/IBM-Swift/LoggerAPI.git",
+      "version": "1.7.1"
+    },
+    {
+      "package": "Nifty",
+      "reason": null,
+      "repositoryURL": "https://github.com/jasonm128/Nifty.git",
+      "version": "99.1.0"
+    },
+    {
+      "package": "Nifty-libs",
+      "reason": null,
+      "repositoryURL": "https://github.com/nifty-swift/Nifty-libs.git",
+      "version": "1.0.0"
+    },
+    {
+      "package": "OpenSSL",
+      "reason": null,
+      "repositoryURL": "https://github.com/IBM-Swift/OpenSSL.git",
+      "version": "0.3.7"
+    },
+    {
+      "package": "PerfectCrypto",
+      "reason": null,
+      "repositoryURL": "https://github.com/PerfectlySoft/Perfect-Crypto.git",
+      "version": "1.1.1"
+    },
+    {
+      "package": "PerfectHTTP",
+      "reason": null,
+      "repositoryURL": "https://github.com/jasonm128/Perfect-HTTP.git",
+      "version": "99.0.1"
+    },
+    {
+      "package": "PerfectHTTPServer",
+      "reason": null,
+      "repositoryURL": "https://github.com/jasonm128/Perfect-HTTPServer",
+      "version": "99.0.2"
+    },
+    {
+      "package": "PerfectLib",
+      "reason": null,
+      "repositoryURL": "https://github.com/PerfectlySoft/PerfectLib.git",
+      "version": "2.0.11"
+    },
+    {
+      "package": "PerfectNet",
+      "reason": null,
+      "repositoryURL": "https://github.com/jasonm128/Perfect-Net.git",
+      "version": "99.0.1"
+    },
+    {
+      "package": "PerfectThread",
+      "reason": null,
+      "repositoryURL": "https://github.com/PerfectlySoft/Perfect-Thread.git",
+      "version": "2.0.12"
+    },
+    {
+      "package": "POSIX",
+      "reason": null,
+      "repositoryURL": "https://github.com/Zewo/POSIX.git",
+      "version": "0.14.1"
+    },
+    {
+      "package": "Reflection",
+      "reason": null,
+      "repositoryURL": "https://github.com/Zewo/Reflection.git",
+      "version": "0.14.4"
+    },
+    {
+      "package": "Signals",
+      "reason": null,
+      "repositoryURL": "https://github.com/IBM-Swift/BlueSignals.git",
+      "version": "0.9.49"
+    },
+    {
+      "package": "Socket",
+      "reason": null,
+      "repositoryURL": "https://github.com/IBM-Swift/BlueSocket.git",
+      "version": "0.12.68"
+    },
+    {
+      "package": "SQLite",
+      "reason": null,
+      "repositoryURL": "https://github.com/barfer/Perfect-SQLite.git",
+      "version": "2.0.3"
+    },
+    {
+      "package": "SQLite3",
+      "reason": null,
+      "repositoryURL": "https://github.com/PerfectlySoft/Perfect-sqlite3-support.git",
+      "version": "2.0.1"
+    },
+    {
+      "package": "SSLService",
+      "reason": null,
+      "repositoryURL": "https://github.com/IBM-Swift/BlueSSLService.git",
+      "version": "0.12.55"
+    },
+    {
+      "package": "swift-ast",
+      "reason": null,
+      "repositoryURL": "https://github.com/ryuichis/swift-ast",
+      "version": "0.1.2"
+    },
+    {
+      "package": "Venice",
+      "reason": null,
+      "repositoryURL": "https://github.com/Zewo/Venice",
+      "version": "0.14.0"
+    }
+  ],
+  "version": 1
+}
