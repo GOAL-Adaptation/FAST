@@ -147,6 +147,36 @@ class FastRestServer : RestServer {
             }
         )
 
+        routes.add(method: .post, uri: "/fixConfiguration", handler: {
+            request, response in
+                if let json = self.readRequestBody(request: request, fromEndpoint: "/fixConfiguration") {
+                    Log.debug("Received valid JSON on /fixConfiguration endpoint: \(json).")
+                    Runtime.controller = ConstantController()
+                    var logMessage = "Proceeding with constant configuration."
+                    if let knobSettingsAny = json["knobSettings"],
+                       let knobSettings = knobSettingsAny as? [Any] {
+                        for nameValuePairDictAny in knobSettings {
+                            if let nameValuePairDict = nameValuePairDictAny as? [String : Any],
+                               let nameAny = nameValuePairDict["name"],
+                               let name = nameAny as? String,
+                               let value = nameValuePairDict["value"] {
+                                Runtime.setKnob(name, to: value)
+                            }
+                            else {
+                                fatalError("Malformed knob setting: \(nameValuePairDictAny).")
+                            }
+                        }
+                        logMessage = "Knobs set through /fixConfiguration endpoint. " + logMessage
+                    }
+                    Log.info(logMessage)
+                }
+                else {
+                    Log.error("Did not receive valid JSON on /fixConfiguration endpoint: \(request)")
+                }
+                self.addJsonBody(toResponse: response, json: [:], jsonDescription: "empty", endpointName: "fixConfiguration")
+            }
+        )
+
         routes.add(method: .post, uri: "/terminate", handler: {
             _, response in
             Runtime.shouldTerminate = true
