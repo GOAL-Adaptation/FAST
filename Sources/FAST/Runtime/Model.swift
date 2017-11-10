@@ -20,6 +20,17 @@ import LoggerAPI
 
 //---------------------------------------
 
+func parseKnobSetting(setting: String) -> Any {
+    // TODO Add support for other knob types, based on type information in intent spec, and error handling
+    if let i = Int(setting) {
+        return i
+    } 
+    if let d = Double(setting) {
+        return d
+    }
+    return setting
+}
+
 /* A collection of knob values that can be applied to control the system. */
 class KnobSettings {
     let kid: Int // The id of the configuration given in the knobtable
@@ -80,19 +91,9 @@ open class Model {
         assert(knobTable.rows.count == measureTable.rows.count, "number of rows in knob and measure config files must match")
         let knobNames = Array(knobTable.headers.dropFirst())
         self.measureNames = Array(measureTable.headers.dropFirst())
-        let parseKnobSetting = { (setting: String) -> Any in
-            // TODO Add support for other knob types, based on type information in intent spec, and error handling
-            if let i = Int(setting) {
-                return i
-            } 
-            if let d = Double(setting) {
-                return d
-            }
-            return setting
-        }
         var configurations: [Configuration] = []      
         for configId in 0 ..< knobTable.rows.count {
-            let knobNameValuePairs = Array(zip(knobNames, knobTable.rows[configId].dropFirst().map{ parseKnobSetting($0) }))
+            let knobNameValuePairs = Array(zip(knobNames, knobTable.rows[configId].dropFirst().map{ parseKnobSetting(setting: $0) }))
             let knobSettings = KnobSettings(kid: configId, [String:Any](knobNameValuePairs))
             let measureNameValuePairs = Array(zip(measureNames, measureTable.rows[configId].dropFirst().map{ Double($0)! })) // FIXME Add error handling
             let measures = [String:Double](measureNameValuePairs)

@@ -160,7 +160,8 @@ class FastRestServer : RestServer {
                                let nameAny = nameValuePairDict["name"],
                                let name = nameAny as? String,
                                let value = nameValuePairDict["value"] {
-                                Runtime.setKnob(name, to: value)
+                                let parsedValue = parseKnobSetting(setting: value)
+                                Runtime.setKnob(name, to: parsedValue)
                             }
                             else {
                                 fatalError("Malformed knob setting: \(nameValuePairDictAny).")
