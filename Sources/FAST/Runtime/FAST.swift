@@ -633,7 +633,8 @@ public class Runtime {
                 Log.info("Controller initialized.")
             } 
             else {
-                Log.warning("Controller failed to initialize.")
+                Log.error("Controller failed to initialize.")
+                fatalError()
             }
         }
     }
