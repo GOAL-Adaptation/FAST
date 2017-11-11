@@ -643,11 +643,13 @@ public class Runtime {
     public static func reinitializeController(_ spec: IntentSpec) {
         setIntent(spec)
         if let model = Runtime.controller.model {
+            setIntent(spec)
             // FIXME Check that the model and updated intent are consistent (that measure and knob sets coincide)
             initializeController(model, spec, Runtime.controller.window)
         }
         else {
             Log.error("Attempt to reinitialize controller based on a controller with an undefined model.")
+            fatalError()
         }
     }
 
