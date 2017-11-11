@@ -642,7 +642,6 @@ public class Runtime {
 
     /** Intialize intent preserving controller with the intent, keeping the previous model and window */
     public static func reinitializeController(_ spec: IntentSpec) {
-        setIntent(spec)
         if let model = Runtime.controller.model {
             setIntent(spec)
             // FIXME Check that the model and updated intent are consistent (that measure and knob sets coincide)
