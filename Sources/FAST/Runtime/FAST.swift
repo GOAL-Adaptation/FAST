@@ -353,28 +353,30 @@ public class Runtime {
                     return ( intentName, [ "constraintMeasureValue" : constraintMeasureValue ] )
                 })
 
-            var status : [String : Any] =
-                [ "time"      : utcDateString()
-                , "arguments" : 
-                    [ "application"              : application
-                    , "applicationKnobs"         : toArrayOfPairDicts(applicationKnobs)
-                    , "architecture"             : architecture
-                    , "systemConfigurationKnobs" : toArrayOfPairDicts(systemConfigurationKnobs)
-                    , "scenarioKnobs"            : toArrayOfPairDicts(scenarioKnobs)
-                    , "measures"                 : toArrayOfPairDicts(Runtime.getMeasures())
-                    , "intents"                  : Dictionary(intents.map{ (n,i) in (n,i.toJson()) })
-                    , "verdictComponents"        : verdictComponents
-                    ]
-                ]
+            var arguments : [String : Any] =
+                [ "application"              : application
+                , "applicationKnobs"         : toArrayOfPairDicts(applicationKnobs)
+                , "architecture"             : architecture
+                , "systemConfigurationKnobs" : toArrayOfPairDicts(systemConfigurationKnobs)
+                , "scenarioKnobs"            : toArrayOfPairDicts(scenarioKnobs)
+                , "measures"                 : toArrayOfPairDicts(Runtime.getMeasures())
+                , "intents"                  : Dictionary(intents.map{ (n,i) in (n,i.toJson()) })
+                , "verdictComponents"        : verdictComponents
+                ] 
 
             // The measure values that the controller associates with the current configuration
             let currentKnobSettingsId = Int(Runtime.getMeasure("currentConfiguration")!) // kid of the currently active KnobSettings
             if let currentConfiguration = models[application]!.configurations.first(where: { $0.knobSettings.kid == currentKnobSettingsId }) {
-                status["measurePredictions"] = zip( currentConfiguration.measureNames
-                                                  , currentConfiguration.measureValues
-                                                  ).map{ [ "name" : $0, "value" : $1 ] }
+                arguments["measurePredictions"] = zip( currentConfiguration.measureNames
+                                                     , currentConfiguration.measureValues
+                                                    ).map{ [ "name" : $0, "value" : $1 ] }
             }
 
+            let status : [String : Any] =
+                [ "time"      : utcDateString()
+                , "arguments" : arguments
+                ]
+            
             return status
 
         }
