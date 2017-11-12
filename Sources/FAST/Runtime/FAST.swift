@@ -650,8 +650,7 @@ public class Runtime {
             initializeController(model, spec, Runtime.controller.window)
         }
         else {
-            Log.error("Attempt to reinitialize controller based on a controller with an undefined model.")
-            fatalError()
+            Log.warning("Attempt to reinitialize controller based on a controller with an undefined model.")
         }
     }
 
