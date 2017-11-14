@@ -305,6 +305,7 @@ public func optimize
                     
                     // Output profile entry as line in measure table
                     let measureValues = measureNames.map{ measuringDevice.stats[$0]!.totalAverage }
+                    Log.debug("Profile for this configuration: \(zip(measureNames, measureValues).map{ "\($0): \($1)" }.joined(separator: ", ")).")
                     let measureTableLine = makeRow(id: i, rest: measureValues)
                     measureTableOutputStream.write(measureTableLine, maxLength: measureTableLine.characters.count)
                     
