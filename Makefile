@@ -50,7 +50,6 @@ copy-resources-test:
 	cp $(RESOURCE_PATH)/incrementer.* $(TEST_RESOURCE_TARGET_PATH)/
 
 clean:
-	rm -f Package.pins
 	rm -rf .build/
 
 rebuild: clean build
