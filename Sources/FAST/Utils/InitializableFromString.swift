@@ -128,6 +128,8 @@ extension ApplicationExecutionMode: InitializableFromString {
                 self = .NonAdaptive
             case "ExhaustiveProfiling": 
                 self = .ExhaustiveProfiling
+            case "EmulatorTracing": 
+                self = .EmulatorTracing
             default:
                 failedToInitialize("ApplicationExecutionMode", from: text)
                 return nil

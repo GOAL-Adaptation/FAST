@@ -121,6 +121,8 @@ func ==(lhs: ApplicationExecutionMode, rhs: ApplicationExecutionMode) -> Bool {
             return true
         case (.ExhaustiveProfiling, .ExhaustiveProfiling): 
             return true
+        case (.EmulatorTracing, .EmulatorTracing): 
+            return true
         case (let .SelectiveProfiling(pl, el), let .SelectiveProfiling(pr, er)):
             return pl == pr && el == er
         default:

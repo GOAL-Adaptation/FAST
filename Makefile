@@ -78,7 +78,7 @@ execute:              export proteus_xilinxZcu_policy                         :=
 execute:              export proteus_xilinxZcu_actuationPolicy                := NoActuation
 execute:              export proteus_xilinxZcu_availableCores                 := 4
 execute:              export proteus_xilinxZcu_maximalCoreFrequency           := 1400000
-execute:              export proteus_xilinxZcu_utilizedCores                  := 0
+execute:              export proteus_xilinxZcu_utilizedCores                  := 4
 execute:              export proteus_xilinxZcu_utilizedCoreFrequency          := 1400000
 	
 execute: copy-resources-build
@@ -116,3 +116,8 @@ profile:           		export proteus_runtime_logLevel                         := 
 profile:           		export proteus_runtime_applicationExecutionMode         := ExhaustiveProfiling
 profile:           		export proteus_runtime_profileSize                      := $(if $(TEST),$(TEST),100)
 profile:           		build execute ## To select number of inputs to process when profiling: make size=<NUMBER_OF_RUNS> profile
+
+trace:           		export proteus_runtime_logLevel                         := Info
+trace:           		export proteus_runtime_applicationExecutionMode         := EmulatorTracing
+trace:           		export proteus_runtime_profileSize                      := 100
+trace:           		build execute 
