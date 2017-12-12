@@ -146,7 +146,7 @@ struct InitializationParameters {
         if let architecture             = extract(type: ArchitectureName.self, name: "architecture"           , json: json)
          , let applicationJson          = json["application"] as? [String : Any]
          , let applicationName          = extract(type: ApplicationName.self , name: "applicationName"        , json: applicationJson)
-         , let applicationInputFileName = extract(type: String.self          , name: "InputFileName"          , json: applicationJson)
+         , let applicationInputFileName = extract(type: String.self          , name: "inputFileName"          , json: applicationJson)
          , let adaptationEnabled        = extract(type: Bool.self            , name: "adaptationEnabled"      , json: json)
          , let statusInterval           = extract(type: UInt64.self          , name: "statusInterval"         , json: json)
          , let randomSeed               = extract(type: UInt64.self          , name: "randomSeed"             , json: json)
@@ -155,6 +155,11 @@ struct InitializationParameters {
         {
 
             let numberOfInputsToProcess  = extract(type: UInt64.self         , name: "numberOfInputsToProcess", json: json)
+
+            if String(describing: applicationName) != initialConditions.missionIntent.name {
+                Log.error("Intent name '\(initialConditions.missionIntent.name)' differs from application name: '\(applicationName)'.")
+                return nil
+            }
 
             self.architecture             = architecture
             self.applicationName          = applicationName
