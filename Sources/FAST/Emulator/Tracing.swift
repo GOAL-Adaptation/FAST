@@ -138,14 +138,16 @@ import SQLite3
                 if (appKnobName == knobName) {
                     let referenceValueType = getReferenceValueType(referenceValue: rangeReferencePair.1)
                     sqlScript += 
-                        "INSERT OR IGNORE INTO Knob(name) VALUES('\(knobName)'); " +
-                        "INSERT OR IGNORE INTO Application_Knob(applicationId, knobId, knobType, knobReferenceValue) " +
-                        "VALUES( " +
-                        "  (SELECT id FROM Application WHERE name = '\(application.name)'), " +
-                        "  (SELECT id FROM Knob WHERE name = '\(knobName)'), " +
-                        "  '\(referenceValueType)', " +
-                        "  '\(rangeReferencePair.1)'" +
-                        ");" 
+                    "\n INSERT OR IGNORE INTO Knob(name) VALUES('\(knobName)'); " +
+                    "\n UPDATE OR IGNORE Application_Knob SET knobReferenceValue = '\(rangeReferencePair.1)' " + 
+                    "\n WHERE applicationId = (SELECT id FROM Application WHERE name = '\(application.name)') " +
+                    "\n AND knobId = (SELECT id FROM Knob WHERE name = '\(knobName)'); " +
+                    "\n INSERT OR IGNORE INTO Application_Knob(applicationId, knobId, knobType, knobReferenceValue) " +
+                    "\n VALUES( " +
+                    "\n  (SELECT id FROM Application WHERE name = '\(application.name)'), " +
+                    "\n  (SELECT id FROM Knob WHERE name = '\(knobName)'), " +
+                    "\n  '\(referenceValueType)', " +
+                    "\n  '\(rangeReferencePair.1)');" 
                 }
             }
 
@@ -307,17 +309,18 @@ import SQLite3
                     // get the type of the reference value:
                     let referenceValueType = getReferenceValueType(referenceValue: rangeReferencePair.1)
                     sqlScript += 
-                    "INSERT OR IGNORE INTO Knob(name) VALUES('\(knobName)'); " +
-                    "INSERT OR IGNORE INTO System_Knob(systemId, knobId, knobType, knobReferenceValue) " +
-                    "VALUES( " +
-                    "  (SELECT id FROM System WHERE name = '\(architecture.name)'), " +
-                    "  (SELECT id FROM Knob WHERE name = '\(knobName)'), " +
-                    "  '\(referenceValueType)', " +
-                    "  '\(rangeReferencePair.1)'" +
-                    ");" 
+                    "\n INSERT OR IGNORE INTO Knob(name) VALUES('\(knobName)'); " +
+                    "\n UPDATE OR IGNORE System_Knob SET knobReferenceValue = '\(rangeReferencePair.1)' " + 
+                    "\n WHERE systemId = (SELECT id FROM System WHERE name = '\(architecture.name)') " +
+                    "\n AND knobId = (SELECT id FROM Knob WHERE name = '\(knobName)'); " +
+                    "\n INSERT OR IGNORE INTO System_Knob(systemId, knobId, knobType, knobReferenceValue) " +
+                    "\n VALUES( " +
+                    "\n   (SELECT id FROM System WHERE name = '\(architecture.name)'), " +
+                    "\n   (SELECT id FROM Knob WHERE name = '\(knobName)'), " +
+                    "\n   '\(referenceValueType)', " +
+                    "\n   '\(rangeReferencePair.1)');" 
                 }
             }
-
         }
         return sqlScript
     }
