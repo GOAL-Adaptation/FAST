@@ -15,7 +15,7 @@ DROP TABLE IF EXISTS [main].[Application];
 /* Table structure [Application] */
 CREATE TABLE [main].[Application](
     [id] INTEGER PRIMARY KEY NOT NULL, 
-    [name] TEXT UNIQUE, 
+    [name] TEXT UNIQUE NOT NULL, 
     [warmupInputNum] INTEGER);
 
 /* Drop table [ApplicationConfiguration] */
@@ -24,7 +24,7 @@ DROP TABLE IF EXISTS [main].[ApplicationConfiguration];
 /* Table structure [ApxplicationConfiguration] */
 CREATE TABLE [main].[ApplicationConfiguration](
     [id] INTEGER PRIMARY KEY, 
-    [description] TEXT);
+    [description] TEXT UNIQUE NOT NULL);
 
 /* Drop table [ApplicationConfiguration_Application_Knob] */
 DROP TABLE IF EXISTS [main].[ApplicationConfiguration_Application_Knob];
@@ -55,7 +55,7 @@ CREATE TABLE [main].[ApplicationInputStream_ApplicationConfiguration](
     [id] INTEGER PRIMARY KEY NOT NULL, 
     [applicationInputId] INTEGER CONSTRAINT [lnk_ApplicationInput_AppicationInput_ApplicationConfiguration_Application_knob] REFERENCES ApplicationInputStream([id]) ON DELETE CASCADE ON UPDATE CASCADE, 
     [applicationConfigurationID] INTEGER REFERENCES ApplicationConfiguration([id]) ON DELETE CASCADE ON UPDATE CASCADE, 
-    CONSTRAINT [unique_id] UNIQUE([applicationInputId], [applicationConfigurationID]));
+    UNIQUE([applicationInputId], [applicationConfigurationID]));
 
 /* Drop table [ApplicationSystemInputLog] */
 DROP TABLE IF EXISTS [main].[ApplicationSystemInputLog];
@@ -68,7 +68,7 @@ CREATE TABLE [main].[ApplicationSystemInputLog](
     [inputNumber] INTEGER NOT NULL, 
     [deltaTime] INTEGER, 
     [deltaEnergy] INTEGER, 
-    CONSTRAINT [unique_applicationConfiguration_Application_KnobId_systemConfigurationId_inputNumber] UNIQUE([applicationInputStream_applicationConfigurationId], [systemConfigurationId], [inputNumber]));
+    UNIQUE([applicationInputStream_applicationConfigurationId], [systemConfigurationId], [inputNumber]));
 
 /* Drop table [Application_Knob] */
 DROP TABLE IF EXISTS [main].[Application_Knob];
@@ -91,7 +91,8 @@ CREATE TABLE [main].[JobLogParameter](
     [applicationId] INTEGER REFERENCES Application([id]) ON DELETE CASCADE ON UPDATE CASCADE, 
     [energyOutlier] DOUBLE, 
     [tapeNoise] DOUBLE, 
-    [timeOutlier] DOUBLE);
+    [timeOutlier] DOUBLE,
+    UNIQUE([applicationId]));
 
 /* Drop table [Knob] */
 DROP TABLE IF EXISTS [main].[Knob];
@@ -107,7 +108,7 @@ DROP TABLE IF EXISTS [main].[System];
 /* Table structure [System] */
 CREATE TABLE [main].[System](
     [id] INTEGER PRIMARY KEY NOT NULL, 
-    [name] TEXT NOT NULL);
+    [name] TEXT UNIQUE NOT NULL);
 
 /* Drop table [SystemConfiguration] */
 DROP TABLE IF EXISTS [main].[SystemConfiguration];
@@ -115,7 +116,7 @@ DROP TABLE IF EXISTS [main].[SystemConfiguration];
 /* Table structure [SystemConfiguration] */
 CREATE TABLE [main].[SystemConfiguration](
     [id] INTEGER PRIMARY KEY, 
-    [description] TEXT);
+    [description] TEXT UNIQUE NOT NULL);
 
 /* Drop table [SystemConfiguration_System_Knob] */
 DROP TABLE IF EXISTS [main].[SystemConfiguration_System_Knob];
