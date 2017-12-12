@@ -206,21 +206,19 @@ import SQLite3
             if let knobValueDict = knobValueAny as? [String : Any], let knobValue = knobValueDict["value"] {
                 sqlScript += 
                 // Insert the knob name and its reference value type, in case they are not listed in the intent specification
-                "INSERT OR IGNORE INTO Knob(name) VALUES('\(knobName)'); " + 
-                "INSERT OR IGNORE INTO Application_Knob(applicationId, knobId, knobType) " +
-                "VALUES( " +
-                "  (SELECT id FROM Application WHERE name = '\(application.name)'), " +
-                "  (SELECT id FROM Knob WHERE name = '\(knobName)'), " +
-                "  '\(getReferenceValueType(referenceValue: knobValue))'" +
-                "); " +
+                "\n INSERT OR IGNORE INTO Knob(name) VALUES('\(knobName)'); " + 
+                "\n INSERT OR IGNORE INTO Application_Knob(applicationId, knobId, knobType) " +
+                "\n VALUES( " +
+                "\n  (SELECT id FROM Application WHERE name = '\(application.name)'), " +
+                "\n  (SELECT id FROM Knob WHERE name = '\(knobName)'), " +
+                "\n  '\(getReferenceValueType(referenceValue: knobValue))'); " +
                 // Insert the knob name and its value for this particular application configuration 
                 // into the ApplicationConfiguration_Application_Knob table
-                "INSERT OR IGNORE INTO ApplicationConfiguration_Application_Knob(applicationConfigurationId, applicationKnobId, knobValue) " +
-                "VALUES(" +
-                "  (SELECT id FROM ApplicationConfiguration WHERE description = '\(appConfigName)')," + 
-                "  (SELECT id FROM Application_Knob WHERE  knobId = (SELECT id FROM Knob WHERE name = '\(knobName)'))," +
-                "  '\(knobValue)'" +
-                ");"
+                "\n INSERT OR IGNORE INTO ApplicationConfiguration_Application_Knob(applicationConfigurationId, applicationKnobId, knobValue) " +
+                "\n VALUES(" +
+                "\n  (SELECT id FROM ApplicationConfiguration WHERE description = '\(appConfigName)')," + 
+                "\n  (SELECT id FROM Application_Knob WHERE  knobId = (SELECT id FROM Knob WHERE name = '\(knobName)'))," +
+                "\n  '\(knobValue)');"
             }
         }
         return (sqlScript, appConfigName)
@@ -236,9 +234,9 @@ import SQLite3
 
         let sqlScript =
           "INSERT OR IGNORE INTO ApplicationInputStream(name, applicationId) " + 
-          "VALUES(" +
-          "'\(inputStreamName)', " +
-          "(SELECT id FROM Application WHERE name = '\(applicationName)'));"
+          "\n VALUES(" +
+          "\n '\(inputStreamName)', " +
+          "\n (SELECT id FROM Application WHERE name = '\(applicationName)'));"
         return sqlScript
     }
 
@@ -255,12 +253,11 @@ import SQLite3
 
         let sqlScript =
           "INSERT OR IGNORE INTO ApplicationInputStream_ApplicationConfiguration(applicationConfigurationId, applicationInputId) " + 
-          "VALUES(" +
-          "(SELECT id FROM ApplicationConfiguration WHERE description = '\(appConfigName)'), " +
-          "(SELECT id FROM ApplicationInputStream " +
-          "   WHERE name = '\(inputStreamName)' " +
-          "   AND   applicationId = (SELECT id FROM Application WHERE name = '\(applicationName)')) " +
-          ");"
+          "\n VALUES(" +
+          "\n (SELECT id FROM ApplicationConfiguration WHERE description = '\(appConfigName)'), " +
+          "\n (SELECT id FROM ApplicationInputStream " +
+          "\n    WHERE name = '\(inputStreamName)' " +
+          "\n    AND   applicationId = (SELECT id FROM Application WHERE name = '\(applicationName)')));"
         return sqlScript
     }
 
@@ -275,12 +272,11 @@ import SQLite3
 
         let sqlScript =
           "INSERT OR IGNORE INTO JobLogParameter(applicationId, energyOutlier, tapeNoise, timeOutlier) " + 
-          "VALUES(" +
-          " (SELECT id FROM Application WHERE name = '\(applicationName)'), " +
-          " \(energyOutlier), " +
-          " \(tapeNoise), " +
-          " \(timeOutlier) " +
-          ");"
+          "\n VALUES(" +
+          "\n  (SELECT id FROM Application WHERE name = '\(applicationName)'), " +
+          "\n  \(energyOutlier), " +
+          "\n  \(tapeNoise), " +
+          "\n  \(timeOutlier));"
         return sqlScript        
     }
 
@@ -377,21 +373,19 @@ import SQLite3
             if let knobValueDict = knobValueAny as? [String : Any], let knobValue = knobValueDict["value"] {
                 sqlScript += 
                 // Insert the knob name and its reference value type, in case they are not listed in the intent specification
-                "INSERT OR IGNORE INTO Knob(name) VALUES('\(knobName)'); " + 
-                "INSERT OR IGNORE INTO System_Knob(systemId, knobId, knobType) " +
-                "VALUES( " +
-                "  (SELECT id FROM System WHERE name = '\(architecture.name)'), " +
-                "  (SELECT id FROM Knob WHERE name = '\(knobName)'), " +
-                "  '\(getReferenceValueType(referenceValue: knobValue))'" +
-                "); " +
+                "\n INSERT OR IGNORE INTO Knob(name) VALUES('\(knobName)'); " + 
+                "\n INSERT OR IGNORE INTO System_Knob(systemId, knobId, knobType) " +
+                "\n VALUES( " +
+                "\n  (SELECT id FROM System WHERE name = '\(architecture.name)'), " +
+                "\n  (SELECT id FROM Knob WHERE name = '\(knobName)'), " +
+                "\n  '\(getReferenceValueType(referenceValue: knobValue))'); " +
                 // Insert the knob name and its value for this particular system configuration 
                 // into the SystemConfiguration_System_Knob table
-                "INSERT OR IGNORE INTO SystemConfiguration_System_Knob(systemConfigurationId, systemKnobId, knobValue) " +
-                "VALUES(" +
-                "  (SELECT id FROM SystemConfiguration WHERE description = '\(sysConfigName)')," + 
-                "  (SELECT id FROM System_Knob WHERE  knobId = (SELECT id FROM Knob WHERE name = '\(knobName)'))," +
-                "  '\(knobValue)'" +
-                ");"
+                "\n INSERT OR IGNORE INTO SystemConfiguration_System_Knob(systemConfigurationId, systemKnobId, knobValue) " +
+                "\n VALUES(" +
+                "\n   (SELECT id FROM SystemConfiguration WHERE description = '\(sysConfigName)')," + 
+                "\n   (SELECT id FROM System_Knob WHERE  knobId = (SELECT id FROM Knob WHERE name = '\(knobName)'))," +
+                "\n   '\(knobValue)');"
             }
         }
         return (sqlScript, sysConfigName)
@@ -407,23 +401,22 @@ func emitScriptForDeltaTimeDeltaEnergyInsertion(
     , appConfigName  : String
     , sysConfigName  : String
     , inputNumber    : Int
-    , deltaTime      : Int
-    , deltaEnergy    : Int
+    , deltaTime      : Double
+    , deltaEnergy    : Double
 ) -> String {
 
     let sqlScript =
     "INSERT OR IGNORE INTO ApplicationSystemInputLog(applicationInputStream_applicationConfigurationId, systemConfigurationId, inputNumber, deltaTime, deltaEnergy) " +
-    "VALUES(" +
-    "  (SELECT id FROM ApplicationInputStream_ApplicationConfiguration " +
-    "      WHERE applicationConfigurationId = (SELECT id FROM ApplicationConfiguration WHERE description = '\(appConfigName)') " +
-    "      AND applicationInputId = (SELECT id FROM ApplicationInputStream " +
-    "                                  WHERE name = '\(inputStreamName)' " +
-    "                                  AND   applicationId = (SELECT id FROM Application WHERE name = '\(applicationName)'))), " + 
-    "  (SELECT id FROM SystemConfiguration WHERE description = '\(sysConfigName)'), " +
-    "  \(inputNumber), " +
-    "  \(deltaTime), " +
-    "  \(deltaEnergy)" + 
-    ");"
+    "\n VALUES(" +
+    "\n   (SELECT id FROM ApplicationInputStream_ApplicationConfiguration " +
+    "\n       WHERE applicationConfigurationId = (SELECT id FROM ApplicationConfiguration WHERE description = '\(appConfigName)') " +
+    "\n       AND applicationInputId = (SELECT id FROM ApplicationInputStream " +
+    "\n                                   WHERE name = '\(inputStreamName)' " +
+    "\n                                   AND   applicationId = (SELECT id FROM Application WHERE name = '\(applicationName)'))), " + 
+    "\n   (SELECT id FROM SystemConfiguration WHERE description = '\(sysConfigName)'), " +
+    "\n   \(inputNumber), " +
+    "\n   \(deltaTime), " +
+    "\n   \(deltaEnergy));"
     return sqlScript
 }
 
