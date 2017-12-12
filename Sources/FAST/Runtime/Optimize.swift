@@ -135,7 +135,7 @@ struct InitializationParameters {
     let architecture             : ArchitectureName
     let applicationName          : ApplicationName
     let applicationInputFileName : String
-    let numberOfInputsToProcess  : UInt64  
+    let numberOfInputsToProcess  : UInt64?  
     let adaptationEnabled        : Bool
     let statusInterval           : UInt64
     let randomSeed               : UInt64
@@ -147,13 +147,14 @@ struct InitializationParameters {
          , let applicationJson          = json["application"] as? [String : Any]
          , let applicationName          = extract(type: ApplicationName.self , name: "applicationName"        , json: applicationJson)
          , let applicationInputFileName = extract(type: String.self          , name: "InputFileName"          , json: applicationJson)
-         , let numberOfInputsToProcess  = extract(type: UInt64.self          , name: "numberOfInputsToProcess", json: json)
          , let adaptationEnabled        = extract(type: Bool.self            , name: "adaptationEnabled"      , json: json)
          , let statusInterval           = extract(type: UInt64.self          , name: "statusInterval"         , json: json)
          , let randomSeed               = extract(type: UInt64.self          , name: "randomSeed"             , json: json)
          , let initialConditionsJson    = json["initialConditions"] as? [String : Any] 
          , let initialConditions        = Perturbation(json: initialConditionsJson)
         {
+
+            let numberOfInputsToProcess  = extract(type: UInt64.self         , name: "numberOfInputsToProcess", json: json)
 
             self.architecture             = architecture
             self.applicationName          = applicationName
