@@ -54,7 +54,7 @@ class Incrementer: Application, EmulateableApplication {
     /** Initialize the application */
     required init() {
         Runtime.registerApplication(application: self)
-        Runtime.initializeArchitecture(name: "ArmBigLittle")
+        Runtime.initializeArchitecture(name: "XilinxZcu")
         Runtime.establishCommuncationChannel()
         self.addSubModule(newModule: applicationKnobs)
     }
