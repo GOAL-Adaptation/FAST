@@ -1,7 +1,10 @@
 /**
+*  FAST: An implicit programing language based on SWIFT
+
 * Generating SQL scripts to trace the profiling of an application and to insert profiling data
-* into appropriate tables in the emulation database.  The following describes how to use these
-* scripts when profiling a CP.
+* into appropriate tables in the emulation database.
+*
+* The following describes how to use these scripts when profiling a CP.
 *
 * Step 0: The schema for the emulation database is defined in the script called Database.sql
 * located in FAST/Sources/FAST/Emulator.  This script should be run first to create 
@@ -18,7 +21,7 @@
         , intent        : an intent specification
     )
 * 
-* Step 2.1: Emit SQL to insert application input stream and job log parameters (if any).
+* Step 2.1: Emit SQL to insert application input stream.
 
   let appInputStreamInsertion =
     emitScriptForApplicationInputStreamInsertion(
@@ -60,16 +63,16 @@
 let (currentSysConfigInsertion, currentSysConfigName) = 
     emitScriptForCurrentSystemConfigurationInsertion(architecture: architecture in step 1)
 
-* Step 5: Run the CP with the given input stream, the current application configuration and
-* current system configuration, and emit the SQL script to insert the measured delta time,
-* delta energy for each input unit in the input stream.
+* Step 5: For each input unit in the input stream, run the CP with the given input stream, 
+* the current application configuration and current system configuration, 
+* and emit the SQL script to insert the measured delta time, delta energy.
 
-let deltaTimeDeltaEnergyInsertion = ""
+var deltaTimeDeltaEnergyInsertion = ""
 for each input n in input stream {
     obtain delta time and delta energy
     deltaTimeDeltaEnergyInsertion +=
     emitScriptForDeltaTimeDeltaEnergyInsertion(
-        applicationName: name of the CP in step ,
+        applicationName: name of the CP in step 1,
         inputStreamName: name of input stream in step 2.1,
         appConfigName  : currentAppConfigName in step 3.1,
         sysConfigName  : currentSysConfigName in step 4,
@@ -92,9 +95,8 @@ for each input n in input stream {
 + deltaTimeDeltaEnergyInsertion         // step 5
 + "COMMIT; PRAGMA foreign_keys = 'on';"
 *
-* author: Dung Nguyen
+* author: Dung X Nguyen
 */
-
 
 import Foundation
 import LoggerAPI
@@ -180,9 +182,9 @@ import SQLite3
     * When this script is executed:
     * - a unique application configuration name is inserted into the ApplicationConfiguration table
     * - if the knob names and their value types do not exist in the database, they are inserted into
-    * the Knob table and the Application_Knob table
+    *   the Knob table and the Application_Knob table
     * _ all the relevant knob names and their corresponding values are inserted into the 
-    * ApplicationConfiguration_Application_Knob table
+    *   ApplicationConfiguration_Application_Knob table
     */
     func emitScriptForCurrentApplicationConfigurationInsertion(application: EmulateableApplication) 
     -> 
