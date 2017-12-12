@@ -92,8 +92,7 @@ class DatabaseTests: XCTestCase {
         }
     }
 
-    func testGetReferenceApplicationConfigurationID() {
-        
+    func testGetReferenceApplicationConfigurationID() {        
         if let database = Database(databaseFile: dbFile) {
             var referenceApplicationConfigurationId = database.getReferenceApplicationConfigurationID(application: "RADAR")
             XCTAssertEqual(6, referenceApplicationConfigurationId)
@@ -112,7 +111,7 @@ class DatabaseTests: XCTestCase {
     }
 
 
-    func testObtainOutliers() {
+    func testGetOutliers() {
         if let database = Database(databaseFile: dbFile) {
             var outliers = database.obtainOutliers(application: "RADAR")
             XCTAssertEqual(16, outliers.0)
@@ -150,7 +149,7 @@ class DatabaseTests: XCTestCase {
         }
     }
 
-    func testReadDelta() {
+    func testGetDelta() {
         if let database = Database(databaseFile: dbFile) {
             var time_energy = database.readDelta(application: "RADAR", architecture: "ARM-big.LITTLE", appCfg: 6, appInp: 1, sysCfg: 1, processing: 3)
             XCTAssertEqual(-1584, time_energy.0)  // DXN_DBG: The delta time is negative because we are using synthetic test data
@@ -170,24 +169,63 @@ class DatabaseTests: XCTestCase {
     }
 
     func testGetCurrentSystemConfigurationId() {  
-        let xilinxArchecture = XilinxZcu()
+        let xilinx = XilinxZcu()
         if let database = Database(databaseFile: dbFile) {
-            let currentSystemConfigurationId = database.getCurrentConfigurationId(architecture: xilinxArchecture)
+            let currentSystemConfigurationId = database.getCurrentConfigurationId(architecture: xilinx)
             XCTAssertEqual(2, currentSystemConfigurationId)
         }
     }
 
-    static var allTests = [
+    func testGetApplicationInputStreamApplicationConfigurationId() {
+        if let database = Database(databaseFile: dbFile) {
+            var applicationInputStreamId = 
+            database.getApplicationInputStreamApplicationConfigurationId(application: "RADAR", inputStream: "radar cmd1", applicationConfigurationId: 8)
+            XCTAssertEqual(1, applicationInputStreamId)
+            applicationInputStreamId = database.getApplicationInputStreamApplicationConfigurationId(application: "RADAR", inputStream: "radar cmd1", applicationConfigurationId: 6)
+            XCTAssertEqual(2, applicationInputStreamId)
+            applicationInputStreamId = database.getApplicationInputStreamApplicationConfigurationId(application: "x264", inputStream: "x264 cmd1", applicationConfigurationId: 7)
+            XCTAssertEqual(3, applicationInputStreamId)
+        }
+    }
 
-       ("testGetReferenceSystemConfigurationID", testGetReferenceSystemConfigurationID),
-       ("testGetReferenceApplicationConfigurationID", testGetReferenceApplicationConfigurationID),
-       ("testObtainOutliers", testObtainOutliers),
-       ("testGetTapeNoise", testGetTapeNoise),
-       ("testGetWarmupInputs", testGetWarmupInputs),
-       ("testGetNumberOfInputsProfiled", testGetNumberOfInputsProfiled),
-       ("testReadDelta", testReadDelta),
-       ("testGetCurrentSystemConfigurationId", testGetCurrentSystemConfigurationId),
-       ("testGetCurrentApplicationConfigurationId", testGetCurrentApplicationConfigurationId)
+    func testGetApplicatioInputStreamId() {
+        if let database = Database(databaseFile: dbFile) {
+            var applicationInputStreamId = database.getApplicatioInputStreamId(application: "RADAR", inputStream: "radar cmd1")
+            XCTAssertEqual(1, applicationInputStreamId)
+            applicationInputStreamId = database.getApplicatioInputStreamId(application: "RADAR", inputStream: "radar cmd2")
+            XCTAssertEqual(2, applicationInputStreamId)
+            applicationInputStreamId = database.getApplicatioInputStreamId(application: "x264", inputStream: "x264 cmd1")
+            XCTAssertEqual(3, applicationInputStreamId)
+        }
+    }
+
+
+    func testGetApplicationId() {
+        if let database = Database(databaseFile: dbFile) {
+                var applicationId = database.getApplicationId(application: "RADAR")
+                XCTAssertEqual(0, applicationId)
+                applicationId = database.getApplicationId(application: "CaPSuLe")
+                XCTAssertEqual(1, applicationId)
+                applicationId = database.getApplicationId(application: "x264")
+                XCTAssertEqual(2, applicationId)
+        }
+    }
+
+  
+
+    static var allTests = [
+    ("testGetReferenceSystemConfigurationID", testGetReferenceSystemConfigurationID),
+    ("testGetReferenceApplicationConfigurationID", testGetReferenceApplicationConfigurationID),
+    ("testGetOutliers", testGetOutliers),
+    ("testGetTapeNoise", testGetTapeNoise),
+    ("testGetWarmupInputs", testGetWarmupInputs),
+    ("testGetNumberOfInputsProfiled", testGetNumberOfInputsProfiled),
+    ("testGetDelta", testGetDelta),
+    ("testGetCurrentSystemConfigurationId", testGetCurrentSystemConfigurationId),
+    ("testGetCurrentApplicationConfigurationId", testGetCurrentApplicationConfigurationId),
+    ("testGetApplicatioInputStreamId", testGetApplicatioInputStreamId),
+    ("testGetApplicationInputStreamApplicationConfigurationId", testGetApplicationInputStreamApplicationConfigurationId),
+    ("testGetApplicationId", testGetApplicationId),
     ]
 
 }

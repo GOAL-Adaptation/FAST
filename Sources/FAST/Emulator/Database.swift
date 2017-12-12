@@ -192,7 +192,7 @@ public class Database: TextApiModule {
     }
     else {
       Log.error("Failed to read the current application configuration ID from the emulation database.")
-      fatalError("Failed to read the reference application configuration ID from the emulation database: \(sqliteQuery)")
+      fatalError("Failed to read the current application configuration ID from the emulation database: \(sqliteQuery)")
     }
   }
 
@@ -552,6 +552,41 @@ func getCurrentConfigurationId(architecture: Architecture) -> Int {
     }
   }
 
+
+  /** Get the application id for a given application name from the database
+  */
+  public func getApplicationId(application: String) -> Int {
+    var result: Int? = nil
+    
+    let sqliteQuery =
+      "SELECT [Application].[id] AS [appId] " +
+      "FROM   [Application] " +
+      "WHERE  [Application].[name] = :1; " 
+    do {
+      try database.forEachRow(statement: sqliteQuery, doBindings: {
+        (s1: SQLiteStmt) -> () in try s1.bind(position: 1, application)
+      })  { (s2: SQLiteStmt, i:Int) -> () in result = s2.columnInt(position: 0) }
+    } catch let exception {
+      let errorMessage = "Failed to read the application id for '\(application)' from the emulation database: \(exception)."
+      Log.error(errorMessage)
+      fatalError(errorMessage)
+    }
+    if let res = result {
+        Log.debug("Read the application id for '\(application)' from the emulation database: \(res).")
+        return res
+    }
+    else {
+        Log.error("Failed to read the the application id for '\(application)' from the emulation database.")
+        fatalError()
+    }
+  }
+
+  /** Insert a knob of an application identified by its ID into a database.
+  */
+  public func insertKnob(applicationId: Int, knobName: String, knobType: String, referenceValue: String) {
+    // TODO
+  }
+
   /** Select which input to read in Tape mode */
   func getInputNumberToRead(inputID: Int, maximalInputID: Int, warmupInputs: Int) -> Int {
         
@@ -611,6 +646,93 @@ func getCurrentConfigurationId(architecture: Architecture) -> Int {
     }
 
     return result
+  }
+
+  /** An ApplicationInputStream Id is uniquely determined by an application name
+  * and an input stream name.
+  */
+  public func getApplicatioInputStreamId(application: String, // name of application
+                                  inputStream: String  // name of input stream
+                                  ) -> Int {
+    var result: Int? = nil
+
+    let sqliteQuery = 
+    "SELECT [ApplicationInputStream].[id], " +
+    "       [Application].[name] AS [applicationName], " +
+    "       [ApplicationInputStream].[name] AS [inputStreamName] " +
+    "FROM   [Application] " +
+    "       INNER JOIN [ApplicationInputStream] ON [Application].[id] = [ApplicationInputStream].[applicationId] " +
+    "WHERE  [Application].[name] = :1 " +
+    "       AND [ApplicationInputStream].[name] = :2;"
+
+    do {
+        try database.forEachRow(statement: sqliteQuery, doBindings: {
+          (s1: SQLiteStmt) -> () in 
+            try s1.bind(position: 1, application)
+            try s1.bind(position: 2, inputStream)
+        }) { 
+          (s2: SQLiteStmt, i:Int) -> () in result = s2.columnInt(position: 0)
+        }
+      } catch let exception {
+        let errorMessage = "Exception while reading the application input stream id from the emulation database: \(exception)."
+        Log.error(errorMessage)
+        fatalError(errorMessage)
+      }
+
+      if let res = result {
+          Log.debug("Read application input stream id from the emulation database: \(res).")
+          return res
+      }
+      else {
+        let errorMessage = "Failed to read the application input stream id from the emulation database."
+        Log.error(errorMessage)
+        fatalError(errorMessage)
+      }
+  }
+
+  /**
+  */
+  public func getApplicationInputStreamApplicationConfigurationId
+    ( application: String // application name
+    , inputStream: String // input stream name
+    , applicationConfigurationId: Int 
+    ) -> Int {
+      
+      var result: Int? = nil
+      let sqliteQuery =
+      "SELECT [ApplicationInputStream_ApplicationConfiguration].[id] AS [appInputStreamAppCfgId] " +
+      "FROM   [Application] " +
+      "       INNER JOIN [ApplicationInputStream] ON [Application].[id] = [ApplicationInputStream].[applicationId] " +
+      "       INNER JOIN [ApplicationInputStream_ApplicationConfiguration] ON [ApplicationInputStream].[id] = [ApplicationInputStream_ApplicationConfiguration].[applicationInputId] " +
+      "       INNER JOIN [ApplicationConfiguration] ON [ApplicationConfiguration].[id] = [ApplicationInputStream_ApplicationConfiguration].[applicationConfigurationID] " +
+      "WHERE  [Application].[name] = :1 " +
+      "       AND [ApplicationInputStream].[name] = :2 " +
+      "       AND [ApplicationConfiguration].[id] = :3;"
+
+    do {
+        try database.forEachRow(statement: sqliteQuery, doBindings: {
+          (s1: SQLiteStmt) -> () in 
+            try s1.bind(position: 1, application)
+            try s1.bind(position: 2, inputStream)
+            try s1.bind(position: 3, applicationConfigurationId)
+        }) { 
+          (s2: SQLiteStmt, i:Int) -> () in result = s2.columnInt(position: 0)
+        }
+      } catch let exception {
+        let errorMessage = "Exception while reading the applicationInputStream_applicationConfigurationId from the emulation database: \(exception)."
+        Log.error(errorMessage)
+        fatalError(errorMessage)
+      }
+
+      if let res = result {
+          Log.debug("Read applicationInputStream_applicationConfigurationId from the emulation database: \(res).")
+          return res
+      }
+      else {
+        let errorMessage = "Failed to read applicationInputStream_applicationConfigurationId from the emulation database."
+        Log.error(errorMessage)
+        fatalError(errorMessage)
+      }
   }
 
   //-------------------------------
@@ -811,6 +933,48 @@ func getCurrentConfigurationId(architecture: Architecture) -> Int {
 
     }
   }
-}
 
+    /** Insert an application name into the database
+    * only if the application name does not exist in the database
+    */
+    public func insertApplication(application: String, warmupNumber: Int) {
+      let sqliteQuery = "INSERT INTO Application(name, warmupInputNum) VALUES(:1, :2); "
+      do {
+        try database.execute(statement: "BEGIN; ")
+        try database.execute(statement: sqliteQuery, doBindings: {
+        (s: SQLiteStmt) -> () in
+        try s.bind(position: 1, application)
+        try s.bind(position: 2, warmupNumber)
+        print("DXN_DEBUG >>>> insertApplication \(sqliteQuery)")
+        })
+        try database.execute(statement: "COMMIT;")
+        } catch let exception {
+        let errorMessage = "Failed to insert '\(application)' into the emulation database: \(exception)."
+        Log.error(errorMessage)
+        fatalError(errorMessage)
+      }
+    }
+
+    /** Insert an input stream name for an application identified by its ID
+    * into a database
+    */
+    public func insertInputStream(inputStream: String, applicationId: Int) {
+      let sqliteQuery =
+      "INSERT OR IGNORE INTO [ApplicationInputStream]([name], [applicationId]) VALUES(:1, :2);"
+      do {
+      try database.execute(statement: sqliteQuery, doBindings: {
+      (s: SQLiteStmt) -> () in
+      try s.bind(position: 1, inputStream)
+      try s.bind(position: 2, applicationId)
+      })
+      } catch let exception {
+      let errorMessage = "Failed to insert input stream '\(inputStream)' for application ID \(applicationId) into the emulation database: \(exception)."
+      Log.error(errorMessage)
+      fatalError(errorMessage)
+    }
+  }
 //-------------------------------
+
+
+
+}
