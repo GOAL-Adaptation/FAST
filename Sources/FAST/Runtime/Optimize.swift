@@ -311,6 +311,159 @@ public func optimize
 
     }
 
+    
+    func trace(intent: IntentSpec) {
+
+        Log.info("Tracing optimize scope \(id).")
+        if let myApp = Runtime.application as? EmulateableApplication, let myArch = Runtime.architecture as? EmulateableArchitecture {
+
+            // step 1: Emit SQL to insert application and architecture properties based on an intent specification.
+            let applicationAndArchictectureInsertion 
+            = emitScriptForApplicationAndArchitectureInsertion(
+                application   : myApp
+                , warmupInputNum: 0
+                , architecture  : myArch
+                , intent        : intent)
+
+            // step 2.1: Emit SQL to insert application input stream
+            let inputStreamName = "application dependent" // TODO: must pass in input stream name
+            let appInputStreamInsertion 
+            = emitScriptForApplicationInputStreamInsertion(applicationName: myApp.name, inputStreamName: inputStreamName)
+
+            var insertionScript = 
+            "PRAGMA foreign_keys = 'off'; BEGIN;"
+            + "\n" + applicationAndArchictectureInsertion  // step 1
+            + "\n" + appInputStreamInsertion               // step 2.1
+    
+            // Initialize measuring device, that will update measures at every input
+            let measuringDevice = MeasuringDevice(ProgressSamplingPolicy(period: 1), windowSize, labels)
+
+            // Number of inputs to process when profiling a configuration
+            let defaultProfileSize: UInt64 = UInt64(1000)
+            let profileSize = initialize(type: UInt64.self, name: "profileSize", from: key, or: defaultProfileSize)           
+            let knobSpace = intent.knobSpace()
+            
+            // For application knobs that appear in the intent knob list, 
+            // build the corresponding application reference configuration settings.
+            // For example, for incrementer, appRefConfig = ["threshold": 10000000, "step": 1]
+            var appRefConfig = [String: Any]()
+            let appKnobs = myApp.getStatus()!["applicationKnobs"] as! [String : Any]
+            for (appKnobName, _) in appKnobs {            
+                for (knobName, rangeReferencePair) in intent.knobs {
+                    if (appKnobName == knobName) {
+                        appRefConfig[knobName] = rangeReferencePair.1
+                    }
+                }
+            }
+            
+            // Filter out knobSpace to keep only those knobSpace[i] with settings containing appRefConfig.
+            // knobAppRefSpace[i].settings = ["utilizedCores": k, "threshold": 10000000, "step": 1], for some k.
+            let knobAppRefSpace = knobSpace.filter{$0.contains(appRefConfig)}
+            
+            // For system knobs that appear in the intent knob list,
+            // build the correspnding system reference configuration settings.
+            // For example, for incrementer, sysRefConfig = ["utilizedCores": 4]
+            //
+            var sysRefConfig = [String: Any]()
+            let sysKnobs =  myArch.getStatus()!["systemConfigurationKnobs"] as! [String : Any]
+            for (sysKnobName, _) in sysKnobs {            
+                for (knobName, rangeReferencePair) in intent.knobs {
+                    if (sysKnobName == knobName) {
+                        sysRefConfig[knobName] = rangeReferencePair.1
+                    }
+                }
+            }
+            
+            // Filter out knobSpace to keep only those knobSpace[i] with settings containing sysRefConfig.
+            // knobSysRefSpace[i].settings = ["utilizedCores": 4, "threshold": t, "step": s] for some t and some s.
+            let knobSysRefSpace = knobSpace.filter{$0.contains(sysRefConfig)}
+            
+            // Compute knobRefSpace = knobAppRefSpace union knobSysRefSpace
+            var knobRefSpace = knobAppRefSpace
+            for knobSettings in knobSysRefSpace {
+                if !knobAppRefSpace.contains(knobSettings) { // no duplication allowed
+                    knobRefSpace.append(knobSettings)
+                }
+            }                
+
+            // loop to trace only those configurations in knobRefSpace:
+            for i in 0 ..< knobRefSpace.count {
+
+                let knobSettings = knobRefSpace[i]
+                Log.info("Start tracing of configuration: \(knobSettings.settings).")
+                knobSettings.apply()
+
+                // step 3.1: Emit SQL to insert current application configuration and 
+                // return the name of the current application configuration to be used in subsequent steps.
+                let (currentAppConfigInsertion, currentAppConfigName)
+                = emitScriptForCurrentApplicationConfigurationInsertion(application: myApp)
+
+                // step 3.2: Emit SQL to relate the application input stream in step 2.1 
+                // and the application configuration in step 3.1.
+                let appInputStream_appConfigInsertion 
+                = emitScriptForApplicationInputStream_ApplicationConfigurationInsertion(
+                      applicationName: myApp.name
+                    , inputStreamName: inputStreamName
+                    , appConfigName  : currentAppConfigName)
+
+                // step 4: Emit SQL to insert current system configuration and 
+                // return the name of the current system configuration to be used in subsequent steps.
+                let (currentSysConfigInsertion, currentSysConfigName) 
+                = emitScriptForCurrentSystemConfigurationInsertion(architecture: myArch)
+
+                insertionScript += 
+                  "\n" + currentAppConfigInsertion             // step 3.1
+                + "\n" + appInputStream_appConfigInsertion     // step 3.2
+                + "\n" + currentSysConfigInsertion             // step 4
+
+                // step 5: For each input unit in the input stream, run the CP with the given input stream, 
+                // the current application configuration and current system configuration, 
+                // and emit the SQL script to insert the measured delta time, delta energy.
+                var inputNum = 0
+                var lastTime = Runtime.getMeasure("time")!
+                var lastEnergy = Runtime.getMeasure("energy")!
+                var deltaTimeDeltaEnergyInsertion = ""
+                loop( iterations: profileSize - 1) {
+                // let numberOfProcessedInputs   = Runtime.getMeasure("iteration")   // NOTE: no such measure
+                    inputNum += 1
+                    executeAndReportProgress(measuringDevice, routine)
+                 // let runningTime               = Runtime.getMeasure("runningTime") // NOTE: no such measure
+                    let time = Runtime.getMeasure("time")!
+                    let energy = Runtime.getMeasure("energy")!
+                    let deltaTime = time - lastTime
+                    let deltaEnergy = energy - lastEnergy
+                    deltaTimeDeltaEnergyInsertion += "\n" +
+                        emitScriptForDeltaTimeDeltaEnergyInsertion(
+                            applicationName: myApp.name,
+                            inputStreamName: inputStreamName,
+                            appConfigName  : currentAppConfigName,
+                            sysConfigName  : currentSysConfigName,
+                            inputNumber    : inputNum,
+                            deltaTime      : deltaTime,
+                            deltaEnergy    : deltaEnergy           
+                        )
+                    lastTime = time
+                    lastEnergy = energy
+                }
+
+                insertionScript += 
+                "\n" + deltaTimeDeltaEnergyInsertion         // step 5
+            }
+
+            insertionScript += "\n COMMIT; PRAGMA foreign_keys = 'on';"
+
+            // Write SQL script to file:
+            let defaultProfileOutputPrefix: String = Runtime.application?.name ?? "fast"            
+            let profileOutputPrefix = initialize(type: String.self, name: "profileOutputPrefix", from: key, or: defaultProfileOutputPrefix) 
+            withOpenFile(atPath: profileOutputPrefix + ".trace.sql") { 
+                (sqlScriptOutputStream: Foundation.OutputStream) in
+                    sqlScriptOutputStream.write(insertionScript, maxLength: insertionScript.characters.count)
+            }
+        }
+
+    }
+
+
     func run(model: Model, intent: IntentSpec, numberOfInputsToProcess: UInt64? = nil) {
 
         Log.info("Executing optimize scope \(id).")
@@ -399,6 +552,10 @@ public func optimize
                 case .ExhaustiveProfiling:
 
                     profile(intent: intent)
+
+                case .EmulatorTracing:
+ 
+                    trace(intent: intent)
                 
                 default: // .Adaptive and .NonAdaptive
 
