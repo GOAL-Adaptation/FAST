@@ -1,7 +1,9 @@
 /*
  *  FAST: An implicit programing language based on SWIFT
  *
- *        Tests of Database
+ *        Test for tracing incrementer.
+ *  Generate SQL script to insert fictitious delta time and delta energy into a database.
+ *  Execute the generated script to populate a database named TracingTests.db.
  *
  *  author: Zung Nguyen
  */

@@ -2,6 +2,9 @@
  *  FAST: An implicit programing language based on SWIFT
  *
  *        Tests of Database
+ *  Create a database named DatabaseTests.db by running the Database.sql schema script.
+ *  Populate DatabaseTests.db with fictitious data by running the DatabaseTests.sql data script.
+ *  Test the various functions in Database.swft.
  *
  *  author: Zung Nguyen
  */
