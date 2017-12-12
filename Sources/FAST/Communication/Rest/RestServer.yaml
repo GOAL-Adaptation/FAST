@@ -473,3 +473,8 @@ components:
               description: Values of measures specified in the intent specification.
               items:
                 $ref: '#/components/schemas/NameValuePair'
+            measurePredictions:
+              type: array
+              description: Values of measures specified in the intent specification as predicted by the active controller model.
+              items:
+                $ref: '#/components/schemas/NameValuePair'
