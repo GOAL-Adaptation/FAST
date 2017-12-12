@@ -258,6 +258,8 @@ public func optimize
 
         Log.info("Profiling optimize scope \(id).")
 
+        Runtime.setIntent(intent)
+
         // Initialize measuring device, that will update measures at every input
         let measuringDevice = MeasuringDevice(ProgressSamplingPolicy(period: 1), windowSize, labels)
         Runtime.measuringDevices[id] = measuringDevice
@@ -385,7 +387,7 @@ public func optimize
 
             // FIXME Read a model corresponding to the initialized application,
             //       intent, and input stream.
-            let model = Runtime.loadModel(id)!
+            let model = Runtime.readModelFromFile(id)!
             
             // FIXME Use initialization parameters to initialize the Runtime
 
@@ -408,7 +410,7 @@ public func optimize
 
     }
     else {
-        if let intent = Runtime.loadIntent(id) {
+        if let intent = Runtime.readIntentFromFile(id) {
 
             switch Runtime.runtimeKnobs.applicationExecutionMode.get() {
                 
@@ -418,7 +420,7 @@ public func optimize
                 
                 default: // .Adaptive and .NonAdaptive
 
-                    if let model = Runtime.loadModel(id) {
+                    if let model = Runtime.readModelFromFile(id) {
 
                         Log.info("Model loaded for optimize scope \(id).")
 

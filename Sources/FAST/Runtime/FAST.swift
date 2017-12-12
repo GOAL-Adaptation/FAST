@@ -220,18 +220,19 @@ public class Runtime {
     internal static let intentCompiler = Compiler()
 
     /** 
-     * Fetch an intent from the cache, or, if it has not been accessed previously, 
-     * load it from the file system. The intent will be loaded from a file whose
+     * Read it from the file system. The intent will be loaded from a file whose
      * name is <APPLICATION_PATH>/<ID>.intent, where <APPLICATION_PATH> is the 
      * location of the application and <ID> is the value of the id parameter. 
      */
-    public static func loadIntent(_ id: String) -> IntentSpec? {
+    public static func readIntentFromFile(_ id: String) -> IntentSpec? {
         if let intentFileContent = readFile(withName: id, ofType: "intent") {
-            let intent = intentCompiler.compileIntentSpec(source: intentFileContent)
-            if let i = intent { 
-                setIntent(i)
+            if let intent = intentCompiler.compileIntentSpec(source: intentFileContent) { 
+                return intent
             }
-            return intent
+            else {
+                Log.debug("Unable to compile intent '\(id)'.")
+                return nil
+            }
         }
         else {
             Log.debug("Unable to load intent '\(id)'.")
@@ -240,41 +241,34 @@ public class Runtime {
     }
 
     internal static func setIntent(_ spec: IntentSpec) {
-        synchronized(controllerLock) {
-            intents[spec.name] = spec
-            Log.info("Changed intent '\(spec.name)' to: \(spec)")
-        }
+        intents[spec.name] = spec
+        Log.info("Set intent for optimize scope '\(spec.name)' to: \(spec).")
+    }
+
+    internal static func setModel(name: String, _ model: Model) {
+        models[name] = model
+        Log.info("Set model for optimize scope '\(name)'.")
     }
 
     /** 
-     * Fetch a model from the cache, or, if it has not been accessed previously, 
-     * load it from the file system. The model will be loaded from two files whose
+     * Read model from the file system. The model will be loaded from two files whose
      * names are <APPLICATION_PATH>/<ID>.knobtable, and 
      * <APPLICATION_PATH>/<ID>.measuretable where <APPLICATION_PATH> is the 
      * location of the application and <ID> is the value of the id parameter. 
      */
-    public static func loadModel(_ id: String, _ initialConfigurationIndex: Int = 0) -> Model? {
-        if let model = models[id] {
-            return model
-        }
-        else {
-            if let knobCSV = readFile(withName: id, ofType: "knobtable") {
-                if let measureCSV = readFile(withName: id, ofType: "measuretable") {
-                    let model = Model(knobCSV, measureCSV, initialConfigurationIndex)
-                    synchronized(controllerLock) {
-                        models[id] = model
-                    }
-                    return model   
-                }
-                else {
-                    Log.error("Unable to load measure table \(id).measuretable.")
-                    return nil
-                }    
+    public static func readModelFromFile(_ id: String, _ initialConfigurationIndex: Int = 0) -> Model? {
+        if let knobCSV = readFile(withName: id, ofType: "knobtable") {
+            if let measureCSV = readFile(withName: id, ofType: "measuretable") {
+                return Model(knobCSV, measureCSV, initialConfigurationIndex)
             }
             else {
-                Log.error("Unable to load knob table \(id).knobtable.")
+                Log.error("Unable to read measure table \(id).measuretable.")
                 return nil
-            }
+            }    
+        }
+        else {
+            Log.error("Unable to read knob table \(id).knobtable.")
+            return nil
         }
     }
 
@@ -348,8 +342,9 @@ public class Runtime {
             let verdictComponents: [String : Any] = 
                 Dictionary(measuringDevices.map{ 
                     (intentName, measuringDevice) in 
+                    let intentSpec = intents[intentName]!
                     let windowAverages = measuringDevice.windowAverages()
-                    let constraintMeasureValue = windowAverages[intents[intentName]!.constraintName]!
+                    let constraintMeasureValue = windowAverages[intentSpec.constraintName]!
                     return ( intentName, [ "constraintMeasureValue" : constraintMeasureValue ] )
                 })
 
@@ -365,8 +360,8 @@ public class Runtime {
                 ] 
 
             // The measure values that the controller associates with the current configuration
-            let currentKnobSettingsId = Int(Runtime.getMeasure("currentConfiguration")!) // kid of the currently active KnobSettings
-            if let currentConfiguration = models[application]!.configurations.first(where: { $0.knobSettings.kid == currentKnobSettingsId }) {
+            if let currentKnobSettingsId = Runtime.getMeasure("currentConfiguration"), // kid of the currently active KnobSettings
+               let currentConfiguration = models[application]!.configurations.first(where: { $0.knobSettings.kid == Int(currentKnobSettingsId) }) {
                 arguments["measurePredictions"] = zip( currentConfiguration.measureNames
                                                      , currentConfiguration.measureValues
                                                     ).map{ [ "name" : $0, "value" : $1 ] }
@@ -428,7 +423,7 @@ public class Runtime {
         Runtime.scriptedCounter += UInt64(numberOfInputs)
 
         while (Runtime.runtimeKnobs.interactionMode.get() == InteractionMode.Scripted && 
-                Runtime.scriptedCounter > 0) {}
+               Runtime.scriptedCounter > 0) {}
 
     }
 
@@ -632,6 +627,8 @@ public class Runtime {
     public static func initializeController(_ model: Model, _ intent: IntentSpec, _ window: UInt32 = 20) {
         synchronized(controllerLock) {
             if let c = IntentPreservingController(model, intent, window) {
+                setIntent(intent)
+                setModel(name: intent.name, model)
                 controller = c
                 Log.info("Controller initialized.")
             } 
@@ -644,13 +641,13 @@ public class Runtime {
 
     /** Intialize intent preserving controller with the intent, keeping the previous model and window */
     public static func reinitializeController(_ spec: IntentSpec) {
-        setIntent(spec)
         if let model = Runtime.controller.model {
             // FIXME Check that the model and updated intent are consistent (that measure and knob sets coincide)
             initializeController(model, spec, Runtime.controller.window)
         }
         else {
-            Log.warning("Attempt to reinitialize controller based on a controller with an undefined model.")
+            Log.error("Attempt to reinitialize controller based on a controller with an undefined model.")
+            fatalError()
         }
     }
 
