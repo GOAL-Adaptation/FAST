@@ -38,7 +38,7 @@ public class Schedule {
 }
 
 /** Extract a value of type T from a JSON object */
-func extract<T : InitializableFromString>(type: T.Type, name: String, json: [String : Any]) -> T? {
+func extract<T : InitializableFromString>(type: T.Type, name: String, json: [String : Any], logErrors: Bool = false) -> T? {
     if let v = json[name] {
         if let t = v as? T {
             return t
@@ -53,13 +53,17 @@ func extract<T : InitializableFromString>(type: T.Type, name: String, json: [Str
                 return t
             }
             else {
-                Log.error("Failed to extract '\(name)' of type \(T.self) from JSON: '\(v)'.")  
+                if logErrors {
+                    Log.error("Failed to parse value '\(v)' for key '\(name)' of type '\(T.self)' from JSON: \(json).")  
+                }
                 return nil
             }
         }
     }
     else {
-        Log.error("No key \(name) in JSON.")  
+        if logErrors {
+            Log.error("No key '\(name)' in JSON: \(json).")  
+        }
         return nil
     }
 }
