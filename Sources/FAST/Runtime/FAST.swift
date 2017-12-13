@@ -344,8 +344,13 @@ public class Runtime {
                     (intentName, measuringDevice) in 
                     let intentSpec = intents[intentName]!
                     let windowAverages = measuringDevice.windowAverages()
-                    let constraintMeasureValue = windowAverages[intentSpec.constraintName]!
-                    return ( intentName, [ "constraintMeasureValue" : constraintMeasureValue ] )
+                    let constraintVariableValue = windowAverages[intentSpec.constraintName]!
+                    var components = 
+                        [ "constraintVariableValue" : constraintVariableValue ]
+                    if let objectiveFunction = intentSpec.currentCostOrValue() {
+                        components["objectiveFunction"] = objectiveFunction
+                    }
+                    return ( intentName, toArrayOfPairDicts(components) )
                 })
 
             var arguments : [String : Any] =

@@ -110,11 +110,24 @@ extension IntentSpec {
         "constraintVariable" : constraintName,
         "constraintValue"    : constraint
     ]
-    
-    // FIXME Move the objectiveFunction value into the verdictComponents field of the statusDictionary
 
-    // If a model is loaded for this intent, compute the current objectiveFunction value
-    // and, if the value is not Double.nan, insert a property for it into the JSON object
+    // If the current objective function value is not Double.nan, insert a property for it into the JSON object.
+    if let objectiveFunction = currentCostOrValue(),
+       !objectiveFunction.isNaN {
+        intentJson["objectiveFunction"] = objectiveFunction
+    }
+
+    return [
+        "knobs"    : knobsJson,
+        "measures" : measuresJson,
+        "intent"   : intentJson
+    ]
+
+  }
+
+  /** If a model is loaded for this intent, compute the current measure window averages
+      as an array in the same order as the array returned by measures(). */
+  func measureWindowAverages() -> [Double]? {
     if let model = Runtime.models[name] {
         guard let measuringDevice = Runtime.measuringDevices[name] else {
             Log.error("No measuring device registered for intent \(name).")
@@ -133,18 +146,16 @@ extension IntentSpec {
                 fatalError()
             }
         }
-        let objectiveFunction = costOrValue(measureValueArray)
-        if !objectiveFunction.isNaN {
-            intentJson["objectiveFunction"] = objectiveFunction
-        }
+        return measureValueArray
     }
+    else {
+        return nil
+    }
+  }
 
-    return [
-        "knobs"    : knobsJson,
-        "measures" : measuresJson,
-        "intent"   : intentJson
-    ]
-
+  /** Objective function evaluated in the current measure window averages. */
+  func currentCostOrValue() -> Double? {
+    return measureWindowAverages().map({ costOrValue($0) })
   }
 
 }
