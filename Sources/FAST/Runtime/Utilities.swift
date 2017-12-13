@@ -48,7 +48,8 @@ func utcDateString() -> String {
     return utcDateFormatter.string(from: Date())
 }
 
-@discardableResult func postErrorToTh(_ errorMessage: String) -> [String : Any]? {
+@discardableResult func logAndPostErrorToTh(_ errorMessage: String) -> [String : Any]? {
+    Log.error(errorMessage)
     return RestClient.sendRequest(to: "error", withBody: [
         "time"    : utcDateString(),
         "message" : errorMessage

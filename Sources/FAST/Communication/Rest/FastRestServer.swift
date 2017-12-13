@@ -49,12 +49,13 @@ class FastRestServer : RestServer {
                     Log.info("Processed \(numberOfInputsToProcess) input(s).")
                 }
                 else {                    
-                    Log.error("Failed to extract number of inputs to process from JSON: \(json).")
+                    logAndPostErrorToTh("Failed to extract number of inputs to process from JSON: \(json).")
                     response.status = .notAcceptable // HTTP 406
                 }
 
             }
             else {
+                logAndPostErrorToTh("Message sent to /process endpoint is not valid JSON: \(request.postBodyString).")
                 response.status = .notAcceptable // HTTP 406
             }
             
@@ -86,12 +87,13 @@ class FastRestServer : RestServer {
                     response.status = self.changeIntent(missionIntentString, accumulatedStatus: response.status)
                 }
                 else {
-                    Log.error("Failed to extract scenario knobs from request sent to /perturb endpoint: \(json)")
+                    logAndPostErrorToTh("Unable to parse JSON sent to /perturb endpoint: \(json).")
                     response.status = .notAcceptable // HTTP 406
                 }
             
             }
             else {
+                logAndPostErrorToTh("Message sent to /perturb endpoint is not valid JSON: \(request.postBodyString).")
                 response.status = .notAcceptable // HTTP 406
             }
 
@@ -106,9 +108,9 @@ class FastRestServer : RestServer {
                     self.addJsonBody(toResponse: response, json: runtimeStatus, jsonDescription: "status", endpointName: "query")
                 }
                 else {
-                    response.status = .notAcceptable // HTTP 406
-                    Log.info("Error while extracting status in response to request on /query REST endpoint.")
+                    logAndPostErrorToTh("Error while extracting status in response to request on /query REST endpoint.")
                     self.addJsonBody(toResponse: response, json: [:], jsonDescription: "empty", endpointName: "query")
+                    response.status = .notAcceptable // HTTP 406
                 }
 
             }
@@ -172,7 +174,7 @@ class FastRestServer : RestServer {
                     Log.info(logMessage)
                 }
                 else {
-                    Log.error("Did not receive valid JSON on /fixConfiguration endpoint: \(request)")
+                    logAndPostErrorToTh("Did not receive valid JSON on /fixConfiguration endpoint: \(request)")
                 }
                 self.addJsonBody(toResponse: response, json: [:], jsonDescription: "empty", endpointName: "fixConfiguration")
             }

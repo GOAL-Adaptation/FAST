@@ -207,13 +207,11 @@ fileprivate func startRestServer() -> (RestServer, InitializationParameters?) {
                 return (server!, ips)
             }
             else {
-                let errorMessage = "Failed to parse InitializationParameters from response from post to TH/ready"
-                Log.error(errorMessage + ": \(initializationParametersJson).")
-                postErrorToTh(errorMessage + ".")
+                logAndPostErrorToTh("Failed to parse InitializationParameters from response from post to TH/ready: \(initializationParametersJson).")
                 fatalError()
             }
         } else {
-            Log.error("No response from TH/ready.")
+            logAndPostErrorToTh("No response from TH/ready.")
             fatalError()
         }
 
@@ -343,7 +341,7 @@ public func optimize
             Log.debug("Computing schedule from model window averages: \(measureValuesOfReferenceConfiguration).")
             var schedule: Schedule = Runtime.controller.getSchedule(intent, measureValuesOfReferenceConfiguration)
             // Initialize measures
-            for measure in intentSpec.measures {
+            for measure in intent.measures {
                 if let measureValue = measureValuesOfReferenceConfiguration[measure] {
                     Runtime.measure(measure, measureValue)
                 }
@@ -424,9 +422,7 @@ public func optimize
 
         }
         else {
-            let errorMessage =  "Invalid initalization parameters received from /ready endpoint."
-            Log.error(errorMessage)
-            postErrorToTh(errorMessage)
+            logAndPostErrorToTh("Invalid initalization parameters received from /ready endpoint.")
             fatalError()
         }
 
