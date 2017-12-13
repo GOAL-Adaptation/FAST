@@ -235,7 +235,6 @@ public func optimize
     , until shouldTerminate: @escaping @autoclosure () -> Bool = false
     , across windowSize: UInt32 = 20
     , samplingPolicy: SamplingPolicy = ProgressSamplingPolicy(period: 1)
-    , _ labels: [String]
     , _ routine: @escaping (Void) -> Void ) {
 
     let logLevel = initialize(type: LoggerMessageType.self, name: "logLevel", from: key, or: .verbose)
@@ -271,7 +270,7 @@ public func optimize
         Runtime.setIntent(intent)
 
         // Initialize measuring device, that will update measures at every input
-        let measuringDevice = MeasuringDevice(ProgressSamplingPolicy(period: 1), windowSize, labels)
+        let measuringDevice = MeasuringDevice(ProgressSamplingPolicy(period: 1), windowSize, intent.measures)
         Runtime.measuringDevices[id] = measuringDevice
 
         // Number of inputs to process when profiling a configuration
@@ -361,7 +360,7 @@ public func optimize
             Runtime.measure("currentConfiguration", Double(currentKnobSettings.kid)) // The id of the configuration given in the knobtable
             Runtime.measure("windowSize", Double(windowSize))
             // Initialize measuring device, that will update measures based on the samplingPolicy
-            let measuringDevice = MeasuringDevice(samplingPolicy, windowSize, labels)
+            let measuringDevice = MeasuringDevice(samplingPolicy, windowSize, intent.measures)
             Runtime.measuringDevices[id] = measuringDevice
             // Start the input processing loop
             loop(iterations: numberOfInputsToProcess) {
