@@ -292,8 +292,8 @@ components:
                 An arithmetic expression over the measures declared in the measures
                 parameter of the enclosing IntentSpecification.
               $ref: '#/components/schemas/Expression'
-            constraintMeasure:
-              description: The name of a measure
+            constraintVariable:
+              description: The name of a measure.
               type: string
             constraintValue:
               type: number
