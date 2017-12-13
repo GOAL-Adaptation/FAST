@@ -336,26 +336,37 @@ public func optimize
         Runtime.initializeController(model, intent, windowSize)
         
         if let controllerModel = Runtime.controller.model {
-            // Initialize measuring device, that will update measures based on the samplingPolicy
-            let measuringDevice = MeasuringDevice(samplingPolicy, windowSize, labels)
-            Runtime.measuringDevices[id] = measuringDevice
+            // Compute initial schedule that meets the active intent, by using the measure values of 
+            // the reference configuration as an estimate of the first measurements.            
             let currentConfiguration = controllerModel.getInitialConfiguration()!
             var currentKnobSettings = currentConfiguration.knobSettings
             let measureValuesOfReferenceConfiguration = Dictionary(Array(zip(currentConfiguration.measureNames, currentConfiguration.measureValues)))
+            Log.debug("Computing schedule from model window averages: \(measureValuesOfReferenceConfiguration).")
             var schedule: Schedule = Runtime.controller.getSchedule(intent, measureValuesOfReferenceConfiguration)
-            // FIXME what if the counter overflows
-            var iteration: UInt32 = 0 // iteration counter
+            // Initialize measures
+            for measure in intentSpec.measures {
+                if let measureValue = measureValuesOfReferenceConfiguration[measure] {
+                    Runtime.measure(measure, measureValue)
+                }
+                else {
+                    Log.error("Invalid model: missing values for measure '\(measure)'.")
+                    fatalError()
+                }
+            }
+            var iteration: UInt32 = 0 // iteration counter // FIXME what if the counter overflows
             var startTime = ProcessInfo.processInfo.systemUptime // used for runningTime counter
             var runningTime = 0.0 // counts only time spent inside the loop body
             Runtime.measure("iteration", Double(iteration))
             Runtime.measure("runningTime", runningTime) // running time in seconds
             Runtime.measure("currentConfiguration", Double(currentKnobSettings.kid)) // The id of the configuration given in the knobtable
             Runtime.measure("windowSize", Double(windowSize))
+            // Initialize measuring device, that will update measures based on the samplingPolicy
+            let measuringDevice = MeasuringDevice(samplingPolicy, windowSize, labels)
+            Runtime.measuringDevices[id] = measuringDevice
+            // Start the input processing loop
             loop(iterations: numberOfInputsToProcess) {
                 startTime = ProcessInfo.processInfo.systemUptime // reset, in case something paused execution between iterations
-                executeAndReportProgress(measuringDevice, routine)
-                iteration += 1
-                if iteration % windowSize == 0 {
+                if iteration > 0 && iteration % windowSize == 0 {
                     Log.debug("Computing schedule from window averages: \(measuringDevice.windowAverages()).")
                     schedule = Runtime.controller.getSchedule(intent, measuringDevice.windowAverages())
                 }
@@ -365,6 +376,7 @@ public func optimize
                     // FIXME This should only apply when the schedule actually needs to change knobs
                     currentKnobSettings.apply()
                 }
+                executeAndReportProgress(measuringDevice, routine)
                 runningTime += ProcessInfo.processInfo.systemUptime - startTime
                 Runtime.measure("iteration", Double(iteration))
                 Runtime.measure("runningTime", runningTime) // running time in seconds
@@ -378,6 +390,7 @@ public func optimize
                     // FIXME handle error from request
                     let _ = RestClient.sendRequest(to: "status", withBody: statusDictionary)
                 }
+                iteration += 1
             } 
         }
         else {
