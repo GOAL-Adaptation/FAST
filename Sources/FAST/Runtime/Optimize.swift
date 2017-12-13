@@ -3,7 +3,7 @@
  *
  *        Optimize construct
  *
- *  authors: Adam Duracz, Ferenc Bartha
+ *  authors: Adam Duracz, Ferenc Bartha, Dung Nguyen
  */
 
 //---------------------------------------
@@ -326,14 +326,23 @@ public func optimize
                 , intent        : intent)
 
             // step 2.1: Emit SQL to insert application input stream
-            let inputStreamName = "application dependent" // TODO: must pass in input stream name
+            let inputStreamName = myApp.name + "_inputStream" // TODO: must pass in input stream name
             let appInputStreamInsertion 
             = emitScriptForApplicationInputStreamInsertion(applicationName: myApp.name, inputStreamName: inputStreamName)
+
+            // step 2.2: Emit SQL to insert job log parameters (if any).
+            let jobLogParamInsertion
+            = emitScriptForJobLogParameterInsertion(  // TODO: must pass in energyOutlier, tapeNoise and timeOutlier
+                applicationName: myApp.name,
+                energyOutlier  : 64.3,
+                tapeNoise      : 0.00012345,
+                timeOutlier    : 18.5)
 
             var insertionScript = 
             "PRAGMA foreign_keys = 'off'; BEGIN;"
             + "\n" + applicationAndArchictectureInsertion  // step 1
             + "\n" + appInputStreamInsertion               // step 2.1
+            + "\n" + jobLogParamInsertion                  // step 2.2
     
             // Initialize measuring device, that will update measures at every input
             let measuringDevice = MeasuringDevice(ProgressSamplingPolicy(period: 1), windowSize, labels)
