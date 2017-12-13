@@ -393,6 +393,20 @@ components:
           type: string
         value:
           type: number
+
+    NameValuesPair:
+      type: object
+      description: Data representing the a named array of named values.
+      required:
+        - name
+        - values
+      properties:
+        name:
+          type: string
+        values:
+          type: array
+          items: 
+            $ref: '#/components/schemas/NameValuePair'
     
     # Identical to the response type of TH/status
     Status:
@@ -478,3 +492,8 @@ components:
               description: Values of measures specified in the intent specification as predicted by the active controller model.
               items:
                 $ref: '#/components/schemas/NameValuePair'
+            verdictComponents:
+              type: array
+              description: The verdict components of the active intent specifications.
+              items:
+                $ref: '#/components/schemas/NameValuesPair'

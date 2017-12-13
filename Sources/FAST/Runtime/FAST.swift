@@ -355,8 +355,7 @@ public class Runtime {
                 , "systemConfigurationKnobs" : toArrayOfPairDicts(systemConfigurationKnobs)
                 , "scenarioKnobs"            : toArrayOfPairDicts(scenarioKnobs)
                 , "measures"                 : toArrayOfPairDicts(Runtime.getMeasures())
-                , "intents"                  : Dictionary(intents.map{ (n,i) in (n,i.toJson()) })
-                , "verdictComponents"        : verdictComponents
+                , "verdictComponents"        : toArrayOfPairDicts(verdictComponents)
                 ] 
 
             // The measure values that the controller associates with the current configuration
