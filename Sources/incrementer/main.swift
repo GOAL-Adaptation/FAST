@@ -77,7 +77,7 @@ let window: UInt32 = 20
 
 var x = 0
 
-optimize(applicationName, across: window, ["latency", "operations"]) {
+optimize(applicationName, across: window) {
     let start = NSDate().timeIntervalSince1970
     var operations = 0.0
     while(x < threshold.get()) {

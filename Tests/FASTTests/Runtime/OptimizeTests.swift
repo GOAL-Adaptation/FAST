@@ -67,7 +67,7 @@ class OptimizeTests: FASTTestCase {
             var optimizeState: Int = 0
             var whileState: Int = 0
 
-            optimize("NO_SUCH_INTENT", []) {
+            optimize("NO_SUCH_INTENT") {
                 if optimizeState < threshold {
                     optimizeState += 1
                 }
@@ -94,7 +94,7 @@ class OptimizeTests: FASTTestCase {
         
         withThMockRestServer { _ in
 
-            optimize("NO_SUCH_INTENT", []) {
+            optimize("NO_SUCH_INTENT") {
 
                 let fastRestServerIsUp = nil != self.callFastRestServer(endpoint: "alive")
 
@@ -115,7 +115,7 @@ class OptimizeTests: FASTTestCase {
         
         withThMockRestServer { _ in
 
-            optimize("NO_SUCH_INTENT", []) {
+            optimize("NO_SUCH_INTENT") {
 
                 let fastRestServerIsUp = nil != self.callFastRestServer(endpoint: "alive")
 
