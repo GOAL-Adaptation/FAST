@@ -1,4 +1,4 @@
-/* Disable foreign keys */
+﻿/* Disable foreign keys */
 PRAGMA foreign_keys = 'off';
 
 -- /* Begin transaction */
