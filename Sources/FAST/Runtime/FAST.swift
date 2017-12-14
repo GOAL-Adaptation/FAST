@@ -467,9 +467,9 @@ public class Runtime {
                         if nextWord == "random" {
 
                             if message.count > progressIndicator + 3 {
-                                
-                                if  let loBound = Int(message[progressIndicator + 2]),
-                                    let hiBound = Int(message[progressIndicator + 3]) {
+
+                                if  let loBound = Int32(message[progressIndicator + 2]),
+                                    let hiBound = Int32(message[progressIndicator + 3]) {
 
                                         stepAmount = UInt64(randi(min: loBound, max: hiBound))
                                 }

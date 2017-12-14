@@ -105,7 +105,7 @@ import Foundation
 ///    - threadSafe: if set to true, a new random generator instance will be created that will be
 ///        be used and exist only for the duration of this call. Otherwise, global instance is used.
 /// - Returns: matrix of whole numbers
-public func randi(min: Int = 0, max: Int = Int(Int32.max), seed: UInt64? = nil) -> Double {
+public func randi(min: Int32 = 0, max: Int32 = Int32.max, seed: UInt64? = nil) -> Double {
   let range: UInt
   if max >= 0 && min < 0 {
     range = UInt(max) + UInt(abs(min))
@@ -138,7 +138,7 @@ public func randi(min: Int = 0, max: Int = Int(Int32.max), seed: UInt64? = nil) 
       let bitChunk = (r64 >> UInt64(chunkIndex*bits)) & mask
 
       if bitChunk <= UInt64(range) {
-        return Double(Int(bitChunk)+min)
+        return Double(Int32(bitChunk)+min)
       }
     }
   }
