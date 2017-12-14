@@ -18,7 +18,6 @@ import Venice
 import HeliumLogger
 import LoggerAPI
 import CSwiftV
-import Nifty
 
 //---------------------------------------
 
@@ -471,8 +470,8 @@ public class Runtime {
                                 
                                 if  let loBound = Int(message[progressIndicator + 2]),
                                     let hiBound = Int(message[progressIndicator + 3]) {
-                                        
-                                        stepAmount = UInt64(randi(1, 1, min: loBound, max: hiBound)[0, 0])
+
+                                        stepAmount = UInt64(randi(min: loBound, max: hiBound))
                                 }
                             }
 

@@ -92,18 +92,6 @@
       "version": "1.7.1"
     },
     {
-      "package": "Nifty",
-      "reason": null,
-      "repositoryURL": "https://github.com/jasonm128/Nifty.git",
-      "version": "99.1.0"
-    },
-    {
-      "package": "Nifty-libs",
-      "reason": null,
-      "repositoryURL": "https://github.com/nifty-swift/Nifty-libs.git",
-      "version": "1.0.0"
-    },
-    {
       "package": "OpenSSL",
       "reason": null,
       "repositoryURL": "https://github.com/IBM-Swift/OpenSSL.git",
