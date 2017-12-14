@@ -14,7 +14,6 @@
 //-------------------------------
 
 import Foundation
-import Nifty
 
 //-------------------------------
 
@@ -32,9 +31,9 @@ func randomizerInit(seed: UInt64?) {
 
 /** White Gaussian Noise */
 func randomizerWhiteGaussianNoise(deviation standardDeviation: Double) -> Double {
-    
-  let x = rand(1, 1, min: 0, max: 1)[0, 0]
-  let y = rand(1, 1, min: 0, max: 1)[0, 0]
+
+  let x = rand(min: 0, max: 1)
+  let y = rand(min: 0, max: 1)
   let z = sqrt(-2.0 * log(x)) * cos(2.0 * 3.14159 * y);
   return standardDeviation * z;
 
