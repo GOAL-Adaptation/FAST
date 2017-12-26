@@ -3,10 +3,10 @@
  *
  *        Model used by controller to compute schedules.
  *
- *        Relates knob values with measure values. When the FASTController 
+ *        Relates knob values with measure values. When the FASTController
  *        is initialized, this is converted into a FASTControllerModel that,
- *        in contrast, relates knob values with a cost-or-value quantity 
- *        (computed from knobs using the objective function of the active 
+ *        in contrast, relates knob values with a cost-or-value quantity
+ *        (computed from knobs using the objective function of the active
  *        intent) and a constraint quantity.
  *
  *  author: Adam Duracz
@@ -19,110 +19,6 @@ import CSwiftV
 import LoggerAPI
 
 //---------------------------------------
-
-func parseKnobSetting(setting: Any) -> Any {
-    // TODO Add support for other knob types, based on type information in intent spec, and error handling
-    if let s = setting as? String {
-        if let i = Int(s) {
-            return i
-        } 
-        else {
-            if let d = Double(s) {
-                return d
-            }
-            else {
-                Log.error("Could not parse knob setting \(setting) of type \(type(of: setting)).")
-                fatalError()
-            }
-        }
-    }
-    else {
-        if setting is Double || setting is Int {
-            return setting
-        }
-        else {
-            Log.error("Could not parse knob setting \(setting) of type \(type(of: setting)).")
-            fatalError()
-        }
-    }
-    return setting
-}
-
-/* A collection of knob values that can be applied to control the system. */
-class KnobSettings {
-    let kid: Int // The id of the configuration given in the knobtable
-    let settings: [String : Any]
-    init(kid: Int, _ settings: [String : Any]) {
-        self.kid = kid
-        self.settings = settings
-    }
-    func apply() {
-        for (name, value) in settings {
-            Runtime.setKnob(name, to: value)
-        }
-        Log.debug("Applied knob settings.")
-    }
-
-    /**
-    * Assume knob value is of type Int or Double, return true
-    * iff this.settings contains the given otherSettings.
-    * Used in filtering knob settings from a given array of KnobSettings.
-    */
-    func contains(_ otherSettings: [String: Any]) -> Bool {
-        for (knobName, knobValue) in otherSettings {
-            switch knobValue {
-            case is Int:
-                if !settings.contains { key, value  in (key == knobName) && (value as? Int == knobValue as? Int)} {
-                    return false
-                }
-            case is Double:
-                if !settings.contains { key, value  in (key == knobName) && (value as? Double == knobValue as? Double)} {
-                    return false
-                }
-            default:
-                return false
-            }
-        }
-        return true
-    }
-}
-
-/**
-* Used in filtering out duplicate KnobSettings in an array of KnobSettings.
-*/
-extension KnobSettings: Equatable {
-    static func == (lhs: KnobSettings, rhs: KnobSettings) -> Bool {
-        return lhs.contains(rhs.settings) && rhs.contains(lhs.settings)
-    }
-}
-
-/* A combination of a collection of knob values and corresponding measure values. */
-struct Configuration {
-    public let id: Int // FIXME: Eliminate this by making Configuration Equatable
-    public let knobSettings: KnobSettings
-    public let measureValues: [Double]
-    public let measureNames: [String]
-
-    init(_ id: Int, _ knobSettings: KnobSettings, _ measures: [String : Double]) {
-        self.id = id
-        self.knobSettings = knobSettings
-        measureNames = measures.keys.sorted()
-        measureValues = measureNames.map{ measures[$0]! }
-    }
-
-    private init(_ id: Int, _ knobSettings: KnobSettings, _ measureValues: [Double], _ measureNames: [String]) {
-        self.id = id
-        self.knobSettings = knobSettings
-        self.measureValues = measureValues
-        self.measureNames = measureNames
-    }
-
-    // FIXME: Eliminate this by making Configuration Equatable
-    func with(newId: Int) -> Configuration {
-        return Configuration(newId, knobSettings, measureValues, measureNames)
-    }
-
-}
 
 /* A list of configurations. */
 open class Model {
@@ -140,7 +36,7 @@ open class Model {
         assert(knobTable.rows.count == measureTable.rows.count, "number of rows in knob and measure config files must match")
         let knobNames = Array(knobTable.headers.dropFirst())
         self.measureNames = Array(measureTable.headers.dropFirst())
-        var configurations: [Configuration] = []      
+        var configurations: [Configuration] = []
         for configId in 0 ..< knobTable.rows.count {
             let knobNameValuePairs = Array(zip(knobNames, knobTable.rows[configId].dropFirst().map{ parseKnobSetting(setting: $0) }))
             let knobSettings = KnobSettings(kid: configId, [String:Any](knobNameValuePairs))
@@ -177,7 +73,7 @@ open class Model {
     func getInitialConfiguration() -> Configuration? {
         return configurations[initialConfigurationIndex!] // FIXME propagate nil
     }
-    
+
     func getFASTControllerModel() -> FASTControllerModel {
         return FASTControllerModel(measures: configurations.map{ $0.measureValues })
     }
@@ -186,8 +82,8 @@ open class Model {
     func sorted(by measureName: String) -> Model {
         assert(measureNames.contains(measureName), "invalid measure name \"\(measureName)\"")
         let measureIndex = measureNames.index(of: measureName)!
-        let sortedConfigurations = configurations.sorted(by: { (l: Configuration, r: Configuration) in 
-            l.measureValues[measureIndex] < r.measureValues[measureIndex] 
+        let sortedConfigurations = configurations.sorted(by: { (l: Configuration, r: Configuration) in
+            l.measureValues[measureIndex] < r.measureValues[measureIndex]
         })
         var sortedConfigurationsWithUpdatedIds: [Configuration] = []
         for configId in 0 ..< sortedConfigurations.count {
