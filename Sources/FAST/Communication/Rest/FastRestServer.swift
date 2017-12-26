@@ -55,7 +55,7 @@ class FastRestServer : RestServer {
 
             }
             else {
-                logAndPostErrorToTh("Message sent to /process endpoint is not valid JSON: \(request.postBodyString).")
+                logAndPostErrorToTh("Message sent to /process endpoint is not valid JSON: \(request.postBodyString ?? "<nil-post-body-string>").")
                 response.status = .notAcceptable // HTTP 406
             }
             
@@ -93,7 +93,7 @@ class FastRestServer : RestServer {
             
             }
             else {
-                logAndPostErrorToTh("Message sent to /perturb endpoint is not valid JSON: \(request.postBodyString).")
+                logAndPostErrorToTh("Message sent to /perturb endpoint is not valid JSON: \(request.postBodyString ?? "<nil-post-body-string>").")
                 response.status = .notAcceptable // HTTP 406
             }
 

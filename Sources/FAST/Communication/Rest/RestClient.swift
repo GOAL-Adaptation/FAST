@@ -50,69 +50,62 @@ class RestClient {
 
         var res: [String: Any]? = nil
 
-        do {
+        if body == nil {
+            Log.info("Sending \(method) request to \(urlString) with empty body.")
+        }
+        else {
+            Log.info("Sending \(method) request to \(urlString).")
+            Log.debug("Sending \(method) request to \(urlString) with body: \(body!).")
+        }
 
-            if body == nil {
-                Log.info("Sending \(method) request to \(urlString) with empty body.")
+        // Send the request
+
+        /**
+         *  Custom JSON encoding, used in place of the built-in KituraRequest JSONEncoding,
+         *  to work around https://bugs.swift.org/browse/SR-4783.
+         */
+        struct SR4783WorkAroundJSONEncoding: Encoding {
+            public static let `default` = SR4783WorkAroundJSONEncoding()
+            public func encode(_ request: inout URLRequest, parameters: Request.Parameters?) throws {
+                request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+                guard let parameters = parameters, !parameters.isEmpty else { return }
+                request.httpBody = convertToJsonSR4783(from: parameters).data(using: .utf8)
             }
-            else {
-                Log.info("Sending \(method) request to \(urlString).")
-                Log.debug("Sending \(method) request to \(urlString) with body: \(body!).")
-            }
+        }
 
-            // Send the request
+        KituraRequest.request(method, urlString, parameters: body, encoding: SR4783WorkAroundJSONEncoding.default).response {
+            _, response, maybeResponseData, maybeError in
 
-            /** 
-             *  Custom JSON encoding, used in place of the built-in KituraRequest JSONEncoding,
-             *  to work around https://bugs.swift.org/browse/SR-4783.
-             */
-            struct SR4783WorkAroundJSONEncoding: Encoding {
-                public static let `default` = SR4783WorkAroundJSONEncoding()
-                public func encode(_ request: inout URLRequest, parameters: Request.Parameters?) throws {
-                    request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-                    guard let parameters = parameters, !parameters.isEmpty else { return }
-                    request.httpBody = convertToJsonSR4783(from: parameters).data(using: .utf8)
-                }
-            }
+            // If the response decodes to a dictionary, return that, otherwise log an error and return nil
 
-            KituraRequest.request(method, urlString, parameters: body, encoding: SR4783WorkAroundJSONEncoding.default).response {
-                _, response, maybeResponseData, maybeError in
+            if let responseData = maybeResponseData {
+                if let responseDataString = String(data: responseData, encoding: String.Encoding.utf8) {
 
-                // If the response decodes to a dictionary, return that, otherwise log an error and return nil
-
-                if let responseData = maybeResponseData {
-                    if let responseDataString = String(data: responseData, encoding: String.Encoding.utf8) {
-                        
-                        if responseDataString.isEmpty {
-                            Log.verbose("Successfully received empty response from \(method) to \(path).")
-                            res = [:]
-                        }
-                        else {
-                            if let maybeResponseDataJson = try? responseDataString.jsonDecode(),
-                            let responseDataJson         = maybeResponseDataJson as? [String:Any] {
-                                
-                                Log.verbose("Successfully JSON decoded response from \(method) to \(urlString): \(responseDataJson).")
-                                res = responseDataJson
-
-                            }
-                            else {
-                                res = nilAndLogError("Error JSON-decoding \(method) response data from \(urlString): '\(responseDataString)'. Error: \(String(describing: maybeError)).")
-                            }
-                        }
-                        
+                    if responseDataString.isEmpty {
+                        Log.verbose("Successfully received empty response from \(method) to \(path).")
+                        res = [:]
                     }
                     else {
-                        res = nilAndLogError("Error UTF8-decoding \(method) response from \(urlString). Error: \(String(describing: maybeError)).")
-                    }
-                } else {
-                    res = nilAndLogError("Error sending \(method) request to \(urlString) with body: \(body). Error: \(String(describing: maybeError)).")
-                }
+                        if let maybeResponseDataJson = try? responseDataString.jsonDecode(),
+                        let responseDataJson         = maybeResponseDataJson as? [String:Any] {
 
+                            Log.verbose("Successfully JSON decoded response from \(method) to \(urlString): \(responseDataJson).")
+                            res = responseDataJson
+
+                        }
+                        else {
+                            res = nilAndLogError("Error JSON-decoding \(method) response data from \(urlString): '\(responseDataString)'. Error: \(String(describing: maybeError)).")
+                        }
+                    }
+
+                }
+                else {
+                    res = nilAndLogError("Error UTF8-decoding \(method) response from \(urlString). Error: \(String(describing: maybeError)).")
+                }
+            } else {
+                res = nilAndLogError("Error sending \(method) request to \(urlString) with body: \(body ?? [:]). Error: \(String(describing: maybeError)).")
             }
 
-        }
-        catch let err {
-            res = nilAndLogError("Exception while sending \(method) request to \(urlString) with body: \(body). Error: \(err).")
         }
 
         return res
