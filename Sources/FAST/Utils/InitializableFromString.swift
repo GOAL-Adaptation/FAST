@@ -117,27 +117,6 @@ extension Double: InitializableFromString {
 
 }
 
-/** Extension for ApplicationExecutionMode */
-extension ApplicationExecutionMode: InitializableFromString {
-
-    public init?(from text: String) {
-        switch text {
-            case "Adaptive": 
-                self = .Adaptive
-            case "NonAdaptive": 
-                self = .NonAdaptive
-            case "ExhaustiveProfiling": 
-                self = .ExhaustiveProfiling
-            case "EmulatorTracing": 
-                self = .EmulatorTracing
-            default:
-                failedToInitialize("ApplicationExecutionMode", from: text)
-                return nil
-        }
-    }
-
-}
-
 /** Extension for LinuxDvfsGovernor */
 extension LinuxDvfsGovernor: InitializableFromString {
 
