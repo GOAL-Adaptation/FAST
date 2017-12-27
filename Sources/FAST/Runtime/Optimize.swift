@@ -411,7 +411,7 @@ public func optimize
                 Runtime.reportProgress()
                 
                 let statusDictionary = Runtime.statusDictionary()
-                Log.debug("Current status: \(convertToJsonSR4783(from: statusDictionary)).")
+                Log.debug("Current status: \(convertToJsonSR4783(from: statusDictionary ?? [:])).")
                 if Runtime.executeWithTestHarness {
                     // FIXME handle error from request
                     let _ = RestClient.sendRequest(to: "status", withBody: statusDictionary)

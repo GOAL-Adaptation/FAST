@@ -48,9 +48,9 @@ public class Runtime {
 
         Runtime.communicationChannel     = nil
 
-        Runtime.runtimeKnobs             = RuntimeKnobs()
+        Runtime.runtimeKnobs             = RuntimeKnobs(key)
 
-        Runtime.scenarioKnobs            = ScenarioKnobs()
+        Runtime.scenarioKnobs            = ScenarioKnobs(key)
 
         Runtime.scriptedCounter          = 0
 
@@ -59,26 +59,26 @@ public class Runtime {
         Runtime.apiModule                = RuntimeApiModule()
     }
 
-    internal static let restServerPort    = initialize(type: UInt16.self, name: "port",    from: key, or: 1338)
-    internal static let restServerAddress = initialize(type: String.self, name: "address", from: key, or: "0.0.0.0")
-    // Controls whether or not the test harness is involved in the execution. 
-    // This includes obtaining initialization parameters are obtained from response to post to brass-th/ready, 
+    static let restServerPort    = initialize(type: UInt16.self, name: "port",    from: key, or: 1338)
+    static let restServerAddress = initialize(type: String.self, name: "address", from: key, or: "0.0.0.0")
+    // Controls whether or not the test harness is involved in the execution.
+    // This includes obtaining initialization parameters are obtained from response to post to brass-th/ready,
     // and posting to brass-th/status after the processing of each input.
-    internal static let executeWithTestHarness = initialize(type: Bool.self, name: "executeWithTestHarness", from: key, or: false)
+    static let executeWithTestHarness = initialize(type: Bool.self, name: "executeWithTestHarness", from: key, or: false)
 
     private static var measures: [String : Double] = [:]
     private static var measuresLock = NSLock()
-    internal static var measuringDevices: [String : MeasuringDevice] = [:]
+    static var measuringDevices: [String : MeasuringDevice] = [:]
 
-    internal static var knobSetters: [String : (Any) -> Void] = [:]
-    internal static var knobSettersLock = NSLock()
+    static var knobSetters: [String : (Any) -> Void] = [:]
+    static var knobSettersLock = NSLock()
 
-    internal static var intents: [String : IntentSpec] = [:]
-    internal static var models: [String : Model] = [:]
-    internal static var controller: Controller = ConstantController()
-    internal static var controllerLock = NSLock()
+    static var intents: [String : IntentSpec] = [:]
+    static var models: [String : Model] = [:]
+    static var controller: Controller = ConstantController()
+    static var controllerLock = NSLock()
 
-    internal static let intentCompiler = Compiler()
+    static let intentCompiler = Compiler()
 
     /** 
      * Read it from the file system. The intent will be loaded from a file whose
@@ -101,12 +101,12 @@ public class Runtime {
         }
     }
 
-    internal static func setIntent(_ spec: IntentSpec) {
+    static func setIntent(_ spec: IntentSpec) {
         intents[spec.name] = spec
         Log.info("Set intent for optimize scope '\(spec.name)' to: \(spec).")
     }
 
-    internal static func setModel(name: String, _ model: Model) {
+    static func setModel(name: String, _ model: Model) {
         models[name] = model
         Log.info("Set model for optimize scope '\(name)'.")
     }
@@ -135,12 +135,12 @@ public class Runtime {
 
 //------------------- very new stuff
 
-    // The runtime registers the APIs of the platform and application 
-    internal static var architecture: Architecture? = DefaultArchitecture()
-    internal static var application: Application? = nil
+    // The runtime registers the APIs of the platform and application
+    static var architecture: Architecture? = DefaultArchitecture()
+    static var application: Application? = nil
 
     // The runtime manages communcations e.g. TCP
-    internal static var communicationChannel: CommunicationServer? = nil
+    static var communicationChannel: CommunicationServer? = nil
 
     static func shutdown() -> Void {
         // TODO implement global exit, now only the server thread quits
@@ -153,26 +153,9 @@ public class Runtime {
         Runtime.communicationChannel!.run(MessageHandler())
     }
 
-    // These knobs control the interaction mode (e.g. scripted) and application execution mode (e.g. profiling)
-    class RuntimeKnobs: TextApiModule {
 
-        let name = "RuntimeKnobs"
 
-        var subModules = [String : TextApiModule]()
-
-        var interactionMode: Knob<InteractionMode>
-
-        var applicationExecutionMode: Knob<ApplicationExecutionMode>
-
-        init() {
-            self.interactionMode = Knob(name: "interactionMode", from: key, or: InteractionMode.Default, preSetter: Runtime.changeInteractionMode)
-            self.applicationExecutionMode = Knob(name: "applicationExecutionMode", from: key, or: ApplicationExecutionMode.Adaptive)
-            self.addSubModule(newModule: interactionMode)
-            self.addSubModule(newModule: applicationExecutionMode)
-        }
-    }
-
-    static var runtimeKnobs: RuntimeKnobs = RuntimeKnobs()
+    static var runtimeKnobs: RuntimeKnobs = RuntimeKnobs(key)
 
     /** Status in the form of a dictionary, for easy conversion to JSON. */
     static func statusDictionary() -> [String : Any]? {
@@ -255,28 +238,7 @@ public class Runtime {
         }
     }
 
-    // These knobs simulate changes to the environment during a test
-    class ScenarioKnobs: TextApiModule {
-
-        let name = "scenarioKnobs"
-
-        var subModules = [String : TextApiModule]()
-
-        // Number of inputs to be processed across a mission
-        var missionLength: Knob<UInt64>
-        // Parameter (with range [0.0,1.0]) used to introduce noise in the input
-        var sceneObfuscation: Knob<Double>
-
-        init() {
-            self.missionLength    = Knob(name: "missionLength",    from: key, or: 1000, preSetter: { assert((0...1000).contains($1)) })
-            self.sceneObfuscation = Knob(name: "sceneObfuscation", from: key, or: 0.0,  preSetter: { assert((0.0...1.0).contains($1)) })
-            self.addSubModule(newModule: missionLength)
-            self.addSubModule(newModule: sceneObfuscation)
-        }
-
-    }
-
-    static var scenarioKnobs: ScenarioKnobs = ScenarioKnobs()
+    static var scenarioKnobs: ScenarioKnobs = ScenarioKnobs(key)
 
     /**
      * When running in the Scripted InteractionMode, (controlled by the environment variable
@@ -290,119 +252,6 @@ public class Runtime {
         while (Runtime.runtimeKnobs.interactionMode.get() == InteractionMode.Scripted && 
                Runtime.scriptedCounter > 0) {}
 
-    }
-
-    // The runtime API this where the channel connects
-    public class RuntimeApiModule: TextApiModule {
-        public let name = "Runtime"
-        public var subModules = [String : TextApiModule]()
-
-        public func internalTextApi(caller:            String, 
-                                    message:           Array<String>, 
-                                    progressIndicator: Int, 
-                                    verbosityLevel:    VerbosityLevel) -> String {
-
-            // the internal runtime API handles the process command
-            if message[progressIndicator] == "process" {
-
-                if Runtime.runtimeKnobs.interactionMode.get() == InteractionMode.Scripted {
-
-                    if message.count > progressIndicator + 1 {
-                
-                        let nextWord = message[progressIndicator + 1]
-                        var stepAmount: UInt64 = 0
-
-                        if nextWord == "random" {
-
-                            if message.count > progressIndicator + 3 {
-
-                                if  let loBound = Int32(message[progressIndicator + 2]),
-                                    let hiBound = Int32(message[progressIndicator + 3]) {
-
-                                        stepAmount = UInt64(randi(min: loBound, max: hiBound))
-                                }
-                            }
-
-                        } else if let stepNumber = UInt64(message[progressIndicator + 1]) {
-
-                            stepAmount = stepNumber
-                        }
-
-                        if stepAmount > 0 {
-
-                            Runtime.process(numberOfInputs: stepAmount)
-
-                            switch verbosityLevel {
-
-                                case VerbosityLevel.Verbose:
-                                    return "Processed \(stepAmount) input(s)."
-                            
-                                default:
-                                    return ""
-                            }
-
-                        } else {
-
-                            switch verbosityLevel {
-
-                                case VerbosityLevel.Verbose:
-                                    return "Invalid step amount for process: ``" + message.joined(separator: " ") + "`` received from: \(caller)."
-                            
-                                default:
-                                    return ""
-                            }
-                        }
-                    }
-
-                } else {
-
-                    switch verbosityLevel {
-
-                        case VerbosityLevel.Verbose:
-                            return "Invalid process message: ``" + message.joined(separator: " ") + "`` received from: \(caller) as interactionMode is \(Runtime.runtimeKnobs.interactionMode.get())."
-                    
-                        default:
-                            return ""
-                    }
-                }
-
-            // the runtime keeps track of the iteration measure
-            } else if message[progressIndicator] == "iteration" && message[progressIndicator + 1] == "get" {
-
-                switch verbosityLevel {
-                
-                    case VerbosityLevel.Verbose:
-                        return "Current iteration is: " + String(describing: Runtime.getMeasure("iteration")) + "."
-                    
-                    default:
-                        return String(describing: Runtime.getMeasure("iteration"))
-                }                
-
-            // invalid message
-            } else {
-
-                switch verbosityLevel {
-                
-                    case VerbosityLevel.Verbose:
-                        return "Invalid message: ``" + message.joined(separator: " ") + "'' received from: \(caller)."
-                    
-                    default:
-                        return ""
-                }
-            }
-
-            // TODO we should not get here
-            return "Alalala"
-        }
-
-        /** get status as a dictionary */
-        public func getInternalStatus() -> [String : Any]? {
-            return ["iteration" : UInt64(Runtime.getMeasure("iteration")!)] // TODO make sure iteration is always defined, some global init would be nice
-        }
-
-        init() {
-            self.addSubModule(newModule: runtimeKnobs)
-        }
     }
 
     // for the scripted mode
@@ -526,17 +375,17 @@ public class Runtime {
     }
 
     /** Get the current value of a measure */
-    internal static func getMeasure(_ name: String) -> Double? {
+    static func getMeasure(_ name: String) -> Double? {
         return measures[name]
     }
 
     /** Get the current values of all measures */
-    internal static func getMeasures() -> [String : Double] {
+    static func getMeasures() -> [String : Double] {
         return measures
-    }    
+    }
 
     /** Update the value of name in the global measure store and return that value */
-    internal static func setKnob(_ name: String, to value: Any) {
+    static func setKnob(_ name: String, to value: Any) {
         if let setKnobTo = knobSetters[name] {
             setKnobTo(value)
         }
