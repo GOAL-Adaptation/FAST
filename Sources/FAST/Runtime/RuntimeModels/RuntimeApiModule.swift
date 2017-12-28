@@ -1,4 +1,4 @@
-extension Runtime {
+extension __Runtime {
     // The runtime API this where the channel connects
     public class RuntimeApiModule: TextApiModule {
         public let name = "Runtime"
@@ -57,7 +57,7 @@ extension Runtime {
         }
 
         init() {
-            self.addSubModule(newModule: runtimeKnobs)
+            self.addSubModule(newModule: Runtime.runtimeKnobs)
         }
     }
 }

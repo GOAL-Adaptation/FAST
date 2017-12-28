@@ -33,9 +33,9 @@ class TracingTests: XCTestCase {
         let name = "incrementer"
         var subModules = [String : TextApiModule]()
 
-        // Knobs 
-        let threshold = Knob("threshold", 10000000)
-        let step = Knob("step", 1)
+        // Knobs
+        let threshold: Knob<Int>
+        let step: Knob<Int>
 
         /** Incrementer Application Knobs */
         class IncrementerApplicationKnobs: TextApiModule {
@@ -49,6 +49,9 @@ class TracingTests: XCTestCase {
 
         /** Initialize the application */
         required init() {
+            resetRuntime()
+            threshold = Knob("threshold", 10000000)
+            step = Knob("step", 1)
             Runtime.registerApplication(application: self)
             Runtime.initializeArchitecture(name: "XilinxZcu")
             self.addSubModule(newModule: applicationKnobs)

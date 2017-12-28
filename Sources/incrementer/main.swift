@@ -15,6 +15,8 @@ import SQLite
 import FASTController
 import FAST
 
+resetRuntime()
+
 //---------------------------------------
 
 let applicationName = "incrementer"

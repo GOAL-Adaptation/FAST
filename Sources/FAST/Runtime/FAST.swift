@@ -26,68 +26,74 @@ fileprivate let key = ["proteus","runtime"]
 
 //------ runtime interaction
 
-public class Runtime {
+public let Runtime = __Runtime()
+public func resetRuntime() {
+    Runtime.reset()
+}
+public class __Runtime {
 
-    private init() {}
-    
+    fileprivate init() {}
+
     // FIXME: Replace by initializer, after making static var:s into instance variables.
-    static func reset() {
-        Runtime.measures                 = [:]
-        Runtime.measuresLock             = NSLock()
-        
-        Runtime.knobSetters              = [:]
-        Runtime.knobSettersLock          = NSLock()
-        
-        Runtime.intents                  = [:]
-        Runtime.models                   = [:]
-        Runtime.controller               = ConstantController()
-        Runtime.controllerLock           = NSLock()
-        
-        Runtime.architecture             = DefaultArchitecture()
-        Runtime.application              = nil
+    func reset() {
+        measures                 = [:]
+        measuresLock             = NSLock()
+        measuringDevices         = [:]
 
-        Runtime.communicationChannel     = nil
+        knobSetters              = [:]
+        knobSettersLock          = NSLock()
 
-        Runtime.runtimeKnobs             = RuntimeKnobs(key)
+        intents                  = [:]
+        models                   = [:]
+        controller               = ConstantController()
+        controllerLock           = NSLock()
 
-        Runtime.scenarioKnobs            = ScenarioKnobs(key)
+        architecture             = DefaultArchitecture()
+        application              = nil
 
-        Runtime.scriptedCounter          = 0
+        communicationChannel     = nil
 
-        Runtime.shouldTerminate          = false
+        runtimeKnobs             = RuntimeKnobs(key)
 
-        Runtime.apiModule                = RuntimeApiModule()
+        scenarioKnobs            = ScenarioKnobs(key)
+
+        scriptedCounter          = 0
+
+        shouldTerminate          = false
+
+        apiModule                = RuntimeApiModule()
     }
 
-    static let restServerPort    = initialize(type: UInt16.self, name: "port",    from: key, or: 1338)
-    static let restServerAddress = initialize(type: String.self, name: "address", from: key, or: "0.0.0.0")
+    let restServerPort    = initialize(type: UInt16.self, name: "port",    from: key, or: 1338)
+    let restServerAddress = initialize(type: String.self, name: "address", from: key, or: "0.0.0.0")
     // Controls whether or not the test harness is involved in the execution.
     // This includes obtaining initialization parameters are obtained from response to post to brass-th/ready,
     // and posting to brass-th/status after the processing of each input.
-    static let executeWithTestHarness = initialize(type: Bool.self, name: "executeWithTestHarness", from: key, or: false)
+    let executeWithTestHarness = initialize(type: Bool.self, name: "executeWithTestHarness", from: key, or: false)
 
-    private static var measures: [String : Double] = [:]
-    private static var measuresLock = NSLock()
-    static var measuringDevices: [String : MeasuringDevice] = [:]
+    private var measures: [String : Double] = [:]
+    private var measuresLock = NSLock()
+    var measuringDevices: [String : MeasuringDevice] = [:]
 
-    static var knobSetters: [String : (Any) -> Void] = [:]
-    static var knobSettersLock = NSLock()
+    var knobSetters: [String : (Any) -> Void] = [:]
+    var knobSettersLock = NSLock()
 
-    static var intents: [String : IntentSpec] = [:]
-    static var models: [String : Model] = [:]
-    static var controller: Controller = ConstantController()
-    static var controllerLock = NSLock()
+    var intents: [String : IntentSpec] = [:]
+    var models: [String : Model] = [:]
 
-    static let intentCompiler = Compiler()
+    var controller: Controller = ConstantController()
+    var controllerLock = NSLock()
 
-    /** 
+    let intentCompiler = Compiler()
+
+    /**
      * Read it from the file system. The intent will be loaded from a file whose
-     * name is <APPLICATION_PATH>/<ID>.intent, where <APPLICATION_PATH> is the 
-     * location of the application and <ID> is the value of the id parameter. 
+     * name is <APPLICATION_PATH>/<ID>.intent, where <APPLICATION_PATH> is the
+     * location of the application and <ID> is the value of the id parameter.
      */
-    public static func readIntentFromFile(_ id: String) -> IntentSpec? {
+    public func readIntentFromFile(_ id: String) -> IntentSpec? {
         if let intentFileContent = readFile(withName: id, ofType: "intent") {
-            if let intent = intentCompiler.compileIntentSpec(source: intentFileContent) { 
+            if let intent = intentCompiler.compileIntentSpec(source: intentFileContent) {
                 return intent
             }
             else {
@@ -101,23 +107,23 @@ public class Runtime {
         }
     }
 
-    static func setIntent(_ spec: IntentSpec) {
+    func setIntent(_ spec: IntentSpec) {
         intents[spec.name] = spec
         Log.info("Set intent for optimize scope '\(spec.name)' to: \(spec).")
     }
 
-    static func setModel(name: String, _ model: Model) {
+    func setModel(name: String, _ model: Model) {
         models[name] = model
         Log.info("Set model for optimize scope '\(name)'.")
     }
 
-    /** 
+    /**
      * Read model from the file system. The model will be loaded from two files whose
-     * names are <APPLICATION_PATH>/<ID>.knobtable, and 
-     * <APPLICATION_PATH>/<ID>.measuretable where <APPLICATION_PATH> is the 
-     * location of the application and <ID> is the value of the id parameter. 
+     * names are <APPLICATION_PATH>/<ID>.knobtable, and
+     * <APPLICATION_PATH>/<ID>.measuretable where <APPLICATION_PATH> is the
+     * location of the application and <ID> is the value of the id parameter.
      */
-    public static func readModelFromFile(_ id: String, _ initialConfigurationIndex: Int = 0) -> Model? {
+    public func readModelFromFile(_ id: String, _ initialConfigurationIndex: Int = 0) -> Model? {
         if let knobCSV = readFile(withName: id, ofType: "knobtable") {
             if let measureCSV = readFile(withName: id, ofType: "measuretable") {
                 return Model(knobCSV, measureCSV, initialConfigurationIndex)
@@ -125,7 +131,7 @@ public class Runtime {
             else {
                 Log.error("Unable to read measure table \(id).measuretable.")
                 return nil
-            }    
+            }
         }
         else {
             Log.error("Unable to read knob table \(id).knobtable.")
@@ -136,30 +142,32 @@ public class Runtime {
 //------------------- very new stuff
 
     // The runtime registers the APIs of the platform and application
-    static var architecture: Architecture? = DefaultArchitecture()
-    static var application: Application? = nil
+    var architecture: Architecture? = nil
+    var application: Application? = nil
 
     // The runtime manages communcations e.g. TCP
-    static var communicationChannel: CommunicationServer? = nil
+    var communicationChannel: CommunicationServer? = nil
 
-    static func shutdown() -> Void {
+    func shutdown() -> Void {
         // TODO implement global exit, now only the server thread quits
         exit(0)
     }
 
-    static public func establishCommuncationChannel(port: Int = 1337) {
+    public func establishCommuncationChannel(port: Int = 1337) {
 
-        Runtime.communicationChannel = TcpSocketServer(port: port)
-        Runtime.communicationChannel!.run(MessageHandler())
+        communicationChannel = TcpSocketServer(port: port)
+        communicationChannel!.run(MessageHandler())
     }
 
-
-
-    static var runtimeKnobs: RuntimeKnobs = RuntimeKnobs(key)
+    private var _runtimeKnobs: RuntimeKnobs?
+    var runtimeKnobs: RuntimeKnobs {
+      set { _runtimeKnobs = newValue }
+      get { return _runtimeKnobs! }
+    }
 
     /** Status in the form of a dictionary, for easy conversion to JSON. */
-    static func statusDictionary() -> [String : Any]? {
-        
+    func statusDictionary() -> [String : Any]? {
+
         func toArrayOfPairDicts(_ dict: [String : Any]) -> [[String : Any]] {
             return Array(dict).map { (s , a) in ["name" : s, "value" : a] }
         }
@@ -176,20 +184,20 @@ public class Runtime {
             return (module?.getStatus()?[subModule] as? [String: Any]).map{ unwrapValues($0) } ?? [:]
         }
 
-        if let application               = Runtime.application?.name {
+        if let appName               = application?.name {
 
-            let applicationKnobs         = extractStatus(of: "applicationKnobs",         from: Runtime.application  )
-            let architecture             = Runtime.architecture?.name ?? "NOT CONFIGURED"
-            let systemConfigurationKnobs = extractStatus(of: "systemConfigurationKnobs", from: Runtime.architecture ) 
-            let scenarioKnobs            = extractStatus(                                from: Runtime.scenarioKnobs)
-            
-            let verdictComponents: [String : Any] = 
-                Dictionary(measuringDevices.map{ 
-                    (intentName, measuringDevice) in 
+            let applicationKnobs         = extractStatus(of: "applicationKnobs",         from: application  )
+            let archName                 = architecture?.name ?? "NOT CONFIGURED"
+            let systemConfigurationKnobs = extractStatus(of: "systemConfigurationKnobs", from: architecture )
+            let scenarioKnobsStatus      = extractStatus(                                from: scenarioKnobs)
+
+            let verdictComponents: [String : Any] =
+                Dictionary(measuringDevices.map{
+                    (intentName, measuringDevice) in
                     let intentSpec = intents[intentName]!
                     let windowAverages = measuringDevice.windowAverages()
                     let constraintVariableValue = windowAverages[intentSpec.constraintName]!
-                    var components = 
+                    var components =
                         [ "constraintVariableValue" : constraintVariableValue ]
                     if let objectiveFunction = intentSpec.currentCostOrValue() {
                         components["objectiveFunction"] = objectiveFunction
@@ -198,18 +206,18 @@ public class Runtime {
                 })
 
             var arguments : [String : Any] =
-                [ "application"              : application
+                [ "application"              : appName
                 , "applicationKnobs"         : toArrayOfPairDicts(applicationKnobs)
-                , "architecture"             : architecture
+                , "architecture"             : archName
                 , "systemConfigurationKnobs" : toArrayOfPairDicts(systemConfigurationKnobs)
-                , "scenarioKnobs"            : toArrayOfPairDicts(scenarioKnobs)
-                , "measures"                 : toArrayOfPairDicts(Runtime.getMeasures())
+                , "scenarioKnobs"            : toArrayOfPairDicts(scenarioKnobsStatus)
+                , "measures"                 : toArrayOfPairDicts(getMeasures())
                 , "verdictComponents"        : toArrayOfPairDicts(verdictComponents)
-                ] 
+                ]
 
             // The measure values that the controller associates with the current configuration
-            if let currentKnobSettingsId = Runtime.getMeasure("currentConfiguration"), // kid of the currently active KnobSettings
-               let currentConfiguration = models[application]!.configurations.first(where: { $0.knobSettings.kid == Int(currentKnobSettingsId) }) {
+            if let currentKnobSettingsId = getMeasure("currentConfiguration"), // kid of the currently active KnobSettings
+               let currentConfiguration = models[appName]!.configurations.first(where: { $0.knobSettings.kid == Int(currentKnobSettingsId) }) {
                 arguments["measurePredictions"] = zip( currentConfiguration.measureNames
                                                      , currentConfiguration.measureValues
                                                     ).map{ [ "name" : $0, "value" : $1 ] }
@@ -219,7 +227,7 @@ public class Runtime {
                 [ "time"      : utcDateString()
                 , "arguments" : arguments
                 ]
-            
+
             return status
 
         }
@@ -230,74 +238,82 @@ public class Runtime {
     }
 
 
-    static func changeInteractionMode(oldMode: InteractionMode, newMode: InteractionMode) -> Void {
+    func changeInteractionMode(oldMode: InteractionMode, newMode: InteractionMode) -> Void {
 
         // Change applies only if the value has changed
-        if (oldMode != newMode) && (newMode == InteractionMode.Scripted) {
-            Runtime.scriptedCounter = 0
+        if (oldMode != newMode) && (newMode == .Scripted) {
+            scriptedCounter = 0
         }
     }
 
-    static var scenarioKnobs: ScenarioKnobs = ScenarioKnobs(key)
+    private var _scenarioKnobs: ScenarioKnobs?
+    var scenarioKnobs: ScenarioKnobs {
+      set { _scenarioKnobs = newValue }
+      get { return _scenarioKnobs! }
+    }
 
     /**
      * When running in the Scripted InteractionMode, (controlled by the environment variable
-     * proteus_runtime_interactionMode) instruct the Runtime to process numberOfInputs inputs, 
+     * proteus_runtime_interactionMode) instruct the Runtime to process numberOfInputs inputs,
      * and block until it has completed their processing.
      */
-    static func process(numberOfInputs: UInt64) {
+    func process(numberOfInputs: UInt64) {
 
-        Runtime.scriptedCounter += UInt64(numberOfInputs)
+        scriptedCounter += UInt64(numberOfInputs)
 
-        while (Runtime.runtimeKnobs.interactionMode.get() == InteractionMode.Scripted && 
-               Runtime.scriptedCounter > 0) {}
+        while (runtimeKnobs.interactionMode.get() == .Scripted &&
+               scriptedCounter > 0) {}
 
     }
 
     // for the scripted mode
-    static var scriptedCounter: UInt64 = 0
+    var scriptedCounter: UInt64 = 0
 
     // shared var to sense quit command over communcation channel
-    static var shouldTerminate = false
+    var shouldTerminate = false
 
     // generic function to handle the event that an input has been processed in an optimize loop
-    static func reportProgress() {
+    func reportProgress() {
 
         // keeps track of the counter and blocks the application in scripted mode
-        if (Runtime.runtimeKnobs.interactionMode.get() == InteractionMode.Scripted) {
+        if (runtimeKnobs.interactionMode.get() == .Scripted) {
 
-            if Runtime.scriptedCounter > 0 {
-                Runtime.scriptedCounter -= 1
+            if scriptedCounter > 0 {
+                scriptedCounter -= 1
             }
 
-            while (Runtime.runtimeKnobs.interactionMode.get() == InteractionMode.Scripted && 
-                   Runtime.scriptedCounter == 0 &&
-                   !Runtime.shouldTerminate) {}
+            while (runtimeKnobs.interactionMode.get() == .Scripted &&
+                   scriptedCounter == 0 &&
+                   !shouldTerminate) {}
         }
 
         // FIXME PATs cannot be used here, i.e. cant write as? ScenarioKnobEnrichedArchitecture in Swift 3.1.1 so all guys are listed
-        if let currentArchitecture = Runtime.architecture as? ArmBigLittle {
+        if let currentArchitecture = architecture as? ArmBigLittle {
             currentArchitecture.enforceResourceUsageAndConsistency()
         }
-        if let currentArchitecture = Runtime.architecture as? XilinxZcu {
+        if let currentArchitecture = architecture as? XilinxZcu {
             currentArchitecture.enforceResourceUsageAndConsistency()
         }
 
         // actuate system configuration on the hardware
-        if let currentArchitecture = Runtime.architecture as? RealArchitecture {
-            if currentArchitecture.actuationPolicy.get() == ActuationPolicy.Actuate {
+        if let currentArchitecture = architecture as? RealArchitecture {
+            if currentArchitecture.actuationPolicy.get() == .Actuate {
                 currentArchitecture.actuate()
             }
         }
     }
 
     // the instance of the runtime api
-    public static var apiModule = RuntimeApiModule()
+    private var _apiModule: RuntimeApiModule?
+    public var apiModule: RuntimeApiModule {
+      set { _apiModule = newValue }
+      get { return _apiModule! }
+    }
 
     // architecture initialization, right now it comes from the application, this needs to be thought through
-    public static func initializeArchitecture(name architectureName: String) {
+    public func initializeArchitecture(name architectureName: String) {
         switch architectureName {
-            case "ArmBigLittle": 
+            case "ArmBigLittle":
                 self.architecture = ArmBigLittle()
 
             case "XilinxZcu":
@@ -317,7 +333,7 @@ public class Runtime {
     }
 
     // application initialization
-    public static func registerApplication(application: Application) {
+    public func registerApplication(application: Application) {
 
         self.application = application
 
@@ -325,7 +341,7 @@ public class Runtime {
     }
 
     // application and architecture might be initialized in various orders, this makes sure everything is current
-    static func reregisterSubModules() -> Void {
+    func reregisterSubModules() -> Void {
         apiModule.subModules = [String : TextApiModule]()
         if let architecture = self.architecture {
             apiModule.addSubModule(newModule: architecture)
@@ -338,14 +354,15 @@ public class Runtime {
 //------------------- end of very new stuff
 
     /** Intialize intent preserving controller with the given model, intent and window. */
-    public static func initializeController(_ model: Model, _ intent: IntentSpec, _ window: UInt32 = 20) {
+    public func initializeController(_ model: Model, _ intent: IntentSpec, _ window: UInt32 = 20) {
         synchronized(controllerLock) {
             if let c = IntentPreservingController(model, intent, window) {
                 setIntent(intent)
                 setModel(name: intent.name, model)
+                // controller_ = c
                 controller = c
                 Log.info("Controller initialized.")
-            } 
+            }
             else {
                 Log.error("Controller failed to initialize.")
                 fatalError()
@@ -354,10 +371,10 @@ public class Runtime {
     }
 
     /** Intialize intent preserving controller with the intent, keeping the previous model and window */
-    public static func reinitializeController(_ spec: IntentSpec) {
-        if let model = Runtime.controller.model {
+    public func reinitializeController(_ spec: IntentSpec) {
+        if let model = controller.model {
             // FIXME Check that the model and updated intent are consistent (that measure and knob sets coincide)
-            initializeController(model, spec, Runtime.controller.window)
+            initializeController(model, spec, controller.window)
         }
         else {
             Log.error("Attempt to reinitialize controller based on a controller with an undefined model.")
@@ -366,7 +383,7 @@ public class Runtime {
     }
 
     /** Update the value of name in the global measure store and return that value */
-    @discardableResult public static func measure(_ name: String, _ value: Double) -> Double {
+    @discardableResult public func measure(_ name: String, _ value: Double) -> Double {
         synchronized(measuresLock) {
             measures[name] = value
         }
@@ -375,17 +392,17 @@ public class Runtime {
     }
 
     /** Get the current value of a measure */
-    static func getMeasure(_ name: String) -> Double? {
+    func getMeasure(_ name: String) -> Double? {
         return measures[name]
     }
 
     /** Get the current values of all measures */
-    static func getMeasures() -> [String : Double] {
+    func getMeasures() -> [String : Double] {
         return measures
     }
 
     /** Update the value of name in the global measure store and return that value */
-    static func setKnob(_ name: String, to value: Any) {
+    func setKnob(_ name: String, to value: Any) {
         if let setKnobTo = knobSetters[name] {
             setKnobTo(value)
         }

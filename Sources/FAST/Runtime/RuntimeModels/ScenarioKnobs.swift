@@ -1,4 +1,4 @@
-extension Runtime {
+extension __Runtime {
     // These knobs simulate changes to the environment during a test
     class ScenarioKnobs: TextApiModule {
         let name = "scenarioKnobs"

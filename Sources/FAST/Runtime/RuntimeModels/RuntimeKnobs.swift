@@ -1,4 +1,4 @@
-extension Runtime {
+extension __Runtime {
     // These knobs control the interaction mode (e.g. scripted) and application execution mode (e.g. profiling)
     class RuntimeKnobs: TextApiModule {
         let name = "RuntimeKnobs"
