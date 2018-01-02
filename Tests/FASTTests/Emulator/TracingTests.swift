@@ -49,7 +49,7 @@ class TracingTests: XCTestCase {
 
         /** Initialize the application */
         required init() {
-            resetRuntime()
+            initRuntime()
             threshold = Knob("threshold", 10000000)
             step = Knob("step", 1)
             Runtime.registerApplication(application: self)

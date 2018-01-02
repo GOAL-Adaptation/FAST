@@ -15,46 +15,33 @@ import SQLite
 import FASTController
 import FAST
 
-resetRuntime()
+class Incrementer: Application, EmulateableApplication {
+    class ApplicationKnobs: TextApiModule {
+        let name = "applicationKnobs"
+        var subModules = [String : TextApiModule]()
 
-//---------------------------------------
-
-let applicationName = "incrementer"
-
-//-----------------------------------------------------------------------------------------------
-// Knobs
-//-----------------------------------------------------------------------------------------------
-
-let threshold = Knob("threshold", 10000000)
-let step = Knob("step", 1)
-
-//-----------------------------------------------------------------------------------------------
-// Text API access and Emulation
-//-----------------------------------------------------------------------------------------------
-
-/** Incrementer Application Knobs */
-class IncrementerApplicationKnobs: TextApiModule {
-
-    let name = "applicationKnobs"
-    var subModules = [String : TextApiModule]()
-
-    init() {
-        self.addSubModule(newModule: threshold)
-        self.addSubModule(newModule: step)
+        init(submodules: [TextApiModule]) {
+            for module in submodules {
+              self.addSubModule(newModule: module)
+            }
+        }
     }
 
-}
-
-/** Incrementer Application instance */
-class Incrementer: Application, EmulateableApplication {
-
-    let name = applicationName
+    let name = "incrementer"
     var subModules = [String : TextApiModule]()
 
-    var applicationKnobs = IncrementerApplicationKnobs()
+    var applicationKnobs: ApplicationKnobs // = ApplicationKnobs()
+
+    let threshold: Knob<Int>
+    let step: Knob<Int>
 
     /** Initialize the application */
     required init() {
+        initRuntime()
+        threshold = Knob("threshold", 10000000)
+        step = Knob("step", 1)
+        applicationKnobs = ApplicationKnobs(submodules: [threshold, step])
+
         Runtime.registerApplication(application: self)
         Runtime.initializeArchitecture(name: "XilinxZcu")
         Runtime.establishCommuncationChannel()
@@ -65,25 +52,19 @@ class Incrementer: Application, EmulateableApplication {
     func getCurrentConfigurationId(database: Database) -> Int {
         return database.getCurrentConfigurationId(application: self)
     }
-
 }
 
-/** Create that container from above */
-var applicationContainer = Incrementer()
-
-//-----------------------------------------------------------------------------------------------
-// Implementation
-//-----------------------------------------------------------------------------------------------
+let app = Incrementer()
 
 let window: UInt32 = 20
 
 var x = 0
 
-optimize(applicationName, across: window) {
+optimize(app.name, across: window) {
     let start = NSDate().timeIntervalSince1970
     var operations = 0.0
-    while(x < threshold.get()) {
-        x += step.get()
+    while(x < app.threshold.get()) {
+        x += app.step.get()
         operations += 1
     }
     x = 0

@@ -27,7 +27,7 @@ fileprivate let key = ["proteus","runtime"]
 //------ runtime interaction
 
 public let Runtime = __Runtime()
-public func resetRuntime() {
+public func initRuntime() {
     Runtime.reset()
 }
 public class __Runtime {
