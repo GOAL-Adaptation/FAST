@@ -124,14 +124,8 @@ public class RestServer {
     }
 
     func stop() {
-        do {
-            try server.stop()
-            Log.info("\(String(describing: name())) stopped (was using port \(server.serverPort)).")
-        } catch PerfectError.networkError(let err, let msg) {
-            Log.error("Network error thrown while stopping \(String(describing: name())) (on port \(server.serverPort)): \(err) \(msg).")
-        } catch let err {
-            Log.error("Error thrown while stopping \(String(describing: name())) (on port \(server.serverPort)): \(err).")
-        }
+        server.stop()
+        Log.info("\(String(describing: name())) stopped (was using port \(server.serverPort)).")
     }
 
     func readRequestBody(request: HTTPRequest, fromEndpoint endpoint: String) -> [String : Any]? {

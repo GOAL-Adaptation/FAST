@@ -20,23 +20,6 @@ fileprivate let key = ["proteus","runtime"]
 
 let compiler = Compiler()
 
-/* A strategy for switching between KnobSettings, based on the input index. */
-public class Schedule {
-    let schedule: (_ progress: UInt32) -> KnobSettings
-    init(_ schedule: @escaping (_ progress: UInt32) -> KnobSettings) {
-        self.schedule = schedule
-    }
-    init(constant:  KnobSettings) {
-        schedule = { (_: UInt32) in constant }
-    }
-    subscript(index: UInt32) -> KnobSettings {
-        get {
-            Log.debug("Querying schedule at index \(index)")
-            return schedule(index)
-        }
-    }
-}
-
 /** Extract a value of type T from a JSON object */
 func extract<T : InitializableFromString>(type: T.Type, name: String, json: [String : Any], logErrors: Bool = false) -> T? {
     if let v = json[name] {
@@ -66,122 +49,6 @@ func extract<T : InitializableFromString>(type: T.Type, name: String, json: [Str
         }
         return nil
     }
-}
-
-/** Perturbation */
-struct Perturbation {
-
-    let missionIntent          : IntentSpec
-    let availableCores         : UInt16
-    let availableCoreFrequency : UInt64
-    let missionLength          : UInt64
-    let sceneObfuscation       : Double
-
-    init?(json: [String: Any]) {
-        
-        if let availableCores         = extract(type: UInt16.self, name: "availableCores"        , json: json)
-         , let availableCoreFrequency = extract(type: UInt64.self, name: "availableCoreFrequency", json: json)
-         , let missionLength          = extract(type: UInt64.self, name: "missionLength"         , json: json)
-         , let sceneObfuscation       = extract(type: Double.self, name: "sceneObfuscation"      , json: json) {
-
-            self.availableCores         = availableCores
-            self.availableCoreFrequency = availableCoreFrequency
-            self.missionLength          = missionLength
-            self.sceneObfuscation       = sceneObfuscation
-
-            if let missionIntentString = json["missionIntent"] as? String {
-                if let missionIntent = compiler.compileIntentSpec(source: missionIntentString) {
-                    self.missionIntent = missionIntent
-                }
-                else {
-                    Log.error("Unable to compile missionIntent from string: \(missionIntentString), which is part of the perturbation JSON: \(json).")
-                    return nil   
-                }
-            }
-            else {
-                if let missionIntentJson = json["missionIntent"] as? [String : Any] {
-                    let missionIntentString = RestServer.mkIntentString(from: json)
-                    if let missionIntent = compiler.compileIntentSpec(source: missionIntentString) {
-                        self.missionIntent = missionIntent
-                    }
-                    else {
-                        Log.error("Unable to compile missionIntent from string: \(missionIntentString), obtained from missionIntent JSON: \(missionIntentJson), which is part of the perturbation JSON: \(json).")
-                        return nil   
-                    }
-                }
-                else {
-                    Log.error("Unable to parse missionIntent from JSON: \(String(describing: json["missionIntent"])), which is part of the perturbation JSON: \(json).")
-                    return nil   
-                }
-            }
-
-        }
-        else {
-            Log.error("Unable to parse Perturbation from JSON: \(json).")
-            return nil
-        }
-
-    }
-
-}
-
-/** Initialization Parameters */
-struct InitializationParameters {
-
-    enum ArchitectureName {
-        case ArmBigLittle, XilinxZcu
-    }
-
-    enum ApplicationName {
-        case radar, x264, CaPSuLe, incrementer
-    }
-
-    let architecture             : ArchitectureName
-    let applicationName          : ApplicationName
-    let applicationInputFileName : String
-    let numberOfInputsToProcess  : UInt64?  
-    let adaptationEnabled        : Bool
-    let statusInterval           : UInt64
-    let randomSeed               : UInt64
-    let initialConditions        : Perturbation
-
-    init?(json: [String: Any]) {
-
-        if let architecture             = extract(type: ArchitectureName.self, name: "architecture"           , json: json)
-         , let applicationJson          = json["application"] as? [String : Any]
-         , let applicationName          = extract(type: ApplicationName.self , name: "applicationName"        , json: applicationJson)
-         , let applicationInputFileName = extract(type: String.self          , name: "inputFileName"          , json: applicationJson)
-         , let adaptationEnabled        = extract(type: Bool.self            , name: "adaptationEnabled"      , json: json)
-         , let statusInterval           = extract(type: UInt64.self          , name: "statusInterval"         , json: json)
-         , let randomSeed               = extract(type: UInt64.self          , name: "randomSeed"             , json: json)
-         , let initialConditionsJson    = json["initialConditions"] as? [String : Any] 
-         , let initialConditions        = Perturbation(json: initialConditionsJson)
-        {
-
-            let numberOfInputsToProcess  = extract(type: UInt64.self         , name: "numberOfInputsToProcess", json: json)
-
-            if String(describing: applicationName) != initialConditions.missionIntent.name {
-                Log.error("Intent name '\(initialConditions.missionIntent.name)' differs from application name: '\(applicationName)'.")
-                return nil
-            }
-
-            self.architecture             = architecture
-            self.applicationName          = applicationName
-            self.applicationInputFileName = applicationInputFileName
-            self.numberOfInputsToProcess  = numberOfInputsToProcess
-            self.adaptationEnabled        = adaptationEnabled
-            self.statusInterval           = statusInterval
-            self.randomSeed               = randomSeed
-            self.initialConditions        = initialConditions
-
-        }
-        else {
-            Log.error("Unable to parse Perturbation from JSON: \(json).")
-            return nil
-        }
-
-    }
-
 }
 
 /** Start the REST server in a low-priority background thread */
@@ -544,7 +411,7 @@ public func optimize
                 Runtime.reportProgress()
                 
                 let statusDictionary = Runtime.statusDictionary()
-                Log.debug("Current status: \(convertToJsonSR4783(from: statusDictionary)).")
+                Log.debug("Current status: \(convertToJsonSR4783(from: statusDictionary ?? [:])).")
                 if Runtime.executeWithTestHarness {
                     // FIXME handle error from request
                     let _ = RestClient.sendRequest(to: "status", withBody: statusDictionary)

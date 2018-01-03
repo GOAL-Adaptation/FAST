@@ -435,15 +435,15 @@ func emitScriptForApplicationAndArchitectureInsertion(
     , architecture  :   EmulateableArchitecture
     , intent        : IntentSpec
 ) -> String {
-    return 
-    emitScriptForApplicationAndKnobsInsertion(
-          application   : application
-        , warmupInputNum: warmupInputNum
-        , intent        : intent
-    )
-    +
-    emitScriptForSystemAndKnobsInsertion(
-          architecture: architecture
-        , intent: intent
-    )
+    return
+        emitScriptForApplicationAndKnobsInsertion(
+              application   : application
+            , warmupInputNum: warmupInputNum
+            , intent        : intent
+        )
+        +
+        emitScriptForSystemAndKnobsInsertion(
+              architecture: architecture
+            , intent: intent
+        )
 }
