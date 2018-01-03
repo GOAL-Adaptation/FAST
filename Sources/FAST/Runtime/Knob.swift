@@ -26,8 +26,6 @@ public class Knob<T> {
         self.value = value
         self.preSetter = preSetter
         self.postSetter = postSetter
-
-        Runtime.knobSetters[name] = self.setter
     }
 
     public func get() -> T {

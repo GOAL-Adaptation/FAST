@@ -26,6 +26,13 @@ fileprivate let key = ["proteus","runtime"]
 
 //------ runtime interaction
 
+// TODO: temporarily added for decouping Knob from Runtime
+extension Knob {
+  public func addToRuntime() {
+    Runtime.knobSetters[name] = setter
+  }
+}
+
 public let Runtime = __Runtime()
 public func initRuntime() {
     Runtime.reset()

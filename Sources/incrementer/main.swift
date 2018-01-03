@@ -15,6 +15,9 @@ import SQLite
 import FASTController
 import FAST
 
+let threshold = Knob("threshold", 10000000)
+let step = Knob("step", 1)
+
 class Incrementer: Application, EmulateableApplication {
     class ApplicationKnobs: TextApiModule {
         let name = "applicationKnobs"
@@ -30,16 +33,14 @@ class Incrementer: Application, EmulateableApplication {
     let name = "incrementer"
     var subModules = [String : TextApiModule]()
 
-    var applicationKnobs: ApplicationKnobs // = ApplicationKnobs()
-
-    let threshold: Knob<Int>
-    let step: Knob<Int>
+    var applicationKnobs: ApplicationKnobs
 
     /** Initialize the application */
     required init() {
         initRuntime()
-        threshold = Knob("threshold", 10000000)
-        step = Knob("step", 1)
+        threshold.addToRuntime()
+        step.addToRuntime()
+
         applicationKnobs = ApplicationKnobs(submodules: [threshold, step])
 
         Runtime.registerApplication(application: self)
@@ -63,8 +64,8 @@ var x = 0
 optimize(app.name, across: window) {
     let start = NSDate().timeIntervalSince1970
     var operations = 0.0
-    while(x < app.threshold.get()) {
-        x += app.step.get()
+    while(x < threshold.get()) {
+        x += step.get()
         operations += 1
     }
     x = 0
