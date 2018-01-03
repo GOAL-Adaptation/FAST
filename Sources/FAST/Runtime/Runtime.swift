@@ -26,16 +26,12 @@ fileprivate let key = ["proteus","runtime"]
 
 //------ runtime interaction
 
-// TODO: temporarily added for decouping Knob from Runtime
-extension Knob {
-  public func addToRuntime() {
-    Runtime.knobSetters[name] = setter
-  }
-}
-
 public let Runtime = __Runtime()
 public func initRuntime() {
     Runtime.reset()
+}
+@discardableResult public func measure(_ name: String, _ value: Double) -> Double {
+    return Runtime.measure(name, value)
 }
 public class __Runtime {
 
@@ -390,7 +386,7 @@ public class __Runtime {
     }
 
     /** Update the value of name in the global measure store and return that value */
-    @discardableResult public func measure(_ name: String, _ value: Double) -> Double {
+    @discardableResult func measure(_ name: String, _ value: Double) -> Double {
         synchronized(measuresLock) {
             measures[name] = value
         }
