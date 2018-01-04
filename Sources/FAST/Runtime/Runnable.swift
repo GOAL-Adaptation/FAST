@@ -66,7 +66,7 @@ public func optimize(
     }
 
     // start the actual optimization
-    optimize(app.name, until: shouldTerminate, across: windowSize, samplingPolicy: samplingPolicy, routine)
+    optimize(app.name, runtime, until: shouldTerminate, across: windowSize, samplingPolicy: samplingPolicy, routine)
 }
 
 protocol IKnob {

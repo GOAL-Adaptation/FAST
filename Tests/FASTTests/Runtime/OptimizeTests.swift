@@ -38,7 +38,7 @@ class OptimizeTests: FASTTestCase {
         , method        : Request.Method  = .get
         , withBody json : [String : Any]? = [:]
         ) -> [String: Any]? {
-        return 
+        return
             RestClient.sendRequest( to         : endpoint
                                 , over       : "http"
                                 , at         : "0.0.0.0" //RestClient.serverAddress
@@ -55,19 +55,19 @@ class OptimizeTests: FASTTestCase {
         stopThMockRestServer(server: thMockServer)
     }
 
-    /** 
-     * If FAST is unable to load the intent or model files, an optimize should 
+    /**
+     * If FAST is unable to load the intent or model files, an optimize should
      * behave like a while(true) loop.
      */
     func testOptimizeWithoutIntentAndModel() {
-        
+
         withThMockRestServer { _ in
 
             let threshold = 100
             var optimizeState: Int = 0
             var whileState: Int = 0
 
-            optimize("NO_SUCH_INTENT") {
+            optimize("NO_SUCH_INTENT", Runtime) {
                 if optimizeState < threshold {
                     optimizeState += 1
                 }
@@ -75,7 +75,7 @@ class OptimizeTests: FASTTestCase {
             }
 
             while(true) {
-                if whileState < threshold { 
+                if whileState < threshold {
                     whileState += 1
                 }
                 else { break }
@@ -87,14 +87,14 @@ class OptimizeTests: FASTTestCase {
 
     }
 
-    /** 
+    /**
      * Ensure that the REST API is brought up by the optimize construct.
      */
     func testThatOptimizeBringsUpTheRestServer() {
-        
+
         withThMockRestServer { _ in
 
-            optimize("NO_SUCH_INTENT") {
+            optimize("NO_SUCH_INTENT", Runtime) {
 
                 let fastRestServerIsUp = nil != self.callFastRestServer(endpoint: "alive")
 
@@ -108,14 +108,14 @@ class OptimizeTests: FASTTestCase {
     }
 
 
-    /** 
+    /**
      * Ensure that the REST API is brought up by the optimize construct.
      */
     func testBasicLLTestScenario() {
-        
+
         withThMockRestServer { _ in
 
-            optimize("NO_SUCH_INTENT") {
+            optimize("NO_SUCH_INTENT", Runtime) {
 
                 let fastRestServerIsUp = nil != self.callFastRestServer(endpoint: "alive")
 
@@ -150,4 +150,3 @@ class OptimizeTests: FASTTestCase {
     ]
 
 }
-
