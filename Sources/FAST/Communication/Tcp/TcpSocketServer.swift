@@ -8,7 +8,7 @@
  *  SWIFT implementation is based on the C library [pemu] implemented by
  *  Ferenc A Bartha, Dung X Nguyen, Jason Miller, Adam Duracz
  *
- *  Core functionalities implemented in this file are based on 
+ *  Core functionalities implemented in this file are based on
  *  the example provided by IBM for BlueSocket
  */
 
@@ -27,7 +27,7 @@ import Socket
 class TcpSocketServer: CommunicationServer {
 
     static let bufferSize = 8192
-    
+
     let port: Int
     let family: Socket.ProtocolFamily
 
@@ -40,14 +40,18 @@ class TcpSocketServer: CommunicationServer {
 
     var messageHandler: MessageHandler?
 
+    private unowned let runtime: __Runtime
+
     /** TcpSocketServer.init: set the port, use IPV4 */
-    init(port: Int) {
+    init(port: Int, runtime: __Runtime) {
+        self.runtime = runtime
         self.port = port
         self.family = .inet
     }
 
     /** TcpSocketServer.init: set the port, set family */
-    init(port: Int, family: Socket.ProtocolFamily) {
+    init(port: Int, family: Socket.ProtocolFamily, runtime: __Runtime) {
+        self.runtime = runtime
         self.port = port
         self.family = family
     }
@@ -205,8 +209,8 @@ class TcpSocketServer: CommunicationServer {
         DispatchQueue.main.sync {
             exit(0)
         }
-        
-        Runtime.shutdown()
+
+        runtime.shutdown()
     }
 }
 

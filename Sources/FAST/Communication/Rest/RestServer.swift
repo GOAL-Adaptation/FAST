@@ -77,6 +77,8 @@ public class RestServer {
     let contentTypeTextPlain       = "text/plain"
     let contentTypeApplicationJson = "application/json"
 
+    unowned let runtime: __Runtime
+
     func name() -> String? {
         return nil
     }
@@ -85,12 +87,12 @@ public class RestServer {
     var routes = Routes()
     let requestQueue : DispatchQueue
 
-    /** 
-      * Add a route that modifiers the handler to make invocations happen serially, 
-      * in the order that they were received. 
+    /**
+      * Add a route that modifiers the handler to make invocations happen serially,
+      * in the order that they were received.
       */
     func addSerialRoute(method: HTTPMethod, uri: String, handler: @escaping (HTTPRequest, HTTPResponse) -> Void) {
-        routes.add(method: method, uri: uri, 
+        routes.add(method: method, uri: uri,
             handler: { request, response in self.requestQueue.async { handler(request, response) } }
         )
     }
@@ -104,12 +106,11 @@ public class RestServer {
         response.completed() // HTTP 202
     }
 
-    @discardableResult init(port: UInt16, address: String) {
-
+    @discardableResult init(port: UInt16, address: String, runtime: __Runtime) {
+        self.runtime = runtime
         self.requestQueue = DispatchQueue(label: "requestQueueAtPort\(port)") // A serial queue
         server.serverAddress = address
         server.serverPort = port
-        
     }
 
     func start() {
@@ -139,7 +140,7 @@ public class RestServer {
                     Log.error("POST body sent to /perturb REST endpoint does not contain valid JSON: \(bodyString). \(err)")
                     return nil
                 }
-            } 
+            }
             else {
                 Log.error("POST body sent to /perturb REST endpoint does not contain UTF8-encoded data: \(bodyString).")
                 return nil
@@ -220,8 +221,8 @@ public class RestServer {
         let intentConstraintVariable = intent["constraintVariable"]! as! String
         let intentConstraintValue    = intent["constraintValue"]!    as! Double
 
-        let measuresString: String = measures.map { 
-            "\($0["name"]! as! String): Double" 
+        let measuresString: String = measures.map {
+            "\($0["name"]! as! String): Double"
         }.joined(separator:"\n\t")
 
         let knobsString: String = knobs.map {
@@ -229,12 +230,12 @@ public class RestServer {
             let name  = knob["name"]! as! String
             let range = (knob["range"]! as! [Any]).map{ "\($0)" }.joined(separator: ",")
             let referenceValue = knob["referenceValue"]!
-            return "\(name) = [\(range)] reference \(referenceValue)" 
+            return "\(name) = [\(range)] reference \(referenceValue)"
         }.joined(separator:"\n\t")
 
         let intentObjectiveFunctionString = mkExpressionString(from: intentObjectiveFunction)
 
-        return 
+        return
             "knobs \(knobsString) \n" +
             "measures \(measuresString) \n" +
             "intent \(intentName) \(intentOptimizationType)(\(intentObjectiveFunctionString)) " +
@@ -244,17 +245,16 @@ public class RestServer {
 
     /** Change the active intent */
     func changeIntent(_ missionIntent: String, accumulatedStatus: HTTPResponseStatus) -> HTTPResponseStatus {
-        if let intentSpec = Runtime.intentCompiler.compileIntentSpec(source: missionIntent) {
+        if let intentSpec = runtime.intentCompiler.compileIntentSpec(source: missionIntent) {
             // TODO Figure out if it is better to delay intent change/controller re-init until the end of the window
-            Runtime.reinitializeController(intentSpec)
+            runtime.reinitializeController(intentSpec)
             Log.info("Successfully received request on /changeIntent REST endpoint.")
             return accumulatedStatus
         }
         else {
-            Log.error("Could not parse intent specification from JSON payload: \(missionIntent)")    
+            Log.error("Could not parse intent specification from JSON payload: \(missionIntent)")
             return .notAcceptable
         }
     }
 
 }
-

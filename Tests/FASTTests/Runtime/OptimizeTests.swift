@@ -21,7 +21,7 @@ class OptimizeTests: FASTTestCase {
         var thMockServer: RestServer? = nil
         // Start ThMockRestServer in a background thread
         DispatchQueue.global(qos: .utility).async {
-            thMockServer = ThMockRestServer(port: RestClient.serverPort, address: RestClient.serverAddress)
+            thMockServer = ThMockRestServer(port: RestClient.serverPort, address: RestClient.serverAddress, runtime: Runtime)
             thMockServer!.start()
         }
         waitUntilUp(endpoint: "ready", host: RestClient.serverAddress, port: RestClient.serverPort, method: .post, description: "TH mock REST")

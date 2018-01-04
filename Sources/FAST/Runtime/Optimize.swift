@@ -58,7 +58,7 @@ fileprivate func startRestServer(using runtime: __Runtime) -> (RestServer, Initi
 
     // Start RestServer in a background thread
     DispatchQueue.global(qos: .utility).async {
-        server = FastRestServer(port: runtime.restServerPort, address: runtime.restServerAddress)
+        server = FastRestServer(port: runtime.restServerPort, address: runtime.restServerAddress, runtime: runtime)
         server!.start()
     }
 

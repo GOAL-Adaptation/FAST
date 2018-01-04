@@ -27,13 +27,13 @@ class FastRestServer : RestServer {
         return "REST server"
     }
 
-    @discardableResult override init(port: UInt16, address: String) {
+    @discardableResult override init(port: UInt16, address: String, runtime: __Runtime) {
 
-        super.init(port: port, address: address)
+        super.init(port: port, address: address, runtime: runtime)
 
         routes.add(method: .get, uri: "/alive", handler: {
             _, response in
-            response.status = Runtime.shouldTerminate ? .serviceUnavailable : .ok
+            response.status = runtime.shouldTerminate ? .serviceUnavailable : .ok
             self.addJsonBody(toResponse: response, json: [:], jsonDescription: "empty", endpointName: "alive")
             }
         )
@@ -45,10 +45,10 @@ class FastRestServer : RestServer {
                 if let n = json["inputs"],
                    let numberOfInputsToProcess = n as? Int {
                     Log.debug("Received JSON on /process endpoint: \(json)")
-                    Runtime.process(numberOfInputs: UInt64(numberOfInputsToProcess))
+                    runtime.process(numberOfInputs: UInt64(numberOfInputsToProcess))
                     Log.info("Processed \(numberOfInputsToProcess) input(s).")
                 }
-                else {                    
+                else {
                     logAndPostErrorToTh("Failed to extract number of inputs to process from JSON: \(json).")
                     response.status = .notAcceptable // HTTP 406
                 }
@@ -58,7 +58,7 @@ class FastRestServer : RestServer {
                 logAndPostErrorToTh("Message sent to /process endpoint is not valid JSON: \(request.postBodyString ?? "<nil-post-body-string>").")
                 response.status = .notAcceptable // HTTP 406
             }
-            
+
             self.addJsonBody(toResponse: response, json: [:], jsonDescription: "empty", endpointName: "process")
         })
 
@@ -74,11 +74,11 @@ class FastRestServer : RestServer {
                  , let missionLengthInt          = json["missionLength"]          as? Int
                  , let sceneObfuscation          = json["sceneObfuscation"]       as? Double {
 
-                    // FIXME Set scenario knobs listed in the Perturbation JSON Schema: 
-                    //       availableCores, availableCoreFrequency, missionLength, sceneObfuscation. 
+                    // FIXME Set scenario knobs listed in the Perturbation JSON Schema:
+                    //       availableCores, availableCoreFrequency, missionLength, sceneObfuscation.
                     //       This requires:
                     //       1) extending the Runtime with a handler for scenario knob setting,
-                    //       2) adding missionLength and sceneObfuscation knobs, perhaps to a new 
+                    //       2) adding missionLength and sceneObfuscation knobs, perhaps to a new
                     //          "Environment" TextApiModule.
                     let availableCores           = Int32(availableCoresInt)
                     let availableCoreFrequency   = Int64(availableCoreFrequencyInt)
@@ -90,7 +90,7 @@ class FastRestServer : RestServer {
                     logAndPostErrorToTh("Unable to parse JSON sent to /perturb endpoint: \(json).")
                     response.status = .notAcceptable // HTTP 406
                 }
-            
+
             }
             else {
                 logAndPostErrorToTh("Message sent to /perturb endpoint is not valid JSON: \(request.postBodyString ?? "<nil-post-body-string>").")
@@ -104,7 +104,7 @@ class FastRestServer : RestServer {
         routes.add(method: .get, uri: "/query", handler: {
             request, response in
 
-                if let runtimeStatus = Runtime.statusDictionary() {
+                if let runtimeStatus = runtime.statusDictionary() {
                     self.addJsonBody(toResponse: response, json: runtimeStatus, jsonDescription: "status", endpointName: "query")
                 }
                 else {
@@ -118,17 +118,17 @@ class FastRestServer : RestServer {
 
         addSerialRoute(method: .post, uri: "/enable", handler: {
             _, response in
-                let currentApplicationExecutionMode = Runtime.runtimeKnobs.applicationExecutionMode.get()
+                let currentApplicationExecutionMode = runtime.runtimeKnobs.applicationExecutionMode.get()
                 switch currentApplicationExecutionMode {
                     case .Adaptive:
-                        Runtime.runtimeKnobs.applicationExecutionMode.set(.NonAdaptive)
+                        runtime.runtimeKnobs.applicationExecutionMode.set(.NonAdaptive)
                         Log.info("Successfully received request on /enable REST endpoint. Adaptation turned off.")
                     case .NonAdaptive:
-                        Runtime.runtimeKnobs.applicationExecutionMode.set(.Adaptive)
+                        runtime.runtimeKnobs.applicationExecutionMode.set(.Adaptive)
                         Log.info("Successfully received request on /enable REST endpoint. Adaptation turned on.")
                     default:
                         Log.warning("Current application execution mode (\(currentApplicationExecutionMode)) is not one of {.Adaptive, .NonAdaptive}.")
-                        Runtime.runtimeKnobs.applicationExecutionMode.set(.Adaptive)
+                        runtime.runtimeKnobs.applicationExecutionMode.set(.Adaptive)
                         Log.info("Successfully received request on /enable REST endpoint. Adaptation turned on.")
                 }
                 self.addJsonBody(toResponse: response, json: [:], jsonDescription: "empty", endpointName: "enable")
@@ -153,7 +153,7 @@ class FastRestServer : RestServer {
             request, response in
                 if let json = self.readRequestBody(request: request, fromEndpoint: "/fixConfiguration") {
                     Log.debug("Received valid JSON on /fixConfiguration endpoint: \(json).")
-                    Runtime.controller = ConstantController()
+                    runtime.controller = ConstantController()
                     var logMessage = "Proceeding with constant configuration."
                     if let knobSettingsAny = json["knobSettings"],
                        let knobSettings = knobSettingsAny as? [Any] {
@@ -163,7 +163,7 @@ class FastRestServer : RestServer {
                                let name = nameAny as? String,
                                let value = nameValuePairDict["value"] {
                                 let parsedValue = parseKnobSetting(setting: value)
-                                Runtime.setKnob(name, to: parsedValue)
+                                runtime.setKnob(name, to: parsedValue)
                             }
                             else {
                                 fatalError("Malformed knob setting: \(nameValuePairDictAny).")
@@ -182,15 +182,14 @@ class FastRestServer : RestServer {
 
         routes.add(method: .post, uri: "/terminate", handler: {
             _, response in
-            Runtime.shouldTerminate = true
+            runtime.shouldTerminate = true
             Log.info("Application termination requested through /terminate endpoint.")
             self.addJsonBody(toResponse: response, json: [:], jsonDescription: "empty", endpointName: "terminate")
             }
         )
 
         server.addRoutes(routes)
-        
+
     }
 
 }
-
