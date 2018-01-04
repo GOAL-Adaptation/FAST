@@ -61,7 +61,7 @@ public class __Runtime {
 
         shouldTerminate          = false
 
-        apiModule                = RuntimeApiModule()
+        apiModule                = RuntimeApiModule(runtime: self)
     }
 
     let restServerPort    = initialize(type: UInt16.self, name: "port",    from: key, or: 1338)
