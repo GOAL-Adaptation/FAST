@@ -44,6 +44,8 @@ class Emulator: TextApiModule, ClockMonitor, EnergyMonitor {
   var globalEnergy: UInt64
   var globalTime: UInt64
 
+  private unowned let runtime: __Runtime
+
   // ClockMonitor Interface
   func readClock() -> Double {
     updateGlobalCounters()
@@ -55,9 +57,10 @@ class Emulator: TextApiModule, ClockMonitor, EnergyMonitor {
       updateGlobalCounters()
       return self.globalEnergy
   }
-  
+
   // Initialization
-  required init(application: EmulateableApplication, applicationInput: Int, architecture: EmulateableArchitecture) {
+  required init(application: EmulateableApplication, applicationInput: Int, architecture: EmulateableArchitecture, runtime: __Runtime) {
+      self.runtime = runtime
       if let database = Database() {
         self.database = database
       } else {
@@ -82,18 +85,18 @@ class Emulator: TextApiModule, ClockMonitor, EnergyMonitor {
   //-------------------------------
 
   /** Interpolate System Measurements */
-  func readDelta(appCfg applicationConfigurationID: Int, 
-                 appInp applicationInputID: Int, 
-                 sysCfg systemConfigurationID: Int, 
-                 processing progressCounter: Int) 
+  func readDelta(appCfg applicationConfigurationID: Int,
+                 appInp applicationInputID: Int,
+                 sysCfg systemConfigurationID: Int,
+                 processing progressCounter: Int)
                     ->
                  (UInt64, UInt64) {
 
     let referenceApplicationConfigurationID = self.database.getReferenceApplicationConfigurationID(application: application.name)
     let referenceSystemConfigurationID      = self.database.getReferenceSystemConfigurationID(architecture: architecture.name)
 
-    var readDeltaTime: Int 
-    var readDeltaEnergy: Int 
+    var readDeltaTime: Int
+    var readDeltaEnergy: Int
 
     // Data is profiled
     if ((applicationConfigurationID == referenceApplicationConfigurationID) || (systemConfigurationID == referenceSystemConfigurationID)) {
@@ -140,7 +143,7 @@ class Emulator: TextApiModule, ClockMonitor, EnergyMonitor {
   func updateGlobalCounters() {
 
     // Obtain the current progress of the application
-    if let recentNumberOfProcessedInpts = Runtime.getMeasure("iteration") {
+    if let recentNumberOfProcessedInpts = runtime.getMeasure("iteration") {
 
       // Obtain the Application State
       let applicationConfigurationId   = self.application.getCurrentConfigurationId(database: self.database)
@@ -150,14 +153,14 @@ class Emulator: TextApiModule, ClockMonitor, EnergyMonitor {
 
       // Emulate system measures for each unemulated input
       if self.numberOfProcessedInputs < UInt64(recentNumberOfProcessedInpts) {
-        
+
         let unemulatedInputs = (self.numberOfProcessedInputs + 1) ... UInt64(recentNumberOfProcessedInpts)
-        
+
         for i in unemulatedInputs {
 
           // Read Deltas based on Interpolation from profiled data in the Database
-          let (deltaTime, deltaEnergy) = readDelta(appCfg: applicationConfigurationId, appInp: self.applicationInputId, sysCfg: systemConfigurationId, processing: Int(i)) 
-          
+          let (deltaTime, deltaEnergy) = readDelta(appCfg: applicationConfigurationId, appInp: self.applicationInputId, sysCfg: systemConfigurationId, processing: Int(i))
+
           // Increase the Global Counters
           self.globalTime   += deltaTime
           self.globalEnergy += deltaEnergy
