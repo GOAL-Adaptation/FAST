@@ -33,6 +33,12 @@ class Runnable: Application, EmulateableApplication, StreamApplication {
     }
 }
 
+fileprivate var runtime = __Runtime.newRuntime()
+
+@discardableResult public func measure(_ name: String, _ value: Double) -> Double {
+    return runtime.measure(name, value)
+}
+
 public func optimize(
     _ id: String,
     _ knobs: [TextApiModule],
@@ -46,8 +52,8 @@ public func optimize(
     _ routine: @escaping (Void) -> Void)
 {
     // initialize runtime
-    let runtime = providedRuntime ?? Runtime //TODO: this will be fresh initialized here instead of using Runtime singleton object
-    runtime.reset()
+    runtime = providedRuntime ?? __Runtime.newRuntime() //TODO: this will be fresh initialized here instead of using Runtime singleton object
+    // runtime.reset()
 
     // adding application knobs to runtime
     for knob in knobs {

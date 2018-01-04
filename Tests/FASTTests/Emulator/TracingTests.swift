@@ -18,9 +18,10 @@ import LoggerAPI
 //---------------------------------------
 
 
-class TracingTests: XCTestCase {
+class TracingTests: FASTTestCase {
 
     override func setUp() {
+        super.setUp()
         initializeRandomNumberGenerators()
         recreateTestDatabase()
     }
@@ -48,12 +49,11 @@ class TracingTests: XCTestCase {
         var applicationKnobs = IncrementerApplicationKnobs()
 
         /** Initialize the application */
-        required init() {
-            Runtime.reset()
+        required init(runtime: __Runtime) {
             threshold = Knob("threshold", 10000000)
             step = Knob("step", 1)
-            Runtime.registerApplication(application: self)
-            Runtime.initializeArchitecture(name: "XilinxZcu")
+            runtime.registerApplication(application: self)
+            runtime.initializeArchitecture(name: "XilinxZcu")
             self.addSubModule(newModule: applicationKnobs)
             self.applicationKnobs.addSubModule(newModule: threshold)
             self.applicationKnobs.addSubModule(newModule: step)
@@ -92,10 +92,10 @@ class TracingTests: XCTestCase {
         }
     }
 
-    let incrementerApplication = Incrementer()
-    let xilinxArchitecture = XilinxZcu(runtime: Runtime)
-
     func testEmitScriptForApplicationTracing() {
+        let incrementerApplication = Incrementer(runtime: runtime)
+        let xilinxArchitecture = XilinxZcu(runtime: runtime)
+
         let intentKnobs =
         ["threshold": ([2000000,4000000,6000000,8000000,10000000], 10000000),
          "step": ([1,2,3,4], 1),

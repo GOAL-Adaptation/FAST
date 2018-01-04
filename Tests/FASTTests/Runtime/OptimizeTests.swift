@@ -21,7 +21,7 @@ class OptimizeTests: FASTTestCase {
         var thMockServer: RestServer? = nil
         // Start ThMockRestServer in a background thread
         DispatchQueue.global(qos: .utility).async {
-            thMockServer = ThMockRestServer(port: RestClient.serverPort, address: RestClient.serverAddress, runtime: Runtime)
+            thMockServer = ThMockRestServer(port: RestClient.serverPort, address: RestClient.serverAddress, runtime: self.runtime)
             thMockServer!.start()
         }
         waitUntilUp(endpoint: "ready", host: RestClient.serverAddress, port: RestClient.serverPort, method: .post, description: "TH mock REST")
@@ -42,7 +42,7 @@ class OptimizeTests: FASTTestCase {
             RestClient.sendRequest( to         : endpoint
                                 , over       : "http"
                                 , at         : "0.0.0.0" //RestClient.serverAddress
-                                , onPort     : Runtime.restServerPort
+                                , onPort     : self.runtime.restServerPort
                                 , withMethod : method
                                 , withBody   : json
                                 , logErrors  : true
@@ -67,11 +67,11 @@ class OptimizeTests: FASTTestCase {
             var optimizeState: Int = 0
             var whileState: Int = 0
 
-            optimize("NO_SUCH_INTENT", Runtime) {
+            optimize("NO_SUCH_INTENT", self.runtime) {
                 if optimizeState < threshold {
                     optimizeState += 1
                 }
-                else { Runtime.shouldTerminate = true }
+                else { self.runtime.shouldTerminate = true }
             }
 
             while(true) {
@@ -94,13 +94,13 @@ class OptimizeTests: FASTTestCase {
 
         withThMockRestServer { _ in
 
-            optimize("NO_SUCH_INTENT", Runtime) {
+            optimize("NO_SUCH_INTENT", self.runtime) {
 
                 let fastRestServerIsUp = nil != self.callFastRestServer(endpoint: "alive")
 
                 XCTAssertTrue(fastRestServerIsUp)
 
-                Runtime.shouldTerminate = true
+                self.runtime.shouldTerminate = true
             }
 
         }
@@ -115,13 +115,13 @@ class OptimizeTests: FASTTestCase {
 
         withThMockRestServer { _ in
 
-            optimize("NO_SUCH_INTENT", Runtime) {
+            optimize("NO_SUCH_INTENT", self.runtime) {
 
                 let fastRestServerIsUp = nil != self.callFastRestServer(endpoint: "alive")
 
                 XCTAssertTrue(fastRestServerIsUp)
 
-                Runtime.shouldTerminate = true
+                self.runtime.shouldTerminate = true
             }
 
         }

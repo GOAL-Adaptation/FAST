@@ -26,13 +26,14 @@ fileprivate let key = ["proteus","runtime"]
 
 //------ runtime interaction
 
-public let Runtime = __Runtime()
-@discardableResult public func measure(_ name: String, _ value: Double) -> Double {
-    return Runtime.measure(name, value)
-}
 public class __Runtime {
-
     fileprivate init() {}
+
+    static func newRuntime() -> __Runtime {
+        let runtime = __Runtime()
+        runtime.reset()
+        return runtime
+    }
 
     // FIXME: Replace by initializer, after making static var:s into instance variables.
     func reset() {
