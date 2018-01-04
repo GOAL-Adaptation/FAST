@@ -47,7 +47,7 @@ class ArmBigLittleScenarioKnobs: TextApiModule {
     var maximalBigCoreFrequency    = Knob(name: "maximalBigCoreFrequency",    from: key, or: 2000000)
     var maximalLittleCoreFrequency = Knob(name: "maximalLittleCoreFrequency", from: key, or: 1400000)
 
-    unowned let runtime: __Runtime
+    unowned let runtime: Runtime
 
     /*
      *  - Limited availablility Scenario Knobs (available when utilizedBigCores > 0 OR utilizedLittleCores > 0) AND (utilizedBigCores == 0 OR utilizedLittleCores == 0)
@@ -93,7 +93,7 @@ class ArmBigLittleScenarioKnobs: TextApiModule {
         return result
     }
 
-    init(runtime: __Runtime) {
+    init(runtime: Runtime) {
         self.runtime = runtime
         self.addSubModule(newModules: [availableBigCores, availableLittleCores, maximalBigCoreFrequency, maximalLittleCoreFrequency])
     }
@@ -233,7 +233,7 @@ class ArmBigLittle: Architecture,
 
     var executionMode: Knob<ExecutionMode>
 
-    unowned var runtime: __Runtime
+    unowned var runtime: Runtime
 
     var actuationPolicy = Knob(name: "actuationPolicy", from: key, or: ActuationPolicy.NoActuation)
 
@@ -339,7 +339,7 @@ class ArmBigLittle: Architecture,
     }
 
     /** Initialize the architecture */
-    required init(runtime: __Runtime) {
+    required init(runtime: Runtime) {
         self.runtime = runtime
         self.scenarioKnobs = ScenarioKnobsType(runtime: runtime)
         // FIXME initialize exectuionMode so that the callback function can be passed. This is very stupid

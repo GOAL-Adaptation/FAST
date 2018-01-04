@@ -49,7 +49,7 @@ class TracingTests: FASTTestCase {
         var applicationKnobs = IncrementerApplicationKnobs()
 
         /** Initialize the application */
-        required init(runtime: __Runtime) {
+        required init(runtime: Runtime) {
             threshold = Knob("threshold", 10000000)
             step = Knob("step", 1)
             runtime.registerApplication(application: self)

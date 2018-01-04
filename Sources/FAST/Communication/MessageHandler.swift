@@ -20,8 +20,8 @@ class MessageHandler {
     let quitCommand = "close"
     let shutdownCommand = "quit"
 
-    private unowned let runtime: __Runtime
-    init(runtime: __Runtime) {
+    private unowned let runtime: Runtime
+    init(runtime: Runtime) {
         self.runtime = runtime
     }
 

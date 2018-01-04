@@ -26,11 +26,11 @@ fileprivate let key = ["proteus","runtime"]
 
 //------ runtime interaction
 
-public class __Runtime {
+public class Runtime {
     fileprivate init() {}
 
-    static func newRuntime() -> __Runtime {
-        let runtime = __Runtime()
+    static func newRuntime() -> Runtime {
+        let runtime = Runtime()
         runtime.reset()
         return runtime
     }

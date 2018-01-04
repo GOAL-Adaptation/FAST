@@ -40,17 +40,17 @@ class TcpSocketServer: CommunicationServer {
 
     var messageHandler: MessageHandler?
 
-    private unowned let runtime: __Runtime
+    private unowned let runtime: Runtime
 
     /** TcpSocketServer.init: set the port, use IPV4 */
-    init(port: Int, runtime: __Runtime) {
+    init(port: Int, runtime: Runtime) {
         self.runtime = runtime
         self.port = port
         self.family = .inet
     }
 
     /** TcpSocketServer.init: set the port, set family */
-    init(port: Int, family: Socket.ProtocolFamily, runtime: __Runtime) {
+    init(port: Int, family: Socket.ProtocolFamily, runtime: Runtime) {
         self.runtime = runtime
         self.port = port
         self.family = family

@@ -33,7 +33,7 @@ class Runnable: Application, EmulateableApplication, StreamApplication {
     }
 }
 
-fileprivate var runtime = __Runtime.newRuntime()
+fileprivate var runtime = Runtime.newRuntime()
 
 @discardableResult public func measure(_ name: String, _ value: Double) -> Double {
     return runtime.measure(name, value)
@@ -42,7 +42,7 @@ fileprivate var runtime = __Runtime.newRuntime()
 public func optimize(
     _ id: String,
     _ knobs: [TextApiModule],
-    usingRuntime providedRuntime: __Runtime? = nil, //TODO: this needs to conform to LSP
+    usingRuntime providedRuntime: Runtime? = nil, //TODO: this needs to conform to LSP
     architecture: String = "XilinxZcu",
     streamInit: (() -> Void)? = nil,
     establishCommuncationChannel: Bool = true,
@@ -52,7 +52,7 @@ public func optimize(
     _ routine: @escaping (Void) -> Void)
 {
     // initialize runtime
-    runtime = providedRuntime ?? __Runtime.newRuntime() //TODO: this will be fresh initialized here instead of using Runtime singleton object
+    runtime = providedRuntime ?? Runtime.newRuntime() //TODO: this will be fresh initialized here instead of using Runtime singleton object
     // runtime.reset()
 
     // adding application knobs to runtime

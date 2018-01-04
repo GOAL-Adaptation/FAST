@@ -90,7 +90,7 @@ extension IntentSpec {
    *   - constraint variable
    *   - constraint value
    */
-  func toJson(runtime: __Runtime) -> [String : Any] {
+  func toJson(runtime: Runtime) -> [String : Any] {
 
     let knobsJson =
         Array(knobs.map{ (name: String, rangeAndReferenceValue: ([Any],Any)) in
@@ -127,7 +127,7 @@ extension IntentSpec {
 
   /** If a model is loaded for this intent, compute the current measure window averages
       as an array in the same order as the array returned by measures(). */
-  func measureWindowAverages(runtime: __Runtime) -> [Double]? {
+  func measureWindowAverages(runtime: Runtime) -> [Double]? {
     if let model = runtime.models[name] {
         guard let measuringDevice = runtime.measuringDevices[name] else {
             Log.error("No measuring device registered for intent \(name).")
@@ -154,7 +154,7 @@ extension IntentSpec {
   }
 
   /** Objective function evaluated in the current measure window averages. */
-  func currentCostOrValue(runtime: __Runtime) -> Double? {
+  func currentCostOrValue(runtime: Runtime) -> Double? {
     return measureWindowAverages(runtime: runtime).map({ costOrValue($0) })
   }
 

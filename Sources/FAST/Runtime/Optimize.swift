@@ -52,7 +52,7 @@ func extract<T : InitializableFromString>(type: T.Type, name: String, json: [Str
 }
 
 /** Start the REST server in a low-priority background thread */
-fileprivate func startRestServer(using runtime: __Runtime) -> (RestServer, InitializationParameters?) {
+fileprivate func startRestServer(using runtime: Runtime) -> (RestServer, InitializationParameters?) {
 
     var server: RestServer? = nil
 
@@ -97,7 +97,7 @@ internal func initializeRandomNumberGenerators() {
 /* Defines an optimization scope. Replaces a loop in a pure Swift program. */
 func optimize
     ( _ id: String
-    , _ runtime: __Runtime
+    , _ runtime: Runtime
     , until shouldTerminate: @escaping @autoclosure () -> Bool = false
     , across windowSize: UInt32 = 20
     , samplingPolicy: SamplingPolicy = ProgressSamplingPolicy(period: 1)

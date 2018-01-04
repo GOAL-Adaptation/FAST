@@ -134,7 +134,7 @@ public protocol ClockAndEnergyArchitecture: Architecture {
   var energyMonitor: EnergyMonitor { get }
 
   // Register System Measures
-  func registerSystemMeasures(runtime: __Runtime) -> Void
+  func registerSystemMeasures(runtime: Runtime) -> Void
 }
 
 /** Default System Measures */
@@ -144,7 +144,7 @@ extension ClockAndEnergyArchitecture {
   var systemMeasures: Array<String> { return ["time", "energy", "powerConsumption"] }
 
   // Register System Measures
-  func registerSystemMeasures(runtime: __Runtime) -> Void {
+  func registerSystemMeasures(runtime: Runtime) -> Void {
     DispatchQueue.global(qos: .utility).async {
       var lastEnergy = Double(self.energyMonitor.readEnergy())
       var lastTime = self.clockMonitor.readClock()

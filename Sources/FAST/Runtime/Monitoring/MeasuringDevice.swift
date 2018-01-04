@@ -5,11 +5,11 @@ class MeasuringDevice {
     private var windowSize: UInt32 = 20
     private var applicationMeasures: Array<String>
     private var samplingPolicy: SamplingPolicy
-    private unowned var runtime: __Runtime
+    private unowned var runtime: Runtime
 
     var stats = [String : Statistics]()
 
-    init(_ samplingPolicy: SamplingPolicy, _ windowSize: UInt32, _ applicationMeasures: [String], _ runtime: __Runtime) {
+    init(_ samplingPolicy: SamplingPolicy, _ windowSize: UInt32, _ applicationMeasures: [String], _ runtime: Runtime) {
         self.windowSize = windowSize
         self.applicationMeasures = applicationMeasures
         self.samplingPolicy = samplingPolicy

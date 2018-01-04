@@ -50,7 +50,7 @@ class DatabaseTests: FASTTestCase {
         var applicationKnobs = IncrementerApplicationKnobs()
 
         /** Initialize the application */
-        required init(runtime: __Runtime) {
+        required init(runtime: Runtime) {
             runtime.registerApplication(application: self)
             runtime.initializeArchitecture(name: "ArmBigLittle")
             self.addSubModule(newModule: applicationKnobs)

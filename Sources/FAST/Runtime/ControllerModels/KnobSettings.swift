@@ -8,7 +8,7 @@ class KnobSettings {
         self.kid = kid
         self.settings = settings
     }
-    func apply(runtime: __Runtime) {
+    func apply(runtime: Runtime) {
         for (name, value) in settings {
             runtime.setKnob(name, to: value)
         }

@@ -27,7 +27,7 @@ class FastRestServer : RestServer {
         return "REST server"
     }
 
-    @discardableResult override init(port: UInt16, address: String, runtime: __Runtime) {
+    @discardableResult override init(port: UInt16, address: String, runtime: Runtime) {
 
         super.init(port: port, address: address, runtime: runtime)
 

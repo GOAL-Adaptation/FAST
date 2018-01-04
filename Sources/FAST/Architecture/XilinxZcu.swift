@@ -105,7 +105,7 @@ class XilinxZcu: Architecture,
 
     var executionMode: Knob<ExecutionMode>
 
-    unowned var runtime: __Runtime
+    unowned var runtime: Runtime
 
     var actuationPolicy = Knob(name: "actuationPolicy", from: key, or: ActuationPolicy.NoActuation)
 
@@ -143,7 +143,7 @@ class XilinxZcu: Architecture,
     }
 
     /** Initialize the architecture */
-    required init(runtime: __Runtime) {
+    required init(runtime: Runtime) {
         self.runtime = runtime
         // FIXME initialize exectuionMode so that the callback function can be passed. This is very stupid
         self.executionMode = Knob(name: "executionMode", from: key, or: ExecutionMode.Default)

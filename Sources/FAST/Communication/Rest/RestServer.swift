@@ -77,7 +77,7 @@ public class RestServer {
     let contentTypeTextPlain       = "text/plain"
     let contentTypeApplicationJson = "application/json"
 
-    unowned let runtime: __Runtime
+    unowned let runtime: Runtime
 
     func name() -> String? {
         return nil
@@ -106,7 +106,7 @@ public class RestServer {
         response.completed() // HTTP 202
     }
 
-    @discardableResult init(port: UInt16, address: String, runtime: __Runtime) {
+    @discardableResult init(port: UInt16, address: String, runtime: Runtime) {
         self.runtime = runtime
         self.requestQueue = DispatchQueue(label: "requestQueueAtPort\(port)") // A serial queue
         server.serverAddress = address

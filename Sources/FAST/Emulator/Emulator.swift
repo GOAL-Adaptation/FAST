@@ -44,7 +44,7 @@ class Emulator: TextApiModule, ClockMonitor, EnergyMonitor {
   var globalEnergy: UInt64
   var globalTime: UInt64
 
-  private unowned let runtime: __Runtime
+  private unowned let runtime: Runtime
 
   // ClockMonitor Interface
   func readClock() -> Double {
@@ -59,7 +59,7 @@ class Emulator: TextApiModule, ClockMonitor, EnergyMonitor {
   }
 
   // Initialization
-  required init(application: EmulateableApplication, applicationInput: Int, architecture: EmulateableArchitecture, runtime: __Runtime) {
+  required init(application: EmulateableApplication, applicationInput: Int, architecture: EmulateableArchitecture, runtime: Runtime) {
       self.runtime = runtime
       if let database = Database() {
         self.database = database

@@ -3,7 +3,7 @@ public class RuntimeApiModule: TextApiModule {
     public let name = "Runtime"
     public var subModules = [String : TextApiModule]()
 
-    private unowned let runtime: __Runtime
+    private unowned let runtime: Runtime
 
     public func internalTextApi(
         caller: String,
@@ -57,7 +57,7 @@ public class RuntimeApiModule: TextApiModule {
         return ["iteration" : UInt64(runtime.getMeasure("iteration")!)] // TODO make sure iteration is always defined, some global init would be nice
     }
 
-    init(runtime: __Runtime) {
+    init(runtime: Runtime) {
         self.runtime = runtime
         self.addSubModule(newModule: runtime.runtimeKnobs)
     }

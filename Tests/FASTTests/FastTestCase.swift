@@ -14,14 +14,14 @@ import XCTest
 //---------------------------------------
 
 class FASTTestCase : XCTestCase {
-    var runtime = __Runtime.newRuntime()
+    var runtime = Runtime.newRuntime()
 
     /** Note: When overriding this, remember to call super.setUp(). */
     override func setUp() {
-        runtime = __Runtime.newRuntime()
+        runtime = Runtime.newRuntime()
     }
 
     override func tearDown() {
-        runtime = __Runtime.newRuntime()
+        runtime = Runtime.newRuntime()
     }
 }
