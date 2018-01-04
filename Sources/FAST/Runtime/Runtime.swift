@@ -53,7 +53,7 @@ public class __Runtime {
 
         communicationChannel     = nil
 
-        runtimeKnobs             = RuntimeKnobs(key)
+        runtimeKnobs             = RuntimeKnobs(key, runtime: self)
 
         scenarioKnobs            = ScenarioKnobs(key)
 
