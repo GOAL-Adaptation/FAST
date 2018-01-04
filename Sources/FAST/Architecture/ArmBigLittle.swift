@@ -47,6 +47,8 @@ class ArmBigLittleScenarioKnobs: TextApiModule {
     var maximalBigCoreFrequency    = Knob(name: "maximalBigCoreFrequency",    from: key, or: 2000000)
     var maximalLittleCoreFrequency = Knob(name: "maximalLittleCoreFrequency", from: key, or: 1400000)
 
+    unowned let runtime: __Runtime
+
     /*
      *  - Limited availablility Scenario Knobs (available when utilizedBigCores > 0 OR utilizedLittleCores > 0) AND (utilizedBigCores == 0 OR utilizedLittleCores == 0)
      *
@@ -60,7 +62,7 @@ class ArmBigLittleScenarioKnobs: TextApiModule {
 
         var result: String = ""
 
-        let currentArchitecture = Runtime.architecture as! ArmBigLittle
+        let currentArchitecture = runtime.architecture as! ArmBigLittle
 
         if message[progressIndicator] == "availableCores" {
 
@@ -91,7 +93,8 @@ class ArmBigLittleScenarioKnobs: TextApiModule {
         return result
     }
 
-    init() {
+    init(runtime: __Runtime) {
+        self.runtime = runtime
         self.addSubModule(newModules: [availableBigCores, availableLittleCores, maximalBigCoreFrequency, maximalLittleCoreFrequency])
     }
 }
@@ -228,7 +231,7 @@ class ArmBigLittle: Architecture,
     typealias SystemConfigurationKnobsType  = ArmBigLittleSystemConfigurationKnobs
     typealias ResourceUsagePolicyModuleType = ArmBigLittleResourceUsagePolicyModule
 
-    var scenarioKnobs             = ScenarioKnobsType()
+    var scenarioKnobs             : ScenarioKnobsType
     var systemConfigurationKnobs  : SystemConfigurationKnobsType
     var resourceUsagePolicyModule = ResourceUsagePolicyModuleType()
 
@@ -342,6 +345,7 @@ class ArmBigLittle: Architecture,
     /** Initialize the architecture */
     required init(runtime: __Runtime) {
         self.runtime = runtime
+        self.scenarioKnobs = ScenarioKnobsType(runtime: runtime)
         // FIXME initialize exectuionMode so that the callback function can be passed. This is very stupid
         self.executionMode = Knob(name: "executionMode", from: key, or: ExecutionMode.Default)
         // FIXME this is ugly too for maintained state
