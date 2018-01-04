@@ -156,7 +156,7 @@ public class __Runtime {
     public func establishCommuncationChannel(port: Int = 1337) {
 
         communicationChannel = TcpSocketServer(port: port, runtime: self)
-        communicationChannel!.run(MessageHandler())
+        communicationChannel!.run(MessageHandler(runtime: self))
     }
 
     private var _runtimeKnobs: RuntimeKnobs?

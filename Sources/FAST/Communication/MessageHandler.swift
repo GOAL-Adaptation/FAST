@@ -13,18 +13,23 @@
 
 /** Handling messages */
 class MessageHandler {
-    
+
     let goodbyeMessage = "Connection is closing."
     let shutdownMessage = "FAST Application is shutting down."
 
     let quitCommand = "close"
     let shutdownCommand = "quit"
 
+    private unowned let runtime: __Runtime
+    init(runtime: __Runtime) {
+        self.runtime = runtime
+    }
+
     //-------------------------------
 
     func handle(server: CommunicationServer, _ shouldKeepRunning: inout Bool, message: String) -> String? {
 
-        /** A message is either a 
+        /** A message is either a
          *  - quit     : close this client connection
          *  - shutdown : close the FAST application
          *  - other    : delegated to the main text API
@@ -43,13 +48,13 @@ class MessageHandler {
                 server.continueRunning = false
 
                 // TODO finalizing logs and shutting down other units is to be initiated from here
-                Runtime.shouldTerminate = true
+                runtime.shouldTerminate = true
 
                 return self.shutdownMessage
 
             // text API
             default:
-                return Runtime.apiModule.textApi(caller: "TCPServer", message: message.components(separatedBy: " "), progressIndicator: 0, verbosityLevel: VerbosityLevel.Verbose)
+                return runtime.apiModule.textApi(caller: "TCPServer", message: message.components(separatedBy: " "), progressIndicator: 0, verbosityLevel: VerbosityLevel.Verbose)
         }
     }
 }
