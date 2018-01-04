@@ -168,7 +168,7 @@ func optimize
 
                     let knobSettings = knobSpace[i]
                     Log.info("Start profiling of configuration: \(knobSettings.settings).")
-                    knobSettings.apply()
+                    knobSettings.apply(runtime: runtime)
                     if let streamingApplication = runtime.application as? StreamApplication {
                         streamingApplication.initializeStream()
                     }
@@ -282,7 +282,7 @@ func optimize
 
                 let knobSettings = knobRefSpace[i]
                 Log.info("Start tracing of configuration: \(knobSettings.settings).")
-                knobSettings.apply()
+                knobSettings.apply(runtime: runtime)
 
                 // step 3.1: Emit SQL to insert current application configuration and
                 // return the name of the current application configuration to be used in subsequent steps.
@@ -401,7 +401,7 @@ func optimize
                     currentKnobSettings = schedule[iteration % windowSize]
                     runtime.measure("currentConfiguration", Double(currentKnobSettings.kid)) // The id of the configuration given in the knobtable
                     // FIXME This should only apply when the schedule actually needs to change knobs
-                    currentKnobSettings.apply()
+                    currentKnobSettings.apply(runtime: runtime)
                 }
                 executeAndReportProgress(measuringDevice, routine)
                 runningTime += ProcessInfo.processInfo.systemUptime - startTime
