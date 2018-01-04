@@ -199,7 +199,7 @@ public class __Runtime {
                     let constraintVariableValue = windowAverages[intentSpec.constraintName]!
                     var components =
                         [ "constraintVariableValue" : constraintVariableValue ]
-                    if let objectiveFunction = intentSpec.currentCostOrValue() {
+                    if let objectiveFunction = intentSpec.currentCostOrValue(runtime: self) {
                         components["objectiveFunction"] = objectiveFunction
                     }
                     return ( intentName, toArrayOfPairDicts(components) )
