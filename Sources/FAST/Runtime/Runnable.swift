@@ -15,22 +15,11 @@ class Runnable: Application, EmulateableApplication, StreamApplication {
     let reinit: (() -> Void)?
 
     /** Initialize the application */
-    required init(name: String, knobs: [TextApiModule], architecture: String = "XilinxZcu", streamInit: (() -> Void)? = nil) {
+    required init(name: String, knobs: [TextApiModule], streamInit: (() -> Void)?) {
         self.name = name
         self.reinit = streamInit
 
-        initRuntime()
-
-        for knob in knobs {
-            guard let knob = knob as? IKnob else { fatalError("Only knobs are allowed to be passed in.") }
-            knob.addToRuntime()
-        }
         let applicationKnobs = ApplicationKnobs(submodules: knobs)
-
-        Runtime.registerApplication(application: self)
-        Runtime.initializeArchitecture(name: architecture)
-        Runtime.establishCommuncationChannel()
-
         self.addSubModule(newModule: applicationKnobs)
     }
 
@@ -47,22 +36,41 @@ class Runnable: Application, EmulateableApplication, StreamApplication {
 public func optimize(
     _ id: String,
     _ knobs: [TextApiModule],
+    usingRuntime providedRuntime: __Runtime? = nil, //TODO: this needs to conform to LSP
+    architecture: String = "XilinxZcu",
+    streamInit: (() -> Void)? = nil,
+    establishCommuncationChannel: Bool = true,
     until shouldTerminate: @escaping @autoclosure () -> Bool = false,
     across windowSize: UInt32 = 20,
     samplingPolicy: SamplingPolicy = ProgressSamplingPolicy(period: 1),
-    _ routine: @escaping (Void) -> Void )
+    _ routine: @escaping (Void) -> Void)
 {
-    let app = Runnable(name: id, knobs: knobs)
+    // initialize runtime
+    let runtime = providedRuntime ?? Runtime //TODO: this will be fresh initialized here instead of using Runtime singleton object
+    runtime.reset()
+
+    // adding application knobs to runtime
+    for knob in knobs {
+        guard let knob = knob as? IKnob else { fatalError("Only knobs are allowed to be passed in.") }
+        runtime.knobSetters[knob.name] = knob.setter
+    }
+
+    // initialize application and add it to runtime
+    let app = Runnable(name: id, knobs: knobs, streamInit: streamInit)
+    runtime.registerApplication(application: app)
+
+    // configure runtime
+    runtime.initializeArchitecture(name: architecture)
+    if establishCommuncationChannel {
+        runtime.establishCommuncationChannel()
+    }
+
+    // start the actual optimization
     optimize(app.name, until: shouldTerminate, across: windowSize, samplingPolicy: samplingPolicy, routine)
 }
 
 protocol IKnob {
     var name: String { get }
     func setter(_ newValue: Any) -> Void
-    func addToRuntime()
 }
-extension Knob : IKnob {
-    func addToRuntime() {
-        Runtime.knobSetters[name] = setter
-    }
-}
+extension Knob : IKnob {}

@@ -27,9 +27,6 @@ fileprivate let key = ["proteus","runtime"]
 //------ runtime interaction
 
 public let Runtime = __Runtime()
-public func initRuntime() {
-    Runtime.reset()
-}
 @discardableResult public func measure(_ name: String, _ value: Double) -> Double {
     return Runtime.measure(name, value)
 }
