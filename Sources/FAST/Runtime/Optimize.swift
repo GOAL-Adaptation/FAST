@@ -95,7 +95,7 @@ internal func initializeRandomNumberGenerators() {
 }
 
 /* Defines an optimization scope. Replaces a loop in a pure Swift program. */
-public func optimize
+func optimize
     ( _ id: String
     , until shouldTerminate: @escaping @autoclosure () -> Bool = false
     , across windowSize: UInt32 = 20
