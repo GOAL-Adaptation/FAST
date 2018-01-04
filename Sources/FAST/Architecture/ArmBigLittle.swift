@@ -111,10 +111,6 @@ class ArmBigLittleSystemConfigurationKnobs: TextApiModule {
     var utilizedBigCoreFrequency    : Knob<Int>
     var utilizedLittleCoreFrequency : Knob<Int>
 
-    func something(a: Int, b: Int) -> Void {
-
-    }
-
     /*
      *  - Limited availablility & Derived System Configuration Knobs (available when utilizedBigCores > 0 OR utilizedLittleCores > 0) AND (utilizedBigCores == 0 OR utilizedLittleCores == 0)
      *
