@@ -172,7 +172,7 @@ class DatabaseTests: XCTestCase {
     }
 
     func testGetCurrentSystemConfigurationId() {  
-        let xilinx = XilinxZcu()
+        let xilinx = XilinxZcu(runtime: Runtime)
         if let database = Database(databaseFile: dbFile) {
             let currentSystemConfigurationId = database.getCurrentConfigurationId(architecture: xilinx)
             XCTAssertEqual(2, currentSystemConfigurationId)

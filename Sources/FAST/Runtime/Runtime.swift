@@ -48,7 +48,7 @@ public class __Runtime {
         controller               = ConstantController()
         controllerLock           = NSLock()
 
-        architecture             = DefaultArchitecture()
+        architecture             = DefaultArchitecture(runtime: self)
         application              = nil
 
         communicationChannel     = nil
@@ -314,16 +314,16 @@ public class __Runtime {
     public func initializeArchitecture(name architectureName: String) {
         switch architectureName {
             case "ArmBigLittle":
-                self.architecture = ArmBigLittle()
+                self.architecture = ArmBigLittle(runtime: self)
 
             case "XilinxZcu":
-                self.architecture = XilinxZcu()
+                self.architecture = XilinxZcu(runtime: self)
 
             case "Default":
-                self.architecture = DefaultArchitecture()
+                self.architecture = DefaultArchitecture(runtime: self)
 
             case "Dummy":
-                self.architecture = DummyArchitecture()
+                self.architecture = DummyArchitecture(runtime: self)
 
             default:
                 break

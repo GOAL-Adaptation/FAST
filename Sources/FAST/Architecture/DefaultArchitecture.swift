@@ -21,8 +21,8 @@ class DefaultArchitecture: ClockAndEnergyArchitecture {
     let energyMonitor: EnergyMonitor = CEnergyMonitor()
 
     // Initialization registers the system measures
-    init() {
-        self.registerSystemMeasures()
+    init(runtime: __Runtime) {
+        self.registerSystemMeasures(runtime: runtime)
     }
 }
 

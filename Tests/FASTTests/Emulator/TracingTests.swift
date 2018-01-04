@@ -93,7 +93,7 @@ class TracingTests: XCTestCase {
     }
 
     let incrementerApplication = Incrementer()
-    let xilinxArchitecture = XilinxZcu()
+    let xilinxArchitecture = XilinxZcu(runtime: Runtime)
 
     func testEmitScriptForApplicationTracing() {
         let intentKnobs =

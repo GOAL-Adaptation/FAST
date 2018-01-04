@@ -53,39 +53,35 @@ class ArmBigLittleScenarioKnobs: TextApiModule {
      *    - availableCores
      *    - maximalCoreFrequency
      */
-    func internalTextApi(caller:            String, 
-                        message:           Array<String>, 
-                        progressIndicator: Int, 
+    func internalTextApi(caller:            String,
+                        message:           Array<String>,
+                        progressIndicator: Int,
                         verbosityLevel:    VerbosityLevel) -> String {
 
         var result: String = ""
 
-        if let currentArchitecture = Runtime.architecture as? ArmBigLittle {
+        let currentArchitecture = Runtime.architecture as! ArmBigLittle
 
-            if message[progressIndicator] == "availableCores" {
+        if message[progressIndicator] == "availableCores" {
 
-                if (currentArchitecture.systemConfigurationKnobs.utilizedBigCores.get() > 0 && currentArchitecture.systemConfigurationKnobs.utilizedLittleCores.get() == 0) {
+            if (currentArchitecture.systemConfigurationKnobs.utilizedBigCores.get() > 0 && currentArchitecture.systemConfigurationKnobs.utilizedLittleCores.get() == 0) {
 
-                    result = availableBigCores.textApi(caller: caller, message: message, progressIndicator: progressIndicator + 1, verbosityLevel: verbosityLevel)
+                result = availableBigCores.textApi(caller: caller, message: message, progressIndicator: progressIndicator + 1, verbosityLevel: verbosityLevel)
 
-                } else if (currentArchitecture.systemConfigurationKnobs.utilizedBigCores.get() == 0 && currentArchitecture.systemConfigurationKnobs.utilizedLittleCores.get() > 0) {
+            } else if (currentArchitecture.systemConfigurationKnobs.utilizedBigCores.get() == 0 && currentArchitecture.systemConfigurationKnobs.utilizedLittleCores.get() > 0) {
 
-                    result = availableLittleCores.textApi(caller: caller, message: message, progressIndicator: progressIndicator + 1, verbosityLevel: verbosityLevel)
-                }
+                result = availableLittleCores.textApi(caller: caller, message: message, progressIndicator: progressIndicator + 1, verbosityLevel: verbosityLevel)
+            }
 
-            } else if message[progressIndicator] == "maximalCoreFrequency" {
+        } else if message[progressIndicator] == "maximalCoreFrequency" {
 
-                if (currentArchitecture.systemConfigurationKnobs.utilizedBigCores.get() > 0 && currentArchitecture.systemConfigurationKnobs.utilizedLittleCores.get() == 0) {
+            if (currentArchitecture.systemConfigurationKnobs.utilizedBigCores.get() > 0 && currentArchitecture.systemConfigurationKnobs.utilizedLittleCores.get() == 0) {
 
-                    result = maximalBigCoreFrequency.textApi(caller: caller, message: message, progressIndicator: progressIndicator + 1, verbosityLevel: verbosityLevel)
+                result = maximalBigCoreFrequency.textApi(caller: caller, message: message, progressIndicator: progressIndicator + 1, verbosityLevel: verbosityLevel)
 
-                } else if (currentArchitecture.systemConfigurationKnobs.utilizedBigCores.get() == 0 && currentArchitecture.systemConfigurationKnobs.utilizedLittleCores.get() > 0) {
+            } else if (currentArchitecture.systemConfigurationKnobs.utilizedBigCores.get() == 0 && currentArchitecture.systemConfigurationKnobs.utilizedLittleCores.get() > 0) {
 
-                    result = maximalLittleCoreFrequency.textApi(caller: caller, message: message, progressIndicator: progressIndicator + 1, verbosityLevel: verbosityLevel)
-                }
-            } else {
-
-                // TODO add error msg based on verbosity level
+                result = maximalLittleCoreFrequency.textApi(caller: caller, message: message, progressIndicator: progressIndicator + 1, verbosityLevel: verbosityLevel)
             }
         } else {
 
@@ -127,9 +123,9 @@ class ArmBigLittleSystemConfigurationKnobs: TextApiModule {
      *    - utilizedCoreMask
      *    - utilizedCoreFrequencies
      */
-    func internalTextApi(caller:            String, 
-                        message:           Array<String>, 
-                        progressIndicator: Int, 
+    func internalTextApi(caller:            String,
+                        message:           Array<String>,
+                        progressIndicator: Int,
                         verbosityLevel:    VerbosityLevel) -> String {
 
         var result: String = ""
@@ -212,10 +208,10 @@ class ArmBigLittleResourceUsagePolicyModule: TextApiModule {
 // TODO maintained state not implemented
 
 /** ARM bigLITTLE Architecture */
-class ArmBigLittle: Architecture, 
-                    ClockAndEnergyArchitecture, 
-                    ScenarioKnobEnrichedArchitecture, 
-                    RealArchitecture, 
+class ArmBigLittle: Architecture,
+                    ClockAndEnergyArchitecture,
+                    ScenarioKnobEnrichedArchitecture,
+                    RealArchitecture,
                     EmulateableArchitecture {
 
     let name = "ARM-big.LITTLE" // TODO in DB is "ARM-big.LITTLE"
@@ -227,7 +223,7 @@ class ArmBigLittle: Architecture,
     let otherCoreFrequency = 200000
 
     var subModules = [String : TextApiModule]()
-    
+
     typealias ScenarioKnobsType             = ArmBigLittleScenarioKnobs
     typealias SystemConfigurationKnobsType  = ArmBigLittleSystemConfigurationKnobs
     typealias ResourceUsagePolicyModuleType = ArmBigLittleResourceUsagePolicyModule
@@ -237,6 +233,8 @@ class ArmBigLittle: Architecture,
     var resourceUsagePolicyModule = ResourceUsagePolicyModuleType()
 
     var executionMode: Knob<ExecutionMode>
+
+    unowned var runtime: __Runtime
 
     var actuationPolicy = Knob(name: "actuationPolicy", from: key, or: ActuationPolicy.NoActuation)
 
@@ -270,7 +268,7 @@ class ArmBigLittle: Architecture,
                 }
             }
 
-            // Configure the Hardware to use the core frequencies dictated by the system configuration knobs 
+            // Configure the Hardware to use the core frequencies dictated by the system configuration knobs
             static void configureCoreFrequencies(uint64_t utilizedBigCoreFrequency,
                                                 uint64_t utilizedLittleCoreFrequency) {
 
@@ -327,7 +325,7 @@ class ArmBigLittle: Architecture,
                 case ExecutionMode.Emulated:
                     // Create an emulator
                     // TODO check application exictence and conformance, Emulator should detect app input
-                    let emulator = Emulator(application: Runtime.application! as! EmulateableApplication, applicationInput: 0, architecture: self)
+                    let emulator = Emulator(application: runtime.application! as! EmulateableApplication, applicationInput: 0, architecture: self)
 
                     // Assign it as monitors (Reference Counting will keep it alive as long as this is not changed)
                     self.clockMonitor  = emulator
@@ -339,10 +337,11 @@ class ArmBigLittle: Architecture,
 
             Log.verbose("Changed architecture execution mode to \(newMode).")
         }
-    }   
+    }
 
     /** Initialize the architecture */
-    required init() {
+    required init(runtime: __Runtime) {
+        self.runtime = runtime
         // FIXME initialize exectuionMode so that the callback function can be passed. This is very stupid
         self.executionMode = Knob(name: "executionMode", from: key, or: ExecutionMode.Default)
         // FIXME this is ugly too for maintained state
@@ -360,7 +359,7 @@ class ArmBigLittle: Architecture,
         Log.info("Initialized architecture \(name) in \(executionMode.get()) mode.")
 
         self.addSubModule(newModules: [scenarioKnobs, systemConfigurationKnobs, resourceUsagePolicyModule, executionMode, actuationPolicy])
-        self.registerSystemMeasures()
+        self.registerSystemMeasures(runtime: runtime)
     }
 
     /** Internal text API for ARM bigLITTLE
@@ -369,9 +368,9 @@ class ArmBigLittle: Architecture,
      *    - energy
      *    - time
      */
-    func internalTextApi(caller:            String, 
-                         message:           Array<String>, 
-                         progressIndicator: Int, 
+    func internalTextApi(caller:            String,
+                         message:           Array<String>,
+                         progressIndicator: Int,
                          verbosityLevel:    VerbosityLevel) -> String {
 
             var result: String = ""
@@ -396,7 +395,7 @@ class ArmBigLittle: Architecture,
 
                 // TODO add error msg based on verbosity level
             }
-             
+
             return result;
     }
 
@@ -417,8 +416,8 @@ class ArmBigLittle: Architecture,
         }
 
         let requestedState = RequestedState(utilizedBigCores:            systemConfigurationKnobs.utilizedBigCores.get(),
-                                            utilizedBigCoreFrequency:    systemConfigurationKnobs.utilizedBigCoreFrequency.get(), 
-                                            utilizedLittleCores:         systemConfigurationKnobs.utilizedLittleCores.get(), 
+                                            utilizedBigCoreFrequency:    systemConfigurationKnobs.utilizedBigCoreFrequency.get(),
+                                            utilizedLittleCores:         systemConfigurationKnobs.utilizedLittleCores.get(),
                                             utilizedLittleCoreFrequency: systemConfigurationKnobs.utilizedLittleCoreFrequency.get())
 
         //-------------------------------
@@ -426,7 +425,7 @@ class ArmBigLittle: Architecture,
         //
         // Maxes out system utilization on one type of cores, primarily on big
         if resourceUsagePolicyModule.policy.get() == ResourceUsagePolicy.Maximal {
-        
+
             if scenarioKnobs.availableBigCores.get() > 0 {
 
                 systemConfigurationKnobs.utilizedBigCores.set(                  scenarioKnobs.availableBigCores.get(), setters: false)

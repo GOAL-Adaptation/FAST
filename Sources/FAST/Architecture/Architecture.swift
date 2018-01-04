@@ -56,13 +56,13 @@ extension ResourceUsagePolicy: InitializableFromString {
 
     switch text {
 
-      case "Simple": 
+      case "Simple":
         self = ResourceUsagePolicy.Simple
 
-      case "Maintain": 
+      case "Maintain":
         self = ResourceUsagePolicy.Maintain
 
-      case "Maximal": 
+      case "Maximal":
         self = ResourceUsagePolicy.Maximal
 
       default:
@@ -79,15 +79,15 @@ extension ResourceUsagePolicy: CustomStringConvertible {
 
     switch self {
 
-      case ResourceUsagePolicy.Simple: 
+      case ResourceUsagePolicy.Simple:
         return "Simple"
 
-      case ResourceUsagePolicy.Maintain: 
+      case ResourceUsagePolicy.Maintain:
         return "Maintain"
 
-      case ResourceUsagePolicy.Maximal: 
+      case ResourceUsagePolicy.Maximal:
         return "Maximal"
-       
+
     }
   }
 }
@@ -104,7 +104,7 @@ public protocol ResourceUsagePolicyModule: TextApiModule {
 
 /** Generic Interface for a Scenario Knob-enriched Architecture */
 public protocol ScenarioKnobEnrichedArchitecture: Architecture {
-  
+
   // Architecture has Scenario Knobs
   associatedtype     ScenarioKnobsType : TextApiModule;
   var scenarioKnobs: ScenarioKnobsType  { get }
@@ -134,17 +134,17 @@ public protocol ClockAndEnergyArchitecture: Architecture {
   var energyMonitor: EnergyMonitor { get }
 
   // Register System Measures
-  func registerSystemMeasures() -> Void
+  func registerSystemMeasures(runtime: __Runtime) -> Void
 }
 
 /** Default System Measures */
 extension ClockAndEnergyArchitecture {
 
   // Architecture has system measures: time and energy
-  var systemMeasures: Array<String> { return ["time", "energy", "powerConsumption"] } 
+  var systemMeasures: Array<String> { return ["time", "energy", "powerConsumption"] }
 
   // Register System Measures
-  func registerSystemMeasures() -> Void {      
+  func registerSystemMeasures(runtime: __Runtime) -> Void {
     DispatchQueue.global(qos: .utility).async {
       var lastEnergy = Double(self.energyMonitor.readEnergy())
       var lastTime = self.clockMonitor.readClock()
@@ -152,10 +152,10 @@ extension ClockAndEnergyArchitecture {
         let time = self.clockMonitor.readClock()
         let timeDelta = time - lastTime
         let energy = Double(self.energyMonitor.readEnergy())
-        Runtime.measure("time", time)
-        Runtime.measure("energy", energy)
+        runtime.measure("time", time)
+        runtime.measure("energy", energy)
         if timeDelta != 0.0 {
-          Runtime.measure("powerConsumption", (energy - lastEnergy) / (time - lastTime))
+          runtime.measure("powerConsumption", (energy - lastEnergy) / (time - lastTime))
         }
         else {
           Log.warning("Zero time passed between two measurements of time. Power consumption cannot be computed.")
@@ -185,10 +185,10 @@ extension ActuationPolicy: InitializableFromString {
 
     switch text {
 
-      case "Actuate": 
+      case "Actuate":
         self = ActuationPolicy.Actuate
 
-      case "NoActuation": 
+      case "NoActuation":
         self = ActuationPolicy.NoActuation
 
       default:
@@ -205,12 +205,12 @@ extension ActuationPolicy: CustomStringConvertible {
 
     switch self {
 
-      case ActuationPolicy.Actuate: 
+      case ActuationPolicy.Actuate:
         return "Actuate"
 
-      case ActuationPolicy.NoActuation: 
+      case ActuationPolicy.NoActuation:
         return "NoActuation"
-       
+
     }
   }
 }
@@ -237,7 +237,7 @@ public enum LinuxDvfsGovernor: String {
 
 /** Default actuation commands for a typical Linux system */
 internal func actuateLinuxSystemConfigurationKnobs(actuationPolicy: ActuationPolicy, utilizedCores: Int, utilizedCoreFrequency: Int) -> Void {
-      
+
     switch actuationPolicy {
       case .Actuate:
 
@@ -245,24 +245,24 @@ internal func actuateLinuxSystemConfigurationKnobs(actuationPolicy: ActuationPol
         let utilizedCoreRange = 0 ..< utilizedCores
 
         // Configure the Hardware to use the number of cores dictated by the system configuration knobs
-        
+
         let coreMask = utilizedCoreRange.map({String($0)}).joined(separator: ",")
         let pid = getpid()
         let coreMaskCommand = "ps -eLf | awk '(/\(pid)/) && (!/awk/) {print $4}' | xargs -n1 taskset -c -p \(coreMask) > /dev/null"
-        
+
         Log.verbose("Applying core allocation '\(coreMaskCommand)'.")
-        
+
         let (coreMaskReturnCode, coreMaskOutput) = executeInShell(coreMaskCommand)
         if coreMaskReturnCode != 0 {
             Log.error("Error running taskset: \(coreMaskReturnCode). Output was: \(String(describing: coreMaskOutput)).")
         }
 
         // Configure the Hardware to use the core frequencies dictated by the system configuration knobs
-        
+
         Log.verbose("Applying CPU frequency: \(utilizedCoreFrequency).")
-        
+
         for coreNumber in utilizedCoreRange {
-          let utilizedCoreFrequencyCommand = "echo \(utilizedCoreFrequency) > /sys/devices/system/cpu/cpu\(coreNumber)/cpufreq/\(dvfsFile)"        
+          let utilizedCoreFrequencyCommand = "echo \(utilizedCoreFrequency) > /sys/devices/system/cpu/cpu\(coreNumber)/cpufreq/\(dvfsFile)"
           let (utilizedCoreFrequencyReturnCode, utilizedCoreFrequencyOutput) = executeInShell(utilizedCoreFrequencyCommand)
           if utilizedCoreFrequencyReturnCode != 0 {
               Log.error("Error setting frequency for core \(coreNumber): \(utilizedCoreFrequencyReturnCode). Output was: \(String(describing: utilizedCoreFrequencyOutput)).")

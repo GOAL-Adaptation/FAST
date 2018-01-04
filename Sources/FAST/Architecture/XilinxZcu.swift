@@ -81,14 +81,14 @@ class XilinxZcuResourceUsagePolicyModule: TextApiModule {
 // TODO maintained state not implemented
 
 /** Xilinx ZCU 102 Architecture */
-class XilinxZcu: Architecture, 
-                 ClockAndEnergyArchitecture, 
-                 ScenarioKnobEnrichedArchitecture, 
-                 RealArchitecture, 
+class XilinxZcu: Architecture,
+                 ClockAndEnergyArchitecture,
+                 ScenarioKnobEnrichedArchitecture,
+                 RealArchitecture,
                  EmulateableArchitecture {
 
     let name = "XilinxZcu"
-    
+
     // Use the default System Measures
     var clockMonitor:  ClockMonitor  = DefaultClockMonitor()
     var energyMonitor: EnergyMonitor = CEnergyMonitor()
@@ -105,11 +105,13 @@ class XilinxZcu: Architecture,
 
     var executionMode: Knob<ExecutionMode>
 
+    unowned var runtime: __Runtime
+
     var actuationPolicy = Knob(name: "actuationPolicy", from: key, or: ActuationPolicy.NoActuation)
 
     func actuate() -> Void {
         actuateLinuxSystemConfigurationKnobs(
-            actuationPolicy       : actuationPolicy.get(), 
+            actuationPolicy       : actuationPolicy.get(),
             utilizedCores         : systemConfigurationKnobs.utilizedCores.get(),
             utilizedCoreFrequency : systemConfigurationKnobs.utilizedCoreFrequency.get() )
     }
@@ -130,7 +132,7 @@ class XilinxZcu: Architecture,
                 case ExecutionMode.Emulated:
                     // Create an emulator
                     // TODO check application exictence and conformance, Emulator should detect app input
-                    let emulator = Emulator(application: Runtime.application! as! EmulateableApplication, applicationInput: 0, architecture: self)
+                    let emulator = Emulator(application: runtime.application! as! EmulateableApplication, applicationInput: 0, architecture: self)
 
                     // Assign it as monitors (Reference Counting will keep it alive as long as this is not changed)
                     self.clockMonitor  = emulator
@@ -138,10 +140,11 @@ class XilinxZcu: Architecture,
             }
             Log.info("Xilinx execution mode set to: \(newMode).")
         }
-    }   
+    }
 
     /** Initialize the architecture */
-    required init() {
+    required init(runtime: __Runtime) {
+        self.runtime = runtime
         // FIXME initialize exectuionMode so that the callback function can be passed. This is very stupid
         self.executionMode = Knob(name: "executionMode", from: key, or: ExecutionMode.Default)
         // FIXME this is ugly too for maintained state
@@ -154,7 +157,7 @@ class XilinxZcu: Architecture,
             changeExecutionMode(oldMode: ExecutionMode.Default, newMode: ExecutionMode.Emulated)
         }
         self.addSubModule(newModules: [scenarioKnobs, systemConfigurationKnobs, resourceUsagePolicyModule, executionMode, actuationPolicy])
-        self.registerSystemMeasures()
+        self.registerSystemMeasures(runtime: runtime)
     }
 
     /** Internal text API for Xilinx ZCU 102
@@ -162,13 +165,13 @@ class XilinxZcu: Architecture,
      *    - energy
      *    - time
      */
-    func internalTextApi(caller:            String, 
-                         message:           Array<String>, 
-                         progressIndicator: Int, 
+    func internalTextApi(caller:            String,
+                         message:           Array<String>,
+                         progressIndicator: Int,
                          verbosityLevel:    VerbosityLevel) -> String {
 
             var result: String = ""
-    
+
             // System measures
             if message[progressIndicator] == "energy" && message[progressIndicator + 1] == "get" {
 
@@ -189,7 +192,7 @@ class XilinxZcu: Architecture,
 
                 // TODO add error msg based on verbosity level
             }
-             
+
             return result;
     }
 
@@ -215,7 +218,7 @@ class XilinxZcu: Architecture,
         //
         // Maxes out system utilization on one type of cores, primarily on big
         if resourceUsagePolicyModule.policy.get() == ResourceUsagePolicy.Maximal {
-        
+
             systemConfigurationKnobs.utilizedCores.set(                 scenarioKnobs.availableCores.get(), setters: false)
             systemConfigurationKnobs.utilizedCoreFrequency.set(   scenarioKnobs.maximalCoreFrequency.get(), setters: false)
 
