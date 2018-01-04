@@ -136,7 +136,7 @@ func optimize
         runtime.setIntent(intent)
 
         // Initialize measuring device, that will update measures at every input
-        let measuringDevice = MeasuringDevice(ProgressSamplingPolicy(period: 1), windowSize, intent.measures)
+        let measuringDevice = MeasuringDevice(ProgressSamplingPolicy(period: 1), windowSize, intent.measures, runtime)
         runtime.measuringDevices[id] = measuringDevice
 
         // Number of inputs to process when profiling a configuration
@@ -227,7 +227,7 @@ func optimize
             + "\n" + jobLogParamInsertion                  // step 2.2
 
             // Initialize measuring device, that will update measures at every input
-            let measuringDevice = MeasuringDevice(ProgressSamplingPolicy(period: 1), windowSize, intent.measures)
+            let measuringDevice = MeasuringDevice(ProgressSamplingPolicy(period: 1), windowSize, intent.measures, runtime)
 
             // Number of inputs to process when profiling a configuration
             let defaultProfileSize: UInt64 = UInt64(1000)
@@ -388,7 +388,7 @@ func optimize
             runtime.measure("currentConfiguration", Double(currentKnobSettings.kid)) // The id of the configuration given in the knobtable
             runtime.measure("windowSize", Double(windowSize))
             // Initialize measuring device, that will update measures based on the samplingPolicy
-            let measuringDevice = MeasuringDevice(samplingPolicy, windowSize, intent.measures)
+            let measuringDevice = MeasuringDevice(samplingPolicy, windowSize, intent.measures, runtime)
             runtime.measuringDevices[id] = measuringDevice
             // Start the input processing loop
             loop(iterations: numberOfInputsToProcess) {
