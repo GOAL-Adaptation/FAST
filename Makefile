@@ -9,15 +9,34 @@ APPNAME := incrementer
 
 UNAME := $(shell uname)
 SPM_FLAGS_ALL := \
-  -Xlinker -L/usr/local/lib \
   -Xlinker -lenergymon-default
+
 RESOURCE_PATH := Sources/${APPNAME}
 RESOURCE_TARGET_PATH := .build/debug
 
 ifeq ($(UNAME), Linux)
-SPM_FLAGS := $(SPM_FLAGS_ALL)
+# Are we running on the ZCU102?
+ifeq ($(shell uname -m), aarch64)
+  # Yes, use 32-bit swift and libraries on 64-bit ARM machine
+  SPM_FLAGS := \
+    -Xcc -target -Xcc armv7l-linux-gnueabihf \
+    -Xcc -I/usr/local/arm-linux-gnueabihf/include \
+    -Xlinker -L/usr/lib/arm-linux-gnueabihf \
+    -Xlinker -L/usr/local/arm-linux-gnueabihf/lib \
+    $(SPM_FLAGS_ALL)
+
+  # Override target for clang to force 32-bit build
+  export CCC_OVERRIDE_OPTIONS:=\#^--target=arm-linux-gnueabihf s/aarch64-linux-gnu/arm-linux-gnueabihf/
+else
+  # No, assume x86 Linux
+  SPM_FLAGS := \
+    -Xlinker -L/usr/local/lib \
+    $(SPM_FLAGS_ALL)
+endif
+
 TEST_RESOURCE_TARGET_PATH := $(RESOURCE_TARGET_PATH)
 endif
+
 ifeq ($(UNAME), Darwin)
 SPM_FLAGS := $(SPM_FLAGS_ALL) \
   -Xlinker -L/usr/local/opt/lapack/lib \
