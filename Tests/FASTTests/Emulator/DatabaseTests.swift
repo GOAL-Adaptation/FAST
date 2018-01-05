@@ -19,9 +19,10 @@ import LoggerAPI
 //---------------------------------------
 
 
-class DatabaseTests: XCTestCase {
+class DatabaseTests: FASTTestCase {
 
     override func setUp() {
+        super.setUp()
         initializeRandomNumberGenerators()
         recreateTestDatabase()
     }
@@ -34,7 +35,7 @@ class DatabaseTests: XCTestCase {
         let name = "incrementer"
         var subModules = [String : TextApiModule]()
 
-        // Knobs 
+        // Knobs
         let threshold = Knob("threshold", 10000000)
         let step = Knob("step", 1)
 
@@ -49,9 +50,9 @@ class DatabaseTests: XCTestCase {
         var applicationKnobs = IncrementerApplicationKnobs()
 
         /** Initialize the application */
-        required init() {
-            Runtime.registerApplication(application: self)
-            Runtime.initializeArchitecture(name: "ArmBigLittle")
+        required init(runtime: Runtime) {
+            runtime.registerApplication(application: self)
+            runtime.initializeArchitecture(name: "ArmBigLittle")
             self.addSubModule(newModule: applicationKnobs)
             self.applicationKnobs.addSubModule(newModule: threshold)
             self.applicationKnobs.addSubModule(newModule: step)
@@ -69,10 +70,10 @@ class DatabaseTests: XCTestCase {
         if !FileManager.default.fileExists(atPath: dbFile) {
             FileManager.default.createFile(atPath: dbFile, contents: nil)
         }
-        
+
         if let loadSchemaQuery = readFile(withName: "Database", ofType: "sql", fromBundle: Bundle(for: type(of: self))),
            let insertDataQuery = readFile(withName: "DatabaseTests", ofType: "sql", fromBundle: Bundle(for: type(of: self))),
-           let db = Database(databaseFile: dbFile) {            
+           let db = Database(databaseFile: dbFile) {
             do {
                 try db.execute(script: loadSchemaQuery)
                 try db.execute(script: insertDataQuery)
@@ -84,7 +85,7 @@ class DatabaseTests: XCTestCase {
                 Log.error(errorMessage)
                 fatalError(errorMessage)
             }
-            
+
             return db
 
         }
@@ -95,7 +96,7 @@ class DatabaseTests: XCTestCase {
         }
     }
 
-    func testGetReferenceApplicationConfigurationID() {        
+    func testGetReferenceApplicationConfigurationID() {
         if let database = Database(databaseFile: dbFile) {
             var referenceApplicationConfigurationId = database.getReferenceApplicationConfigurationID(application: "RADAR")
             XCTAssertEqual(6, referenceApplicationConfigurationId)
@@ -104,7 +105,7 @@ class DatabaseTests: XCTestCase {
         }
     }
 
-    func testGetReferenceSystemConfigurationID() {       
+    func testGetReferenceSystemConfigurationID() {
         if let database = Database(databaseFile: dbFile) {
             var referenceSystemConfigurationId = database.getReferenceSystemConfigurationID(architecture: "ARM-big.LITTLE")
             XCTAssertEqual(1, referenceSystemConfigurationId)
@@ -163,16 +164,16 @@ class DatabaseTests: XCTestCase {
         }
     }
 
-    func testGetCurrentApplicationConfigurationId() {  
-        let incrementerApplication = Incrementer()
+    func testGetCurrentApplicationConfigurationId() {
+        let incrementerApplication = Incrementer(runtime: runtime)
         if let database = Database(databaseFile: dbFile) {
             let currentApplicationConfigurationId = database.getCurrentConfigurationId(application: incrementerApplication)
             XCTAssertEqual(13, currentApplicationConfigurationId)
         }
     }
 
-    func testGetCurrentSystemConfigurationId() {  
-        let xilinx = XilinxZcu()
+    func testGetCurrentSystemConfigurationId() {
+        let xilinx = XilinxZcu(runtime: runtime)
         if let database = Database(databaseFile: dbFile) {
             let currentSystemConfigurationId = database.getCurrentConfigurationId(architecture: xilinx)
             XCTAssertEqual(2, currentSystemConfigurationId)
@@ -181,7 +182,7 @@ class DatabaseTests: XCTestCase {
 
     func testGetApplicationInputStreamApplicationConfigurationId() {
         if let database = Database(databaseFile: dbFile) {
-            var applicationInputStreamId = 
+            var applicationInputStreamId =
             database.getApplicationInputStreamApplicationConfigurationId(application: "RADAR", inputStream: "radar cmd1", applicationConfigurationId: 8)
             XCTAssertEqual(1, applicationInputStreamId)
             applicationInputStreamId = database.getApplicationInputStreamApplicationConfigurationId(application: "RADAR", inputStream: "radar cmd1", applicationConfigurationId: 6)
@@ -214,7 +215,7 @@ class DatabaseTests: XCTestCase {
         }
     }
 
-  
+
 
     static var allTests = [
     ("testGetReferenceSystemConfigurationID", testGetReferenceSystemConfigurationID),

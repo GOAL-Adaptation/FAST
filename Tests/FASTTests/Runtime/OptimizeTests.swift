@@ -21,7 +21,7 @@ class OptimizeTests: FASTTestCase {
         var thMockServer: RestServer? = nil
         // Start ThMockRestServer in a background thread
         DispatchQueue.global(qos: .utility).async {
-            thMockServer = ThMockRestServer(port: RestClient.serverPort, address: RestClient.serverAddress)
+            thMockServer = ThMockRestServer(port: RestClient.serverPort, address: RestClient.serverAddress, runtime: self.runtime)
             thMockServer!.start()
         }
         waitUntilUp(endpoint: "ready", host: RestClient.serverAddress, port: RestClient.serverPort, method: .post, description: "TH mock REST")
@@ -38,11 +38,11 @@ class OptimizeTests: FASTTestCase {
         , method        : Request.Method  = .get
         , withBody json : [String : Any]? = [:]
         ) -> [String: Any]? {
-        return 
+        return
             RestClient.sendRequest( to         : endpoint
                                 , over       : "http"
                                 , at         : "0.0.0.0" //RestClient.serverAddress
-                                , onPort     : Runtime.restServerPort
+                                , onPort     : self.runtime.restServerPort
                                 , withMethod : method
                                 , withBody   : json
                                 , logErrors  : true
@@ -55,27 +55,27 @@ class OptimizeTests: FASTTestCase {
         stopThMockRestServer(server: thMockServer)
     }
 
-    /** 
-     * If FAST is unable to load the intent or model files, an optimize should 
+    /**
+     * If FAST is unable to load the intent or model files, an optimize should
      * behave like a while(true) loop.
      */
     func testOptimizeWithoutIntentAndModel() {
-        
+
         withThMockRestServer { _ in
 
             let threshold = 100
             var optimizeState: Int = 0
             var whileState: Int = 0
 
-            optimize("NO_SUCH_INTENT") {
+            optimize("NO_SUCH_INTENT", self.runtime) {
                 if optimizeState < threshold {
                     optimizeState += 1
                 }
-                else { Runtime.shouldTerminate = true }
+                else { self.runtime.shouldTerminate = true }
             }
 
             while(true) {
-                if whileState < threshold { 
+                if whileState < threshold {
                     whileState += 1
                 }
                 else { break }
@@ -87,20 +87,20 @@ class OptimizeTests: FASTTestCase {
 
     }
 
-    /** 
+    /**
      * Ensure that the REST API is brought up by the optimize construct.
      */
     func testThatOptimizeBringsUpTheRestServer() {
-        
+
         withThMockRestServer { _ in
 
-            optimize("NO_SUCH_INTENT") {
+            optimize("NO_SUCH_INTENT", self.runtime) {
 
                 let fastRestServerIsUp = nil != self.callFastRestServer(endpoint: "alive")
 
                 XCTAssertTrue(fastRestServerIsUp)
 
-                Runtime.shouldTerminate = true
+                self.runtime.shouldTerminate = true
             }
 
         }
@@ -108,20 +108,20 @@ class OptimizeTests: FASTTestCase {
     }
 
 
-    /** 
+    /**
      * Ensure that the REST API is brought up by the optimize construct.
      */
     func testBasicLLTestScenario() {
-        
+
         withThMockRestServer { _ in
 
-            optimize("NO_SUCH_INTENT") {
+            optimize("NO_SUCH_INTENT", self.runtime) {
 
                 let fastRestServerIsUp = nil != self.callFastRestServer(endpoint: "alive")
 
                 XCTAssertTrue(fastRestServerIsUp)
 
-                Runtime.shouldTerminate = true
+                self.runtime.shouldTerminate = true
             }
 
         }
@@ -150,4 +150,3 @@ class OptimizeTests: FASTTestCase {
     ]
 
 }
-

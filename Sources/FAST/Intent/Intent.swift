@@ -19,7 +19,7 @@ public protocol IntentSpec {
   var name: String { get }
 
   var knobs: [String : ([Any], Any)]  { get }
-  
+
   var measures: [String]  { get }
 
   var constraint: Double { get }
@@ -36,30 +36,30 @@ public protocol IntentSpec {
 
 extension IntentSpec {
 
-  /** All possbile knob settings. */ 
+  /** All possbile knob settings. */
   func knobSpace() -> [KnobSettings] {
-    /** Builds up the space by extending it with the elements of 
+    /** Builds up the space by extending it with the elements of
      *  successive elements of remainingKnobs. */
-	func build(space: [[String : Any]], remainingKnobs: [String]) -> [[String : Any]] {
-        if remainingKnobs.isEmpty {
-            return space
-        }
-        else {
-            let knobName = remainingKnobs.first!
-            let (knobValues, _) = knobs[knobName]!
-            var extendedSpace = [[String : Any]]()
-            for knobValue in knobValues {
-                for partialConfiguration in space {
-                    var extendedPartialConfiguration = [String : Any]()
-                    for (kn,kv) in partialConfiguration {
-                        extendedPartialConfiguration[kn] = kv
-                    }
-                    extendedPartialConfiguration[knobName] = knobValue
-                    extendedSpace.append(extendedPartialConfiguration)
-                }
+     func build(space: [[String : Any]], remainingKnobs: [String]) -> [[String : Any]] {
+      if remainingKnobs.isEmpty {
+        return space
+      }
+      else {
+        let knobName = remainingKnobs.first!
+        let (knobValues, _) = knobs[knobName]!
+        var extendedSpace = [[String : Any]]()
+        for knobValue in knobValues {
+          for partialConfiguration in space {
+            var extendedPartialConfiguration = [String : Any]()
+            for (kn,kv) in partialConfiguration {
+              extendedPartialConfiguration[kn] = kv
             }
-            return build(space: extendedSpace, remainingKnobs: Array(remainingKnobs.dropFirst(1)))
+            extendedPartialConfiguration[knobName] = knobValue
+            extendedSpace.append(extendedPartialConfiguration)
+          }
         }
+        return build(space: extendedSpace, remainingKnobs: Array(remainingKnobs.dropFirst(1)))
+      }
     }
     let knobNames = Array(knobs.keys).sorted()
     if knobNames.isEmpty {
@@ -71,37 +71,37 @@ extension IntentSpec {
         let spaceWithFirstKnobsValuesOnly = firstKnobValues.map{ [firstKnobName: $0] }
         return build( space: spaceWithFirstKnobsValuesOnly
                     , remainingKnobs: Array(knobNames.dropFirst(1))
-                    ).map{ 
+                    ).map{
                         // FIXME Eliminate undefined-value representations (-1 and [:]) below
-                        //       by making the Runtime.controller optional.
-                        KnobSettings(kid: -1, $0) 
-                    } 
+                        //       by making the runtime.controller optional.
+                        KnobSettings(kid: -1, $0)
+                    }
     }
 
   }
 
-  /** 
+  /**
    * JSON serializable dictionary that of:
    * - Knob names, ranges and reference values
    * - Measure names
-   * - Current state of the intent components: 
+   * - Current state of the intent components:
    *   - optimization type
    *   - objective function
    *   - constraint variable
    *   - constraint value
    */
-  func toJson() -> [String : Any] {
+  func toJson(runtime: Runtime) -> [String : Any] {
 
-    let knobsJson = 
-        Array(knobs.map{ (name: String, rangeAndReferenceValue: ([Any],Any)) in 
+    let knobsJson =
+        Array(knobs.map{ (name: String, rangeAndReferenceValue: ([Any],Any)) in
             [
                 "name"           : name,
                 "range"          : rangeAndReferenceValue.0,
                 "referenceValue" : rangeAndReferenceValue.1
             ]
         })
-    
-    let measuresJson = 
+
+    let measuresJson =
         Array(measures.map{ name in [ "name" : name ] })
 
     var intentJson: [String : Any] = [
@@ -112,7 +112,7 @@ extension IntentSpec {
     ]
 
     // If the current objective function value is not Double.nan, insert a property for it into the JSON object.
-    if let objectiveFunction = currentCostOrValue(),
+    if let objectiveFunction = currentCostOrValue(runtime: runtime),
        !objectiveFunction.isNaN {
         intentJson["objectiveFunction"] = objectiveFunction
     }
@@ -127,9 +127,9 @@ extension IntentSpec {
 
   /** If a model is loaded for this intent, compute the current measure window averages
       as an array in the same order as the array returned by measures(). */
-  func measureWindowAverages() -> [Double]? {
-    if let model = Runtime.models[name] {
-        guard let measuringDevice = Runtime.measuringDevices[name] else {
+  func measureWindowAverages(runtime: Runtime) -> [Double]? {
+    if let model = runtime.models[name] {
+        guard let measuringDevice = runtime.measuringDevices[name] else {
             Log.error("No measuring device registered for intent \(name).")
             fatalError()
         }
@@ -154,8 +154,8 @@ extension IntentSpec {
   }
 
   /** Objective function evaluated in the current measure window averages. */
-  func currentCostOrValue() -> Double? {
-    return measureWindowAverages().map({ costOrValue($0) })
+  func currentCostOrValue(runtime: Runtime) -> Double? {
+    return measureWindowAverages(runtime: runtime).map({ costOrValue($0) })
   }
 
 }

@@ -37,7 +37,7 @@ func extract<T : InitializableFromString>(type: T.Type, name: String, json: [Str
             }
             else {
                 if logErrors {
-                    Log.error("Failed to parse value '\(v)' for key '\(name)' of type '\(T.self)' from JSON: \(json).")  
+                    Log.error("Failed to parse value '\(v)' for key '\(name)' of type '\(T.self)' from JSON: \(json).")
                 }
                 return nil
             }
@@ -45,26 +45,26 @@ func extract<T : InitializableFromString>(type: T.Type, name: String, json: [Str
     }
     else {
         if logErrors {
-            Log.error("No key '\(name)' in JSON: \(json).")  
+            Log.error("No key '\(name)' in JSON: \(json).")
         }
         return nil
     }
 }
 
 /** Start the REST server in a low-priority background thread */
-fileprivate func startRestServer() -> (RestServer, InitializationParameters?) {
-    
+fileprivate func startRestServer(using runtime: Runtime) -> (RestServer, InitializationParameters?) {
+
     var server: RestServer? = nil
 
     // Start RestServer in a background thread
     DispatchQueue.global(qos: .utility).async {
-        server = FastRestServer(port: Runtime.restServerPort, address: Runtime.restServerAddress)
+        server = FastRestServer(port: runtime.restServerPort, address: runtime.restServerAddress, runtime: runtime)
         server!.start()
     }
 
-    waitUntilUp(endpoint: "alive", host: "127.0.0.1", port: Runtime.restServerPort, method: .get, description: "REST")
+    waitUntilUp(endpoint: "alive", host: "127.0.0.1", port: runtime.restServerPort, method: .get, description: "REST")
 
-    if Runtime.executeWithTestHarness {
+    if runtime.executeWithTestHarness {
 
         Log.info("Posting to TH/ready.")
 
@@ -95,8 +95,9 @@ internal func initializeRandomNumberGenerators() {
 }
 
 /* Defines an optimization scope. Replaces a loop in a pure Swift program. */
-public func optimize
+func optimize
     ( _ id: String
+    , _ runtime: Runtime
     , until shouldTerminate: @escaping @autoclosure () -> Bool = false
     , across windowSize: UInt32 = 20
     , samplingPolicy: SamplingPolicy = ProgressSamplingPolicy(period: 1)
@@ -111,18 +112,18 @@ public func optimize
     // by posting to brass-th/ready
     // FIXME: This code should be moved into the initalizer for
     //        the Runtime class, once it is made non-static.
-    let (restServer, initializationParameters) = startRestServer()
+    let (restServer, initializationParameters) = startRestServer(using: runtime)
 
     /** Loop body for a given number of iterations (or infinitely, if iterations == nil) */
     func loop(iterations: UInt64? = nil, _ body: (Void) -> Void) {
         if let i = iterations {
             var localIteration: UInt64 = 0
-            while localIteration < i && !shouldTerminate() && !Runtime.shouldTerminate {
+            while localIteration < i && !shouldTerminate() && !runtime.shouldTerminate {
                 body()
                 localIteration += 1
             }
         } else {
-            while !shouldTerminate() && !Runtime.shouldTerminate {
+            while !shouldTerminate() && !runtime.shouldTerminate {
                 body()
             }
         }
@@ -132,27 +133,27 @@ public func optimize
 
         Log.info("Profiling optimize scope \(id).")
 
-        Runtime.setIntent(intent)
+        runtime.setIntent(intent)
 
         // Initialize measuring device, that will update measures at every input
-        let measuringDevice = MeasuringDevice(ProgressSamplingPolicy(period: 1), windowSize, intent.measures)
-        Runtime.measuringDevices[id] = measuringDevice
+        let measuringDevice = MeasuringDevice(ProgressSamplingPolicy(period: 1), windowSize, intent.measures, runtime)
+        runtime.measuringDevices[id] = measuringDevice
 
         // Number of inputs to process when profiling a configuration
         let defaultProfileSize:         UInt64 = UInt64(1000)
         // File prefix of knob- and measure tables
-        let defaultProfileOutputPrefix: String = Runtime.application?.name ?? "fast"
-        
+        let defaultProfileOutputPrefix: String = runtime.application?.name ?? "fast"
+
         let profileSize         = initialize(type: UInt64.self, name: "profileSize",         from: key, or: defaultProfileSize)
-        let profileOutputPrefix = initialize(type: String.self, name: "profileOutputPrefix", from: key, or: defaultProfileOutputPrefix) 
-        
+        let profileOutputPrefix = initialize(type: String.self, name: "profileOutputPrefix", from: key, or: defaultProfileOutputPrefix)
+
         withOpenFile(atPath: profileOutputPrefix + ".knobtable") { (knobTableOutputStream: Foundation.OutputStream) in
             withOpenFile(atPath: profileOutputPrefix + ".measuretable") { (measureTableOutputStream: Foundation.OutputStream) in
 
                 let knobSpace = intent.knobSpace()
                 let knobNames = Array(knobSpace[0].settings.keys).sorted()
                 let measureNames = intent.measures
-                
+
                 func makeRow(id: Any, rest: [Any]) -> String {
                     return "\(id)\(rest.reduce( "", { l,r in "\(l),\(r)" }))\n"
                 }
@@ -167,8 +168,8 @@ public func optimize
 
                     let knobSettings = knobSpace[i]
                     Log.info("Start profiling of configuration: \(knobSettings.settings).")
-                    knobSettings.apply()
-                    if let streamingApplication = Runtime.application as? StreamApplication {
+                    knobSettings.apply(runtime: runtime)
+                    if let streamingApplication = runtime.application as? StreamApplication {
                         streamingApplication.initializeStream()
                     }
                     loop( iterations: profileSize
@@ -178,13 +179,13 @@ public func optimize
                     let knobValues = knobNames.map{ knobSettings.settings[$0]! }
                     let knobTableLine = makeRow(id: i, rest: knobValues)
                     knobTableOutputStream.write(knobTableLine, maxLength: knobTableLine.characters.count)
-                    
+
                     // Output profile entry as line in measure table
                     let measureValues = measureNames.map{ measuringDevice.stats[$0]!.totalAverage }
                     Log.debug("Profile for this configuration: \(zip(measureNames, measureValues).map{ "\($0): \($1)" }.joined(separator: ", ")).")
                     let measureTableLine = makeRow(id: i, rest: measureValues)
                     measureTableOutputStream.write(measureTableLine, maxLength: measureTableLine.characters.count)
-                    
+
                 }
 
             }
@@ -192,14 +193,14 @@ public func optimize
 
     }
 
-    
+
     func trace(intent: IntentSpec) {
 
         Log.info("Tracing optimize scope \(id).")
-        if let myApp = Runtime.application as? EmulateableApplication, let myArch = Runtime.architecture as? EmulateableArchitecture {
+        if let myApp = runtime.application as? EmulateableApplication, let myArch = runtime.architecture as? EmulateableArchitecture {
 
             // step 1: Emit SQL to insert application and architecture properties based on an intent specification.
-            let applicationAndArchictectureInsertion 
+            let applicationAndArchictectureInsertion
             = emitScriptForApplicationAndArchitectureInsertion(
                 application   : myApp
                 , warmupInputNum: 0
@@ -208,7 +209,7 @@ public func optimize
 
             // step 2.1: Emit SQL to insert application input stream
             let inputStreamName = myApp.name + "_inputStream" // TODO: must pass in input stream name
-            let appInputStreamInsertion 
+            let appInputStreamInsertion
             = emitScriptForApplicationInputStreamInsertion(applicationName: myApp.name, inputStreamName: inputStreamName)
 
             // step 2.2: Emit SQL to insert job log parameters (if any).
@@ -219,107 +220,107 @@ public func optimize
                 tapeNoise      : 0.00012345,
                 timeOutlier    : 18.5)
 
-            var insertionScript = 
+            var insertionScript =
             "PRAGMA foreign_keys = 'off'; BEGIN;"
             + "\n" + applicationAndArchictectureInsertion  // step 1
             + "\n" + appInputStreamInsertion               // step 2.1
             + "\n" + jobLogParamInsertion                  // step 2.2
-    
+
             // Initialize measuring device, that will update measures at every input
-            let measuringDevice = MeasuringDevice(ProgressSamplingPolicy(period: 1), windowSize, intent.measures)
+            let measuringDevice = MeasuringDevice(ProgressSamplingPolicy(period: 1), windowSize, intent.measures, runtime)
 
             // Number of inputs to process when profiling a configuration
             let defaultProfileSize: UInt64 = UInt64(1000)
-            let profileSize = initialize(type: UInt64.self, name: "profileSize", from: key, or: defaultProfileSize)           
+            let profileSize = initialize(type: UInt64.self, name: "profileSize", from: key, or: defaultProfileSize)
             let knobSpace = intent.knobSpace()
-            
-            // For application knobs that appear in the intent knob list, 
+
+            // For application knobs that appear in the intent knob list,
             // build the corresponding application reference configuration settings.
             // For example, for incrementer, appRefConfig = ["threshold": 10000000, "step": 1]
             var appRefConfig = [String: Any]()
             let appKnobs = myApp.getStatus()!["applicationKnobs"] as! [String : Any]
-            for (appKnobName, _) in appKnobs {            
+            for (appKnobName, _) in appKnobs {
                 for (knobName, rangeReferencePair) in intent.knobs {
                     if (appKnobName == knobName) {
                         appRefConfig[knobName] = rangeReferencePair.1
                     }
                 }
             }
-            
+
             // Filter out knobSpace to keep only those knobSpace[i] with settings containing appRefConfig.
             // knobAppRefSpace[i].settings = ["utilizedCores": k, "threshold": 10000000, "step": 1], for some k.
             let knobAppRefSpace = knobSpace.filter{$0.contains(appRefConfig)}
-            
+
             // For system knobs that appear in the intent knob list,
             // build the correspnding system reference configuration settings.
             // For example, for incrementer, sysRefConfig = ["utilizedCores": 4]
             //
             var sysRefConfig = [String: Any]()
             let sysKnobs =  myArch.getStatus()!["systemConfigurationKnobs"] as! [String : Any]
-            for (sysKnobName, _) in sysKnobs {            
+            for (sysKnobName, _) in sysKnobs {
                 for (knobName, rangeReferencePair) in intent.knobs {
                     if (sysKnobName == knobName) {
                         sysRefConfig[knobName] = rangeReferencePair.1
                     }
                 }
             }
-            
+
             // Filter out knobSpace to keep only those knobSpace[i] with settings containing sysRefConfig.
             // knobSysRefSpace[i].settings = ["utilizedCores": 4, "threshold": t, "step": s] for some t and some s.
             let knobSysRefSpace = knobSpace.filter{$0.contains(sysRefConfig)}
-            
+
             // Compute knobRefSpace = knobAppRefSpace union knobSysRefSpace
             var knobRefSpace = knobAppRefSpace
             for knobSettings in knobSysRefSpace {
                 if !knobAppRefSpace.contains(knobSettings) { // no duplication allowed
                     knobRefSpace.append(knobSettings)
                 }
-            }                
+            }
 
             // loop to trace only those configurations in knobRefSpace:
             for i in 0 ..< knobRefSpace.count {
 
                 let knobSettings = knobRefSpace[i]
                 Log.info("Start tracing of configuration: \(knobSettings.settings).")
-                knobSettings.apply()
+                knobSettings.apply(runtime: runtime)
 
-                // step 3.1: Emit SQL to insert current application configuration and 
+                // step 3.1: Emit SQL to insert current application configuration and
                 // return the name of the current application configuration to be used in subsequent steps.
                 let (currentAppConfigInsertion, currentAppConfigName)
                 = emitScriptForCurrentApplicationConfigurationInsertion(application: myApp)
 
-                // step 3.2: Emit SQL to relate the application input stream in step 2.1 
+                // step 3.2: Emit SQL to relate the application input stream in step 2.1
                 // and the application configuration in step 3.1.
-                let appInputStream_appConfigInsertion 
+                let appInputStream_appConfigInsertion
                 = emitScriptForApplicationInputStream_ApplicationConfigurationInsertion(
                       applicationName: myApp.name
                     , inputStreamName: inputStreamName
                     , appConfigName  : currentAppConfigName)
 
-                // step 4: Emit SQL to insert current system configuration and 
+                // step 4: Emit SQL to insert current system configuration and
                 // return the name of the current system configuration to be used in subsequent steps.
-                let (currentSysConfigInsertion, currentSysConfigName) 
+                let (currentSysConfigInsertion, currentSysConfigName)
                 = emitScriptForCurrentSystemConfigurationInsertion(architecture: myArch)
 
-                insertionScript += 
+                insertionScript +=
                   "\n" + currentAppConfigInsertion             // step 3.1
                 + "\n" + appInputStream_appConfigInsertion     // step 3.2
                 + "\n" + currentSysConfigInsertion             // step 4
 
-                // step 5: For each input unit in the input stream, run the CP with the given input stream, 
-                // the current application configuration and current system configuration, 
+                // step 5: For each input unit in the input stream, run the CP with the given input stream,
+                // the current application configuration and current system configuration,
                 // and emit the SQL script to insert the measured delta time, delta energy.
                 var inputNum = 0
-                var lastTime = Runtime.getMeasure("time")!
-                var lastEnergy = Runtime.getMeasure("energy")!
+                var lastTime = runtime.getMeasure("time")!
+                var lastEnergy = runtime.getMeasure("energy")!
                 var deltaTimeDeltaEnergyInsertion = ""
                 loop( iterations: profileSize - 1) {
-                // let numberOfProcessedInputs   = Runtime.getMeasure("iteration")   // NOTE: no such measure
+                // let numberOfProcessedInputs   = runtime.getMeasure("iteration")   // NOTE: no such measure
                     inputNum += 1
                     executeAndReportProgress(measuringDevice, routine)
-                 // let runningTime               = Runtime.getMeasure("runningTime") // NOTE: no such measure
-                    let time = Runtime.getMeasure("time")!
-                    let energy = Runtime.getMeasure("energy")!
+                 // let runningTime               = runtime.getMeasure("runningTime") // NOTE: no such measure
+                    let time = runtime.getMeasure("time")!
+                    let energy = runtime.getMeasure("energy")!
                     let deltaTime = time - lastTime
                     let deltaEnergy = energy - lastEnergy
                     deltaTimeDeltaEnergyInsertion += "\n" +
@@ -330,22 +331,22 @@ public func optimize
                             sysConfigName  : currentSysConfigName,
                             inputNumber    : inputNum,
                             deltaTime      : deltaTime,
-                            deltaEnergy    : deltaEnergy           
+                            deltaEnergy    : deltaEnergy
                         )
                     lastTime = time
                     lastEnergy = energy
                 }
 
-                insertionScript += 
+                insertionScript +=
                 "\n" + deltaTimeDeltaEnergyInsertion         // step 5
             }
 
             insertionScript += "\n COMMIT; PRAGMA foreign_keys = 'on';"
 
             // Write SQL script to file:
-            let defaultProfileOutputPrefix: String = Runtime.application?.name ?? "fast"            
-            let profileOutputPrefix = initialize(type: String.self, name: "profileOutputPrefix", from: key, or: defaultProfileOutputPrefix) 
-            withOpenFile(atPath: profileOutputPrefix + ".trace.sql") { 
+            let defaultProfileOutputPrefix: String = runtime.application?.name ?? "fast"
+            let profileOutputPrefix = initialize(type: String.self, name: "profileOutputPrefix", from: key, or: defaultProfileOutputPrefix)
+            withOpenFile(atPath: profileOutputPrefix + ".trace.sql") {
                 (sqlScriptOutputStream: Foundation.OutputStream) in
                     sqlScriptOutputStream.write(insertionScript, maxLength: insertionScript.characters.count)
             }
@@ -359,20 +360,20 @@ public func optimize
         Log.info("Executing optimize scope \(id).")
 
         // Initialize the controller with the knob-to-mesure model, intent and window size
-        Runtime.initializeController(model, intent, windowSize)
-        
-        if let controllerModel = Runtime.controller.model {
-            // Compute initial schedule that meets the active intent, by using the measure values of 
-            // the reference configuration as an estimate of the first measurements.            
+        runtime.initializeController(model, intent, windowSize)
+
+        if let controllerModel = runtime.controller.model {
+            // Compute initial schedule that meets the active intent, by using the measure values of
+            // the reference configuration as an estimate of the first measurements.
             let currentConfiguration = controllerModel.getInitialConfiguration()!
             var currentKnobSettings = currentConfiguration.knobSettings
             let measureValuesOfReferenceConfiguration = Dictionary(Array(zip(currentConfiguration.measureNames, currentConfiguration.measureValues)))
             Log.debug("Computing schedule from model window averages: \(measureValuesOfReferenceConfiguration).")
-            var schedule: Schedule = Runtime.controller.getSchedule(intent, measureValuesOfReferenceConfiguration)
+            var schedule: Schedule = runtime.controller.getSchedule(intent, measureValuesOfReferenceConfiguration)
             // Initialize measures
             for measure in intent.measures {
                 if let measureValue = measureValuesOfReferenceConfiguration[measure] {
-                    Runtime.measure(measure, measureValue)
+                    runtime.measure(measure, measureValue)
                 }
                 else {
                     Log.error("Invalid model: missing values for measure '\(measure)'.")
@@ -382,62 +383,62 @@ public func optimize
             var iteration: UInt32 = 0 // iteration counter // FIXME what if the counter overflows
             var startTime = ProcessInfo.processInfo.systemUptime // used for runningTime counter
             var runningTime = 0.0 // counts only time spent inside the loop body
-            Runtime.measure("iteration", Double(iteration))
-            Runtime.measure("runningTime", runningTime) // running time in seconds
-            Runtime.measure("currentConfiguration", Double(currentKnobSettings.kid)) // The id of the configuration given in the knobtable
-            Runtime.measure("windowSize", Double(windowSize))
+            runtime.measure("iteration", Double(iteration))
+            runtime.measure("runningTime", runningTime) // running time in seconds
+            runtime.measure("currentConfiguration", Double(currentKnobSettings.kid)) // The id of the configuration given in the knobtable
+            runtime.measure("windowSize", Double(windowSize))
             // Initialize measuring device, that will update measures based on the samplingPolicy
-            let measuringDevice = MeasuringDevice(samplingPolicy, windowSize, intent.measures)
-            Runtime.measuringDevices[id] = measuringDevice
+            let measuringDevice = MeasuringDevice(samplingPolicy, windowSize, intent.measures, runtime)
+            runtime.measuringDevices[id] = measuringDevice
             // Start the input processing loop
             loop(iterations: numberOfInputsToProcess) {
                 startTime = ProcessInfo.processInfo.systemUptime // reset, in case something paused execution between iterations
                 if iteration > 0 && iteration % windowSize == 0 {
                     Log.debug("Computing schedule from window averages: \(measuringDevice.windowAverages()).")
-                    schedule = Runtime.controller.getSchedule(intent, measuringDevice.windowAverages())
+                    schedule = runtime.controller.getSchedule(intent, measuringDevice.windowAverages())
                 }
-                if Runtime.runtimeKnobs.applicationExecutionMode.get() == ApplicationExecutionMode.Adaptive {
-                    currentKnobSettings = schedule[iteration % windowSize]                    
-                    Runtime.measure("currentConfiguration", Double(currentKnobSettings.kid)) // The id of the configuration given in the knobtable
+                if runtime.runtimeKnobs.applicationExecutionMode.get() == ApplicationExecutionMode.Adaptive {
+                    currentKnobSettings = schedule[iteration % windowSize]
+                    runtime.measure("currentConfiguration", Double(currentKnobSettings.kid)) // The id of the configuration given in the knobtable
                     // FIXME This should only apply when the schedule actually needs to change knobs
-                    currentKnobSettings.apply()
+                    currentKnobSettings.apply(runtime: runtime)
                 }
                 executeAndReportProgress(measuringDevice, routine)
                 runningTime += ProcessInfo.processInfo.systemUptime - startTime
-                Runtime.measure("iteration", Double(iteration))
-                Runtime.measure("runningTime", runningTime) // running time in seconds
-                Runtime.measure("windowSize", Double(windowSize))
+                runtime.measure("iteration", Double(iteration))
+                runtime.measure("runningTime", runningTime) // running time in seconds
+                runtime.measure("windowSize", Double(windowSize))
                 // FIXME maybe stalling in scripted mode should not be done inside of optimize but somewhere else in an independent and better way
-                Runtime.reportProgress()
-                
-                let statusDictionary = Runtime.statusDictionary()
+                runtime.reportProgress()
+
+                let statusDictionary = runtime.statusDictionary()
                 Log.debug("Current status: \(convertToJsonSR4783(from: statusDictionary ?? [:])).")
-                if Runtime.executeWithTestHarness {
+                if runtime.executeWithTestHarness {
                     // FIXME handle error from request
                     let _ = RestClient.sendRequest(to: "status", withBody: statusDictionary)
                 }
                 iteration += 1
-            } 
+            }
         }
         else {
             Log.error("Attempt to execute using controller with undefined model.")
             fatalError()
-        } 
+        }
     }
 
-    Log.info("Application executing in \(Runtime.runtimeKnobs.applicationExecutionMode.get()) mode.")
+    Log.info("Application executing in \(runtime.runtimeKnobs.applicationExecutionMode.get()) mode.")
 
-    // Run the optimize loop, either based on initializaiton parameters 
+    // Run the optimize loop, either based on initializaiton parameters
     // from the Test Harness, or on data read from files.
 
-    if Runtime.executeWithTestHarness {
+    if runtime.executeWithTestHarness {
 
         if let ips = initializationParameters {
 
             // FIXME Read a model corresponding to the initialized application,
             //       intent, and input stream.
-            let model = Runtime.readModelFromFile(id)!
-            
+            let model = runtime.readModelFromFile(id)!
+
             // FIXME Use initialization parameters to initialize the Runtime
 
             Log.info("Posting to TH/initialized.")
@@ -447,7 +448,7 @@ public func optimize
             run(model: model, intent: ips.initialConditions.missionIntent, numberOfInputsToProcess: ips.numberOfInputsToProcess)
 
             // FIXME handle error from request
-            let _ = RestClient.sendRequest(to: "done", withBody: Runtime.statusDictionary())
+            let _ = RestClient.sendRequest(to: "done", withBody: runtime.statusDictionary())
 
         }
         else {
@@ -457,21 +458,21 @@ public func optimize
 
     }
     else {
-        if let intent = Runtime.readIntentFromFile(id) {
+        if let intent = runtime.readIntentFromFile(id) {
 
-            switch Runtime.runtimeKnobs.applicationExecutionMode.get() {
-                
+            switch runtime.runtimeKnobs.applicationExecutionMode.get() {
+
                 case .ExhaustiveProfiling:
 
                     profile(intent: intent)
 
                 case .EmulatorTracing:
- 
+
                     trace(intent: intent)
-                
+
                 default: // .Adaptive and .NonAdaptive
 
-                    if let model = Runtime.readModelFromFile(id) {
+                    if let model = runtime.readModelFromFile(id) {
 
                         Log.info("Model loaded for optimize scope \(id).")
 
@@ -481,13 +482,13 @@ public func optimize
 
                     } else {
 
-                        Log.error("No model loaded for optimize scope '\(id)'. Cannot execute application in application execution mode \(Runtime.runtimeKnobs.applicationExecutionMode.get()).")
+                        Log.error("No model loaded for optimize scope '\(id)'. Cannot execute application in application execution mode \(runtime.runtimeKnobs.applicationExecutionMode.get()).")
                         fatalError()
 
-                    } 
+                    }
 
             }
-   
+
         } else {
             Log.warning("No intent loaded for optimize scope '\(id)'. Proceeding without adaptation.")
             loop(routine)

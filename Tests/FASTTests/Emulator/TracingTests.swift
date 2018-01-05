@@ -18,9 +18,10 @@ import LoggerAPI
 //---------------------------------------
 
 
-class TracingTests: XCTestCase {
+class TracingTests: FASTTestCase {
 
     override func setUp() {
+        super.setUp()
         initializeRandomNumberGenerators()
         recreateTestDatabase()
     }
@@ -33,9 +34,9 @@ class TracingTests: XCTestCase {
         let name = "incrementer"
         var subModules = [String : TextApiModule]()
 
-        // Knobs 
-        let threshold = Knob("threshold", 10000000)
-        let step = Knob("step", 1)
+        // Knobs
+        let threshold: Knob<Int>
+        let step: Knob<Int>
 
         /** Incrementer Application Knobs */
         class IncrementerApplicationKnobs: TextApiModule {
@@ -48,9 +49,11 @@ class TracingTests: XCTestCase {
         var applicationKnobs = IncrementerApplicationKnobs()
 
         /** Initialize the application */
-        required init() {
-            Runtime.registerApplication(application: self)
-            Runtime.initializeArchitecture(name: "XilinxZcu")
+        required init(runtime: Runtime) {
+            threshold = Knob("threshold", 10000000)
+            step = Knob("step", 1)
+            runtime.registerApplication(application: self)
+            runtime.initializeArchitecture(name: "XilinxZcu")
             self.addSubModule(newModule: applicationKnobs)
             self.applicationKnobs.addSubModule(newModule: threshold)
             self.applicationKnobs.addSubModule(newModule: step)
@@ -68,9 +71,9 @@ class TracingTests: XCTestCase {
         if !FileManager.default.fileExists(atPath: dbFile) {
             FileManager.default.createFile(atPath: dbFile, contents: nil)
         }
-        
+
         if let loadSchemaQuery = readFile(withName: "Database", ofType: "sql", fromBundle: Bundle(for: type(of: self))),
-           let db = Database(databaseFile: dbFile) {            
+           let db = Database(databaseFile: dbFile) {
             do {
                 try db.execute(script: loadSchemaQuery)
                 db.database.close()
@@ -89,23 +92,23 @@ class TracingTests: XCTestCase {
         }
     }
 
-    let incrementerApplication = Incrementer()
-    let xilinxArchitecture = XilinxZcu()
-
     func testEmitScriptForApplicationTracing() {
-        let intentKnobs = 
+        let incrementerApplication = Incrementer(runtime: runtime)
+        let xilinxArchitecture = XilinxZcu(runtime: runtime)
+
+        let intentKnobs =
         ["threshold": ([2000000,4000000,6000000,8000000,10000000], 10000000),
          "step": ([1,2,3,4], 1),
          "utilizedCores": ([1,2,3,4], 4),
         //  "utilizedCoreFrequency": ([300,400,600,1200], 1200)
         ] as [String : ([Any], Any)]
-        let appKnobsInsertion = 
+        let appKnobsInsertion =
         emitScriptForApplicationAndKnobsInsertion(
-            application: incrementerApplication, 
+            application: incrementerApplication,
             warmupInputNum: 0,
             intentKnobList: intentKnobs
         )
-        let (currentAppConfigInsertion, currentAppConfigName) = 
+        let (currentAppConfigInsertion, currentAppConfigName) =
         emitScriptForCurrentApplicationConfigurationInsertion(
             application: incrementerApplication
         )
@@ -118,7 +121,7 @@ class TracingTests: XCTestCase {
         emitScriptForApplicationInputStream_ApplicationConfigurationInsertion(
             applicationName: incrementerApplication.name,
             inputStreamName: "incrementer input stream 1",
-            appConfigName  : currentAppConfigName          
+            appConfigName  : currentAppConfigName
         )
         let jobLogParamInsertion =
         emitScriptForJobLogParameterInsertion(
@@ -130,20 +133,20 @@ class TracingTests: XCTestCase {
 
         let sysKnobInsertion =
         emitScriptForSystemAndKnobsInsertion(
-            architecture:   xilinxArchitecture, 
+            architecture:   xilinxArchitecture,
             intentKnobList: intentKnobs
         )
-        let (currentSysConfigInsertion, currentSysConfigName) = 
+        let (currentSysConfigInsertion, currentSysConfigName) =
         emitScriptForCurrentSystemConfigurationInsertion(architecture: xilinxArchitecture)
 
         let tracingScript =
             "BEGIN; "
             + appKnobsInsertion
-            + currentAppConfigInsertion 
+            + currentAppConfigInsertion
             + jobLogParamInsertion
-            + appInputStreamInsertion 
-            + sysKnobInsertion 
-            + currentSysConfigInsertion 
+            + appInputStreamInsertion
+            + sysKnobInsertion
+            + currentSysConfigInsertion
             + appInputStream_appConfigInsertion
             + "COMMIT;"
             + "BEGIN;"
@@ -154,7 +157,7 @@ class TracingTests: XCTestCase {
                 sysConfigName  : currentSysConfigName,
                 inputNumber    : 1,
                 deltaTime      : 12345,
-                deltaEnergy    : 67890            
+                deltaEnergy    : 67890
             )
             + emitScriptForDeltaTimeDeltaEnergyInsertion(
                 applicationName: incrementerApplication.name,
@@ -163,7 +166,7 @@ class TracingTests: XCTestCase {
                 sysConfigName  : currentSysConfigName,
                 inputNumber    : 2,
                 deltaTime      : 54321,
-                deltaEnergy    : 98760            
+                deltaEnergy    : 98760
             )
             + "COMMIT;"
 
@@ -177,8 +180,8 @@ class TracingTests: XCTestCase {
                 let errorMessage = "Unable to execute script >>> \(tracingScript)  <<<: \(error)."
                 Log.error(errorMessage)
                 fatalError(errorMessage)
-            }            
-        }       
+            }
+        }
 
     }
 

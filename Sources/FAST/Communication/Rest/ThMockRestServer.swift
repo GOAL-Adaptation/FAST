@@ -34,7 +34,7 @@ class ThMockRestServer : RestServer {
 
     /* Dictionary representations of canned messages */
 
-    static let intent = 
+    static let intent =
         "knobs       k1 = [1,2,3,4,5]   reference 5     \n" +
         "            k2 = [1,2,3,4]     reference 4     \n" +
         "            k3 = [1.1,2.2,3.3] reference 3.3   \n" +
@@ -43,7 +43,7 @@ class ThMockRestServer : RestServer {
         "intent      intent max(m1) such that m2 == 0.0 \n" +
         "trainingSet []"
 
-    static let perturbation: [String : Any] = 
+    static let perturbation: [String : Any] =
         [ "missionIntent"          : intent
         , "availableCores"         : 3
         , "availableCoreFrequency" : 2000000
@@ -51,9 +51,9 @@ class ThMockRestServer : RestServer {
         , "sceneObfuscation"       : 0.0
         ]
 
-    static let initializationParameters: [String : Any] = 
+    static let initializationParameters: [String : Any] =
         [ "architecture"            : "ArmBigLittle"
-        , "application"             : 
+        , "application"             :
             [ "applicationName" : "incrementer"
             , "InputFileName"   : ""
             ]
@@ -66,9 +66,9 @@ class ThMockRestServer : RestServer {
 
     /* Route configuration */
 
-    @discardableResult override init(port: UInt16, address: String) {
-  
-        super.init(port: port, address: address)
+    @discardableResult override init(port: UInt16, address: String, runtime: Runtime) {
+
+        super.init(port: port, address: address, runtime: runtime)
 
         addSerialRoute(method: .post, uri: "/ready", handler: {
             request, response in
@@ -103,8 +103,7 @@ class ThMockRestServer : RestServer {
         )
 
         server.addRoutes(self.routes)
-        
+
     }
 
 }
-

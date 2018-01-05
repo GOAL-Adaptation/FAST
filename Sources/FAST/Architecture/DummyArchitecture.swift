@@ -21,8 +21,8 @@ class DummyArchitecture: ClockAndEnergyArchitecture {
     let energyMonitor: EnergyMonitor = DummyEnergyMonitor()
 
     // Initialization registers the system measures
-    init() {
-        self.registerSystemMeasures()
+    init(runtime: Runtime) {
+        self.registerSystemMeasures(runtime: runtime)
     }
 }
 
