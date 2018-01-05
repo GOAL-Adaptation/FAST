@@ -39,6 +39,7 @@ endif
 
 ifeq ($(UNAME), Darwin)
 SPM_FLAGS := $(SPM_FLAGS_ALL) \
+	-Xlinker -L/usr/local/lib \
   -Xlinker -L/usr/local/opt/lapack/lib \
   -Xlinker -L/usr/local/opt/openblas/lib \
   -Xlinker -L/usr/local/opt/sqlite/lib \
