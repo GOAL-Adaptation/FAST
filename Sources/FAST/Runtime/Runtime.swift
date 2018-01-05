@@ -351,6 +351,18 @@ public class Runtime {
             apiModule.addSubModule(newModule: application)
         }
         apiModule.addSubModule(newModule: self.runtimeKnobs)
+
+        recursivelyFindAndRegisterKnobs(apiModule)
+    }
+
+    private func recursivelyFindAndRegisterKnobs(_ module: TextApiModule) {
+      if let knob = module as? IKnob {
+        knobSetters[knob.name] = knob.setter
+      }
+
+      for (_, submodule) in module.subModules {
+        recursivelyFindAndRegisterKnobs(submodule)
+      }
     }
 //------------------- end of very new stuff
 

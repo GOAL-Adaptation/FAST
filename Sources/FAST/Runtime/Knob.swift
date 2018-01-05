@@ -2,8 +2,13 @@
 // Runtime State //
 ///////////////////
 
+protocol IKnob {
+    var name: String { get }
+    func setter(_ newValue: Any) -> Void
+}
+
 /* Wrapper for a value that can be read freely, but can only be changed by the runtime. */
-public class Knob<T> {
+public class Knob<T> : IKnob {
     public typealias Action = (T, T) -> Void
 
     var preSetter:  Action

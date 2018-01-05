@@ -54,12 +54,6 @@ public func optimize(
     // initialize runtime
     runtime = providedRuntime ?? Runtime.newRuntime()
 
-    // adding application knobs to runtime
-    for knob in knobs {
-        guard let knob = knob as? IKnob else { fatalError("Only knobs are allowed to be passed in.") }
-        runtime.knobSetters[knob.name] = knob.setter
-    }
-
     // initialize application and add it to runtime
     let app = Runnable(name: id, knobs: knobs, streamInit: streamInit)
     runtime.registerApplication(application: app)
@@ -76,9 +70,3 @@ public func optimize(
     // start the actual optimization
     optimize(app.name, runtime, until: shouldTerminate, across: windowSize, samplingPolicy: samplingPolicy, routine)
 }
-
-protocol IKnob {
-    var name: String { get }
-    func setter(_ newValue: Any) -> Void
-}
-extension Knob : IKnob {}
