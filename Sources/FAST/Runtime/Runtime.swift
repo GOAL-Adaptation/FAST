@@ -92,7 +92,7 @@ public class Runtime {
      * name is <APPLICATION_PATH>/<ID>.intent, where <APPLICATION_PATH> is the
      * location of the application and <ID> is the value of the id parameter.
      */
-    public func readIntentFromFile(_ id: String) -> IntentSpec? {
+    func readIntentFromFile(_ id: String) -> IntentSpec? {
         if let intentFileContent = readFile(withName: id, ofType: "intent") {
             if let intent = intentCompiler.compileIntentSpec(source: intentFileContent) {
                 return intent
@@ -124,7 +124,7 @@ public class Runtime {
      * <APPLICATION_PATH>/<ID>.measuretable where <APPLICATION_PATH> is the
      * location of the application and <ID> is the value of the id parameter.
      */
-    public func readModelFromFile(_ id: String, _ initialConfigurationIndex: Int = 0) -> Model? {
+    func readModelFromFile(_ id: String, _ initialConfigurationIndex: Int = 0) -> Model? {
         if let knobCSV = readFile(withName: id, ofType: "knobtable") {
             if let measureCSV = readFile(withName: id, ofType: "measuretable") {
                 return Model(knobCSV, measureCSV, initialConfigurationIndex)
@@ -154,7 +154,7 @@ public class Runtime {
         exit(0)
     }
 
-    public func establishCommuncationChannel(port: Int = 1337) {
+    func establishCommuncationChannel(port: Int = 1337) {
 
         communicationChannel = TcpSocketServer(port: port, runtime: self)
         communicationChannel!.run(MessageHandler(runtime: self))
@@ -312,7 +312,7 @@ public class Runtime {
     }
 
     // architecture initialization, right now it comes from the application, this needs to be thought through
-    public func initializeArchitecture(name architectureName: String) {
+    func initializeArchitecture(name architectureName: String) {
         switch architectureName {
             case "ArmBigLittle":
                 self.architecture = ArmBigLittle(runtime: self)
@@ -334,7 +334,7 @@ public class Runtime {
     }
 
     // application initialization
-    public func registerApplication(application: Application) {
+    func registerApplication(application: Application) {
 
         self.application = application
 
@@ -355,7 +355,7 @@ public class Runtime {
 //------------------- end of very new stuff
 
     /** Intialize intent preserving controller with the given model, intent and window. */
-    public func initializeController(_ model: Model, _ intent: IntentSpec, _ window: UInt32 = 20) {
+    func initializeController(_ model: Model, _ intent: IntentSpec, _ window: UInt32 = 20) {
         synchronized(controllerLock) {
             if let c = IntentPreservingController(model, intent, window) {
                 setIntent(intent)

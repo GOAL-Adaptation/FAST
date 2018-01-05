@@ -42,7 +42,7 @@ fileprivate var runtime = Runtime.newRuntime()
 public func optimize(
     _ id: String,
     _ knobs: [TextApiModule],
-    usingRuntime providedRuntime: Runtime? = nil, //TODO: this needs to conform to LSP
+    usingRuntime providedRuntime: Runtime? = nil,
     architecture: String = "XilinxZcu",
     streamInit: (() -> Void)? = nil,
     establishCommuncationChannel: Bool = true,
@@ -52,8 +52,7 @@ public func optimize(
     _ routine: @escaping (Void) -> Void)
 {
     // initialize runtime
-    runtime = providedRuntime ?? Runtime.newRuntime() //TODO: this will be fresh initialized here instead of using Runtime singleton object
-    // runtime.reset()
+    runtime = providedRuntime ?? Runtime.newRuntime()
 
     // adding application knobs to runtime
     for knob in knobs {
