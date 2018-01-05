@@ -70,6 +70,9 @@ public func optimize(
         runtime.establishCommuncationChannel()
     }
 
+    // run stream init if needed
+    app.initializeStream()
+
     // start the actual optimization
     optimize(app.name, runtime, until: shouldTerminate, across: windowSize, samplingPolicy: samplingPolicy, routine)
 }
