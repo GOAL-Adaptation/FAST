@@ -388,8 +388,10 @@ public class Runtime {
         if let model = controller.model {
             // FIXME Check that the model and updated intent are consistent (that measure and knob sets coincide)
             initializeController(model, spec, controller.window)
-        }
-        else {
+        } else if let model = readModelFromFile(spec.name) {
+            Log.debug("Current controller doesn't contain a model, so we read the model from file again!")
+            initializeController(model, spec, controller.window)
+        } else {
             Log.error("Attempt to reinitialize controller based on a controller with an undefined model.")
             fatalError()
         }
