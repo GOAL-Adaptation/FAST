@@ -1,4 +1,5 @@
 import Foundation
+import Dispatch
 
 /** Sample once per N seconds, where N is the samplingPeriod passed to init(). */
 public class TimingSamplingPolicy : SamplingPolicy {
