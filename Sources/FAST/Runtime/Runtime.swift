@@ -203,6 +203,7 @@ public class Runtime {
                     if let objectiveFunction = intentSpec.currentCostOrValue(runtime: self) {
                         components["objectiveFunction"] = objectiveFunction
                     }
+                    components["constraintGoal"] = intentSpec.constraint
                     return ( intentName, toArrayOfPairDicts(components) )
                 })
 
