@@ -82,21 +82,23 @@ execute:              export proteus_client_rest_serverAddress                :=
 execute:              export proteus_client_rest_serverPort                   := 8080
 execute:              export proteus_emulator_database_db                     := /Users/adam/project/FAST/Sources/ExampleIncrementer/incrementer.db
 execute:              export proteus_emulator_database_readingMode            := Statistics
+
 execute:              export proteus_armBigLittle_policy                      := Simple
 execute:              export proteus_armBigLittle_actuationPolicy             := Actuate
 execute:              export proteus_armBigLittle_availableBigCores           := 4
 execute:              export proteus_armBigLittle_availableLittleCores        := 4
-execute:              export proteus_armBigLittle_maximalBigCoreFrequency     := 2000000
-execute:              export proteus_armBigLittle_maximalLittleCoreFrequency  := 1400000
+execute:              export proteus_armBigLittle_maximalBigCoreFrequency     := 2000
+execute:              export proteus_armBigLittle_maximalLittleCoreFrequency  := 1400
 execute:              export proteus_armBigLittle_utilizedBigCores            := 4
 execute:              export proteus_armBigLittle_utilizedLittleCores         := 0
-execute:              export proteus_xilinxZcu_maximalCoreFrequency           := 1200000
-execute:              export proteus_xilinxZcu_utilizedCores                  := 4
-execute:              export proteus_xilinxZcu_utilizedCoreFrequency          := 1200000
 
 execute:              export proteus_xilinxZcu_policy                         := Simple
 execute:              export proteus_xilinxZcu_actuationPolicy                := NoActuation
 execute:              export proteus_xilinxZcu_availableCores                 := 4
+execute:              export proteus_xilinxZcu_maximalCoreFrequency           := 1200
+execute:              export proteus_xilinxZcu_utilizedCores                  := 4
+execute:              export proteus_xilinxZcu_utilizedCoreFrequency          := 1200
+
 execute: copy-resources-build
 	.build/debug/${APPNAME}
 
