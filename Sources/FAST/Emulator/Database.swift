@@ -160,7 +160,7 @@ public class Database: TextApiModule {
       "WHERE appCfgId NOT IN (" +
       " SELECT appCfgId FROM AllAppCfgIdView " +
       " WHERE appCfgId NOT IN ("
-    var appKnobs = application.getStatus()!["applicationKnobs"] as! [String : Any]
+    var appKnobs = application.subModules["applicationKnobs"]!.getStatus()!
     if let (firstKnobName, firstKnobValueAny) = appKnobs.first,
        let firstKnobValueDict = firstKnobValueAny as? [String : Any],
        let firstKnobValue = firstKnobValueDict["value"] {
@@ -229,7 +229,7 @@ func getCurrentConfigurationId(architecture: Architecture) -> Int {
   "WHERE sysCfgId NOT IN (" +
   "SELECT sysCfgId FROM AllSysCfgIdView " +
   " WHERE sysCfgId NOT IN (" 
-    var sysKnobs = architecture.getStatus()!["systemConfigurationKnobs"] as! [String : Any]
+    var sysKnobs = architecture.subModules["systemConfigurationKnobs"]!.getStatus()!
     if let (firstKnobName, firstKnobValueAny) = sysKnobs.first,
        let firstKnobValueDict = firstKnobValueAny as? [String : Any],
        let firstKnobValue = firstKnobValueDict["value"] {
