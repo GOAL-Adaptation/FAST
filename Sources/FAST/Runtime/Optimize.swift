@@ -11,7 +11,6 @@
 import Foundation
 import Dispatch
 import LoggerAPI
-import HeliumLogger
 import FASTController
 
 //---------------------------------------
@@ -102,9 +101,6 @@ func optimize
     , across windowSize: UInt32 = 20
     , samplingPolicy: SamplingPolicy = ProgressSamplingPolicy(period: 1)
     , _ routine: @escaping (Void) -> Void ) {
-
-    let logLevel = initialize(type: LoggerMessageType.self, name: "logLevel", from: key, or: .verbose)
-    HeliumLogger.use(logLevel)
 
     initializeRandomNumberGenerators()
 

@@ -1,3 +1,6 @@
+import LoggerAPI
+import HeliumLogger
+
 class Runnable: Application, EmulateableApplication, StreamApplication {
     class ApplicationKnobs: TextApiModule {
         let name = "applicationKnobs"
@@ -33,7 +36,7 @@ class Runnable: Application, EmulateableApplication, StreamApplication {
     }
 }
 
-fileprivate var runtime = Runtime.newRuntime()
+fileprivate var runtime: Runtime!
 
 @discardableResult public func measure(_ name: String, _ value: Double) -> Double {
     return runtime.measure(name, value)
@@ -51,6 +54,9 @@ public func optimize(
     samplingPolicy: SamplingPolicy = ProgressSamplingPolicy(period: 1),
     _ routine: @escaping (Void) -> Void)
 {
+    let logLevel = initialize(type: LoggerMessageType.self, name: "logLevel", from: ["proteus","runtime"], or: .verbose)
+    HeliumLogger.use(logLevel)
+
     // initialize runtime
     runtime = providedRuntime ?? Runtime.newRuntime()
 
