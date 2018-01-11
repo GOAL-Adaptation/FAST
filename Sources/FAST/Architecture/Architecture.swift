@@ -144,7 +144,13 @@ extension ClockAndEnergyArchitecture {
   var systemMeasures: Array<String> { return ["time", "energy", "powerConsumption"] }
 
   // Register System Measures
-  func registerSystemMeasures(runtime: Runtime) -> Void {
+  func registerSystemMeasures(runtime: Runtime) {
+    if runtime.isSystemMeasuresRegistered {
+      Log.verbose("System measures have been registered.")
+      return
+    }
+    runtime.isSystemMeasuresRegistered = true
+
     DispatchQueue.global(qos: .utility).async {
       var lastEnergy = Double(self.energyMonitor.readEnergy())
       var lastTime = self.clockMonitor.readClock()
@@ -165,7 +171,6 @@ extension ClockAndEnergyArchitecture {
         usleep(1000) // Register system measures every millisecond
       }
     }
-    Log.verbose("Started registering system measures for architecure \(name).")
   }
 }
 

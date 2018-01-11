@@ -15,7 +15,6 @@
 import Foundation
 import Dispatch
 import Venice
-import HeliumLogger
 import LoggerAPI
 import CSwiftV
 
@@ -37,6 +36,8 @@ public class Runtime {
 
     // FIXME: Replace by initializer, after making static var:s into instance variables.
     func reset() {
+        isSystemMeasuresRegistered = false
+
         measures                 = [:]
         measuresLock             = NSLock()
         measuringDevices         = [:]
@@ -71,6 +72,8 @@ public class Runtime {
     // This includes obtaining initialization parameters are obtained from response to post to brass-th/ready,
     // and posting to brass-th/status after the processing of each input.
     let executeWithTestHarness = initialize(type: Bool.self, name: "executeWithTestHarness", from: key, or: false)
+
+    var isSystemMeasuresRegistered = false
 
     private var measures: [String : Double] = [:]
     private var measuresLock = NSLock()
