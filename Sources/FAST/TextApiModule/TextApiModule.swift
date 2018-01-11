@@ -57,7 +57,7 @@ public protocol TextApiModule: class {
                  progressIndicator: Int, 
                  verbosityLevel:    VerbosityLevel) -> String
 
-    // The modul's internal textApi
+    // The module's internal textApi
     func internalTextApi(caller:            String, 
                          message:           Array<String>, 
                          progressIndicator: Int, 
