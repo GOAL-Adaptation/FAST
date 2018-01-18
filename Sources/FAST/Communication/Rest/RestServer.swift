@@ -210,6 +210,11 @@ public class RestServer {
         // FIXME Use (definitions section of) Swagger specification to validate the input,
         //       to make indexing and casts fail there instead, with detailed error information.
 
+        if let missionIntentString = json["missionIntent"] as? String {
+          // if missionIntent is given as the string format, we can simply use that
+          return missionIntentString
+        }
+
         let missionIntent            = json["missionIntent"]!        as! [String: Any]
         let knobs                    = missionIntent["knobs"]!       as! [[String: Any]]
         let measures                 = missionIntent["measures"]!    as! [[String: Any]]

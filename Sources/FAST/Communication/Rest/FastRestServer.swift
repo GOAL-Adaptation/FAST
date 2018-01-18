@@ -69,28 +69,9 @@ class FastRestServer : RestServer {
 
                 let missionIntentString = RestServer.mkIntentString(from: json)
 
-                if let availableCoresInt         = json["availableCores"]         as? Int
-                 , let availableCoreFrequencyInt = json["availableCoreFrequency"] as? Int
-                 , let missionLengthInt          = json["missionLength"]          as? Int
-                 , let sceneObfuscation          = json["sceneObfuscation"]       as? Double {
+                let testParameter = TestParameter(from: json)
 
-                    // FIXME Set scenario knobs listed in the Perturbation JSON Schema:
-                    //       availableCores, availableCoreFrequency, missionLength, sceneObfuscation.
-                    //       This requires:
-                    //       1) extending the Runtime with a handler for scenario knob setting,
-                    //       2) adding missionLength and sceneObfuscation knobs, perhaps to a new
-                    //          "Environment" TextApiModule.
-                    let availableCores           = Int32(availableCoresInt)
-                    let availableCoreFrequency   = Int64(availableCoreFrequencyInt)
-                    let missionLength            = Int64(missionLengthInt)
-
-                    response.status = self.changeIntent(missionIntentString, accumulatedStatus: response.status)
-                }
-                else {
-                    logAndPostErrorToTh("Unable to parse JSON sent to /perturb endpoint: \(json).")
-                    response.status = .notAcceptable // HTTP 406
-                }
-
+                response.status = self.changeIntent(missionIntentString, accumulatedStatus: response.status)
             }
             else {
                 logAndPostErrorToTh("Message sent to /perturb endpoint is not valid JSON: \(request.postBodyString ?? "<nil-post-body-string>").")
