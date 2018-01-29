@@ -131,10 +131,6 @@ func optimize
 
         runtime.setIntent(intent)
 
-        // Initialize measuring device, that will update measures at every input
-        let measuringDevice = MeasuringDevice(ProgressSamplingPolicy(period: 1), windowSize, intent.measures, runtime)
-        runtime.measuringDevices[id] = measuringDevice
-
         // Number of inputs to process when profiling a configuration
         let defaultProfileSize:         UInt64 = UInt64(1000)
         // File prefix of knob- and measure tables
@@ -161,6 +157,9 @@ func optimize
                 measureTableOutputStream.write(measureTableHeader, maxLength: measureTableHeader.characters.count)
 
                 for i in 0 ..< knobSpace.count {
+                    // Initialize measuring device, that will update measures at every input
+                    let measuringDevice = MeasuringDevice(ProgressSamplingPolicy(period: 1), windowSize, intent.measures, runtime)
+                    runtime.measuringDevices[id] = measuringDevice
 
                     let knobSettings = knobSpace[i]
                     Log.info("Start profiling of configuration: \(knobSettings.settings).")
