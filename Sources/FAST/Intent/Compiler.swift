@@ -188,8 +188,9 @@ public class Compiler {
                 else {
                     if let eAsBinOpExpr = e as? BinaryOperatorExpression {
                             return compileBinaryOperatorExpression(eAsBinOpExpr, store)
-                    }
-                    else {
+                    } else if let eAsPrefixOpExpr = e as? PrefixOperatorExpression {
+                            return compilePrefixOperatorExpression(eAsPrefixOpExpr, store)
+                    } else {
                         fatalError("Unsupported expression: \(e) of type \(type(of: e)).")
                     }
                 }
@@ -243,6 +244,16 @@ public class Compiler {
             case "/": return { (measures: [Double]) in l(measures) / r(measures) }
             default:
                 fatalError("Unknown operator: \(e.binaryOperator).")
+        }
+    }
+
+    internal func compilePrefixOperatorExpression(_ e: PrefixOperatorExpression, _ store: [String : Int]) -> ([Double]) -> Double {
+        Log.debug("Compiling binary operator expression '\(e)'.")
+        let compiled = compileExpression(e.postfixExpression, store)
+        switch e.prefixOperator {
+            case "-": return { (measures: [Double]) in 0 - compiled(measures) }
+            default:
+                fatalError("Unknown operator: \(e.prefixOperator).")
         }
     }
 
