@@ -311,10 +311,8 @@ func optimize
                 var lastEnergy = runtime.getMeasure("energy")!
                 var deltaTimeDeltaEnergyInsertion = ""
                 loop( iterations: profileSize - 1) {
-                // let numberOfProcessedInputs   = runtime.getMeasure("iteration")   // NOTE: no such measure
                     inputNum += 1
                     executeAndReportProgress(measuringDevice, routine)
-                 // let runningTime               = runtime.getMeasure("runningTime") // NOTE: no such measure
                     let time = runtime.getMeasure("time")!
                     let energy = runtime.getMeasure("energy")!
                     let deltaTime = time - lastTime
