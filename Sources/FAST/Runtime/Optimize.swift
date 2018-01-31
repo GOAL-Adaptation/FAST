@@ -110,16 +110,54 @@ func optimize
     //        the Runtime class, once it is made non-static.
     let (restServer, initializationParameters) = startRestServer(using: runtime)
 
+    // initialize local variables used to compute measures
+    var iteration: UInt32 = 0 // iteration counter // FIXME what if the counter overflows
+    var startTime = ProcessInfo.processInfo.systemUptime // used for runningTime counter
+    var runningTime = 0.0 // counts only time spent inside the loop body
+    var latencyStartTime = runtime.getMeasure("time")! // used for latency counter
+
+    /** Re-set the internal variables used to compute measures, and register them in the runtime */
+    func resetMeasures() {
+        iteration = 0 // iteration counter // FIXME what if the counter overflows
+        startTime = ProcessInfo.processInfo.systemUptime // used for runningTime counter
+        runningTime = 0.0 // counts only time spent inside the loop body
+        latencyStartTime = runtime.getMeasure("time")! // used for latency counter
+        runtime.measure("iteration", Double(iteration))
+        runtime.measure("runningTime", runningTime) // running time in seconds
+        runtime.measure("latency", 0.0) // latency in seconds
+        runtime.measure("windowSize", Double(windowSize))
+    }
+
     /** Loop body for a given number of iterations (or infinitely, if iterations == nil) */
     func loop(iterations: UInt64? = nil, _ body: (Void) -> Void) {
+
+        func updateMeasures() {
+            // update measures provided by runtime
+            runningTime += ProcessInfo.processInfo.systemUptime - startTime
+            let latency: Double = runtime.getMeasure("time")! - latencyStartTime
+            runtime.measure("iteration", Double(iteration))
+            runtime.measure("runningTime", runningTime) // running time in seconds
+            runtime.measure("latency", latency) // latency in seconds per input
+            if latency > 0 {
+                runtime.measure("performance", 1.0 / latency) // performance in seconds per input    
+            }
+            else {
+                Log.warning("Zero time passed between two measurements of time. Performance cannot be computed.")
+            }
+            runtime.measure("windowSize", Double(windowSize))
+            latencyStartTime = runtime.getMeasure("time")! // begin measuring latency
+        }
+
         if let i = iterations {
             var localIteration: UInt64 = 0
             while localIteration < i && !shouldTerminate() && !runtime.shouldTerminate {
+                updateMeasures()
                 body()
                 localIteration += 1
             }
         } else {
             while !shouldTerminate() && !runtime.shouldTerminate {
+                updateMeasures()
                 body()
             }
         }
@@ -157,6 +195,8 @@ func optimize
                 measureTableOutputStream.write(measureTableHeader, maxLength: measureTableHeader.characters.count)
 
                 for i in 0 ..< knobSpace.count {
+
+                    resetMeasures()
 
                     // Initialize measuring device, that will update measures at every input
                     let measuringDevice = MeasuringDevice(ProgressSamplingPolicy(period: 1), windowSize, intent.measures, runtime)
@@ -374,19 +414,15 @@ func optimize
                     fatalError()
                 }
             }
-            var iteration: UInt32 = 0 // iteration counter // FIXME what if the counter overflows
-            var startTime = ProcessInfo.processInfo.systemUptime // used for runningTime counter
-            var runningTime = 0.0 // counts only time spent inside the loop body
-            var latencyStartTime = runtime.getMeasure("time")! // used for latency counter
-            runtime.measure("iteration", Double(iteration))
-            runtime.measure("runningTime", runningTime) // running time in seconds
-            runtime.measure("latency", 0.0) // latency in seconds
+
             runtime.measure("currentConfiguration", Double(currentKnobSettings.kid)) // The id of the configuration given in the knobtable
-            runtime.measure("windowSize", Double(windowSize))
+
+            resetMeasures()
+
             // Initialize measuring device, that will update measures based on the samplingPolicy
             let measuringDevice = MeasuringDevice(samplingPolicy, windowSize, intent.measures, runtime)
             runtime.measuringDevices[id] = measuringDevice
-           
+
             // Start the input processing loop
             loop(iterations: numberOfInputsToProcess) {
                 startTime = ProcessInfo.processInfo.systemUptime // reset, in case something paused execution between iterations
@@ -404,20 +440,6 @@ func optimize
                 // execute the routine (body of the optimize constuct)
                 executeAndReportProgress(measuringDevice, routine)
 
-                // update measures provided by runtime
-                runningTime += ProcessInfo.processInfo.systemUptime - startTime
-                let latency: Double = runtime.getMeasure("time")! - latencyStartTime
-                runtime.measure("iteration", Double(iteration))
-                runtime.measure("runningTime", runningTime) // running time in seconds
-                runtime.measure("latency", latency) // latency in seconds per input
-                if latency > 0 {
-                    runtime.measure("performance", 1.0 / latency) // performance in seconds per input    
-                }
-                else {
-                    Log.warning("Zero time passed between two measurements of time. Performance cannot be computed.")
-                }
-                runtime.measure("windowSize", Double(windowSize))
-                latencyStartTime = runtime.getMeasure("time")! // begin measuring latency
                 // FIXME maybe stalling in scripted mode should not be done inside of optimize but somewhere else in an independent and better way
                 runtime.reportProgress()
 
