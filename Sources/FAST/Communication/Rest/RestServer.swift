@@ -137,17 +137,17 @@ public class RestServer {
                     Log.debug("Received valid JSON on \(endpoint) endpoint: \(json)")
                     return json
                 } catch let err {
-                    Log.error("POST body sent to /perturb REST endpoint does not contain valid JSON: \(bodyString). \(err)")
+                    Log.error("POST body sent to /" + endpoint + " REST endpoint does not contain valid JSON: \(bodyString). \(err)")
                     return nil
                 }
             }
             else {
-                Log.error("POST body sent to /perturb REST endpoint does not contain UTF8-encoded data: \(bodyString).")
+                Log.error("POST body sent to /" + endpoint + " REST endpoint does not contain UTF8-encoded data: \(bodyString).")
                 return nil
             }
         }
         else {
-            Log.error("Empty POST body sent to /perturb REST endpoint.")
+            Log.error("Empty POST body sent to /" + endpoint + " REST endpoint.")
             return nil
         }
     }
