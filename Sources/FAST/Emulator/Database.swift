@@ -945,7 +945,6 @@ func getCurrentConfigurationId(architecture: Architecture) -> Int {
         (s: SQLiteStmt) -> () in
         try s.bind(position: 1, application)
         try s.bind(position: 2, warmupNumber)
-        print("DXN_DEBUG >>>> insertApplication \(sqliteQuery)")
         })
         try database.execute(statement: "COMMIT;")
         } catch let exception {
