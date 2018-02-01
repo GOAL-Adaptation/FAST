@@ -156,11 +156,11 @@ class DatabaseTests: FASTTestCase {
     func testGetDelta() {
         if let database = Database(databaseFile: dbFile) {
             var time_energy = database.readDelta(application: "RADAR", architecture: "ARM-big.LITTLE", appCfg: 6, appInp: 1, sysCfg: 1, processing: 3)
-            XCTAssertEqual(-1584, time_energy.0)  // DXN_DBG: The delta time is negative because we are using synthetic test data
-            XCTAssertEqual(664, time_energy.1)
+            XCTAssertEqual(-1584, Int(time_energy.0))  // The delta time is negative because we are using synthetic test data
+            XCTAssertEqual(663, Int(time_energy.1))
             time_energy = database.readDelta(application: "x264", architecture: "ARM-big.LITTLE", appCfg: 7, appInp: 3, sysCfg: 1, processing: 2)
-            XCTAssertEqual(5654, time_energy.0)
-            XCTAssertEqual(4218, time_energy.1)
+            XCTAssertEqual(5654, Int(time_energy.0))
+            XCTAssertEqual(4218, Int(time_energy.1))
         }
     }
 
