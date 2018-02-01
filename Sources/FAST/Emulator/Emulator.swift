@@ -42,14 +42,14 @@ class Emulator: TextApiModule, ClockMonitor, EnergyMonitor {
   // Global Counters
   var numberOfProcessedInputs: UInt64
   var globalEnergy: UInt64
-  var globalTime: UInt64
+  var globalTime: Double
 
   private unowned let runtime: Runtime
 
   // ClockMonitor Interface
   func readClock() -> Double {
     updateGlobalCounters()
-    return Double(self.globalTime)
+    return self.globalTime
   }
 
   // EnergyMonitor Interface
@@ -72,7 +72,7 @@ class Emulator: TextApiModule, ClockMonitor, EnergyMonitor {
       self.architecture = architecture
       self.numberOfProcessedInputs = 0
       self.globalEnergy = 0
-      self.globalTime = 0
+      self.globalTime = 0.0
 
       self.addSubModule(newModule: database)
   }
@@ -90,21 +90,19 @@ class Emulator: TextApiModule, ClockMonitor, EnergyMonitor {
                  sysCfg systemConfigurationID: Int,
                  processing progressCounter: Int)
                     ->
-                 (UInt64, UInt64) {
+                 (Double, Double) {
 
     let referenceApplicationConfigurationID = self.database.getReferenceApplicationConfigurationID(application: application.name)
     let referenceSystemConfigurationID      = self.database.getReferenceSystemConfigurationID(architecture: architecture.name)
 
-    var readDeltaTime: Int
-    var readDeltaEnergy: Int
+    var readDeltaTime: Double
+    var readDeltaEnergy: Double
 
     // Data is profiled
     if ((applicationConfigurationID == referenceApplicationConfigurationID) || (systemConfigurationID == referenceSystemConfigurationID)) {
 
       (readDeltaTime, readDeltaEnergy) = self.database.readDelta(application: application.name, architecture: architecture.name, appCfg: applicationConfigurationID, appInp: applicationInputID, sysCfg: systemConfigurationID, processing: progressCounter)
-
-      // Convert to UInt64
-      return (UInt64(readDeltaTime), UInt64(readDeltaEnergy))
+      return (readDeltaTime, readDeltaEnergy)
 
     /* Data is interpolated: Value(appCfg, sysCfg) ~    [ Value(appCfg0, sysCfg)  / Value(appCfg0, sysCfg0) ] *
      *                                                * [ Value(appCfg,  sysCfg0) / Value(appCfg0, sysCfg0) ]
@@ -119,21 +117,19 @@ class Emulator: TextApiModule, ClockMonitor, EnergyMonitor {
 
       // Value(appCfg0, sysCfg)
       (readDeltaTime, readDeltaEnergy) = self.database.readDelta(application: application.name, architecture: architecture.name, appCfg: referenceApplicationConfigurationID, appInp: applicationInputID, sysCfg: systemConfigurationID, processing: progressCounter)
-      cumulativeDeltaTime   = Double(readDeltaTime)
-      cumulativeDeltaEnergy = Double(readDeltaEnergy)
+      cumulativeDeltaTime   = readDeltaTime
+      cumulativeDeltaEnergy = readDeltaEnergy
 
       // Value(appCfg0, sysCfg) / Value(appCfg0, sysCfg0)
       (readDeltaTime, readDeltaEnergy) = self.database.readDelta(application: application.name, architecture: architecture.name, appCfg: referenceApplicationConfigurationID, appInp: applicationInputID, sysCfg: referenceSystemConfigurationID, processing: progressCounter)
-      cumulativeDeltaTime   = cumulativeDeltaTime   / Double(readDeltaTime)
-      cumulativeDeltaEnergy = cumulativeDeltaEnergy / Double(readDeltaEnergy)
+      cumulativeDeltaTime   = cumulativeDeltaTime   / readDeltaTime
+      cumulativeDeltaEnergy = cumulativeDeltaEnergy / readDeltaEnergy
 
       // [ Value(appCfg0, sysCfg) / Value(appCfg0, sysCfg0) ] * Value(appCfg, sysCfg0)
       (readDeltaTime, readDeltaEnergy) = self.database.readDelta(application: application.name, architecture: architecture.name, appCfg: applicationConfigurationID, appInp: applicationInputID, sysCfg: referenceSystemConfigurationID, processing: progressCounter)
-      cumulativeDeltaTime   = cumulativeDeltaTime   * Double(readDeltaTime)
-      cumulativeDeltaEnergy = cumulativeDeltaEnergy * Double(readDeltaEnergy)
-
-      // Convert to UInt64
-      return (UInt64(cumulativeDeltaTime), UInt64(cumulativeDeltaEnergy))
+      cumulativeDeltaTime   = cumulativeDeltaTime   * readDeltaTime
+      cumulativeDeltaEnergy = cumulativeDeltaEnergy * readDeltaEnergy
+      return (cumulativeDeltaTime, cumulativeDeltaEnergy)
     }
   }
 
@@ -163,7 +159,7 @@ class Emulator: TextApiModule, ClockMonitor, EnergyMonitor {
 
           // Increase the Global Counters
           self.globalTime   += deltaTime
-          self.globalEnergy += deltaEnergy
+          self.globalEnergy += UInt64(deltaEnergy)
         }
 
         // Update the Counter of Processed Inputs
