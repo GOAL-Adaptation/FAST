@@ -66,8 +66,8 @@ CREATE TABLE [main].[ApplicationSystemInputLog](
     [applicationInputStream_applicationConfigurationId] INTEGER NOT NULL REFERENCES ApplicationInputStream_ApplicationConfiguration([id]) ON DELETE CASCADE ON UPDATE CASCADE, 
     [systemConfigurationId] INTEGER NOT NULL REFERENCES SystemConfiguration([id]) ON DELETE CASCADE ON UPDATE CASCADE, 
     [inputNumber] INTEGER NOT NULL, 
-    [deltaTime] INTEGER, 
-    [deltaEnergy] INTEGER, 
+    [deltaTime] REAL, 
+    [deltaEnergy] REAL, 
     UNIQUE([applicationInputStream_applicationConfigurationId], [systemConfigurationId], [inputNumber]));
 
 /* Drop table [Application_Knob] */
