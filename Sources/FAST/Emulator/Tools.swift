@@ -40,8 +40,8 @@ func randomizerWhiteGaussianNoise(deviation standardDeviation: Double) -> Double
 }
 
 /** Eliminate outliers that arise due to erratic measurements that result in negative measurement emulation */
-func randomizerEliminateOutliers(measurement: Int, error: Int, factor: inout Double, safetyMargin: Double) -> () {
-  factor = (error == 0) ? factor : min(factor, Double(measurement) / (Double(error) * safetyMargin) );
+func randomizerEliminateOutliers(measurement: Double, error: Double, factor: inout Double, safetyMargin: Double) -> () {
+  factor = (error == 0) ? factor : min(factor, measurement / (error * safetyMargin) )
 }
 
 //-------------------------------
