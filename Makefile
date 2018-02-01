@@ -119,9 +119,11 @@ run-harness-scripted:   export proteus_runtime_executeWithTestHarness           
 run-harness-scripted:   run-scripted
 
 emulate:           		export proteus_armBigLittle_executionMode               := Emulated
+emulate:           		export proteus_xilinxZcu_executionMode                  := Emulated
 emulate:           		run                                                     
 
 emulate-scripted:  		export proteus_armBigLittle_executionMode               := Emulated
+emulate:           		export proteus_xilinxZcu_executionMode                  := Emulated
 emulate-scripted:  		run-scripted                                            
 
 evaluate:          		export proteus_runtime_executeWithTestHarness           := true
