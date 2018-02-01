@@ -745,7 +745,7 @@ func getCurrentConfigurationId(architecture: Architecture) -> Int {
                 sysCfg systemConfigurationID: Int, 
                 processing progressCounter: Int) 
                     ->
-                (Int, Int) {
+                (Double, Double) {
 
     let rescaleFactorMean     = 1.0
     var rescaleFactorVariance = 1.0
@@ -762,8 +762,8 @@ func getCurrentConfigurationId(architecture: Architecture) -> Int {
 
         //----
 
-        var readTime = 0;
-        var readEnergy = 0;
+        var readTime: Double = 0
+        var readEnergy: Double = 0
 
         let tapeNoise = getTapeNoise(application: application)
 
@@ -802,8 +802,8 @@ func getCurrentConfigurationId(architecture: Architecture) -> Int {
                 try statement.bind(position: 6, entryID)
 
           })  {(statement: SQLiteStmt, i:Int) -> () in
-            readTime = statement.columnInt(position: 0)
-            readEnergy = statement.columnInt(position: 1)               
+            readTime = statement.columnDouble(position: 0)
+            readEnergy = statement.columnDouble(position: 1)               
           }
         } catch let exception {
           Log.error("Failed to read the delta from the emulation database (in Tape reading mode): \(exception).")
@@ -811,8 +811,8 @@ func getCurrentConfigurationId(architecture: Architecture) -> Int {
         }
 
         // Adding noise
-        let deltas =  ( readTime + Int(randomizerWhiteGaussianNoise(deviation: Double(readTime) * tapeNoise))
-                      , readEnergy + Int(randomizerWhiteGaussianNoise(deviation: Double(readEnergy) * tapeNoise)) )
+        let deltas =  ( readTime + randomizerWhiteGaussianNoise(deviation: readTime * tapeNoise)
+                      , readEnergy + randomizerWhiteGaussianNoise(deviation: readEnergy * tapeNoise) )
         Log.debug("Read (time,energy) deltas from emulation database: \((readTime,readEnergy)). With (Tape) noise: \(deltas).")        
 
         return deltas
@@ -872,10 +872,10 @@ func getCurrentConfigurationId(architecture: Architecture) -> Int {
         "       AND [SystemConfiguration].[id] = :5;"
         }
 
-        var meanDeltaTime = 0
-        var deviationDeltaTime = 0
-        var meanDeltaEnergy = 0
-        var deviationDeltaEnergy = 0
+        var meanDeltaTime       : Double = 0
+        var deviationDeltaTime  : Double = 0
+        var meanDeltaEnergy     : Double = 0
+        var deviationDeltaEnergy: Double = 0
 
         do {
 
@@ -896,10 +896,10 @@ func getCurrentConfigurationId(architecture: Architecture) -> Int {
 
           })  {(statement: SQLiteStmt, i:Int) -> () in
 
-            meanDeltaTime = statement.columnInt(position: 0)
-            deviationDeltaTime = Int(sqrt(Double(statement.columnInt(position: 1))))
-            meanDeltaEnergy = statement.columnInt(position: 2)
-            deviationDeltaEnergy = Int(sqrt(Double(statement.columnInt(position: 3))))
+            meanDeltaTime = statement.columnDouble(position: 0)
+            deviationDeltaTime = sqrt(statement.columnDouble(position: 1))
+            meanDeltaEnergy = statement.columnDouble(position: 2)
+            deviationDeltaEnergy = sqrt(statement.columnDouble(position: 3))
               
           }
 
@@ -925,12 +925,11 @@ func getCurrentConfigurationId(architecture: Architecture) -> Int {
         }
 
         // Adding noise
-        let deltas = ( Int(Double(meanDeltaTime)   * rescaleFactorMean + randomizerWhiteGaussianNoise(deviation: Double(deviationDeltaTime)   * rescaleFactorVariance)) 
-                     , Int(Double(meanDeltaEnergy) * rescaleFactorMean + randomizerWhiteGaussianNoise(deviation: Double(deviationDeltaEnergy) * rescaleFactorVariance)) )        
+        let deltas = (meanDeltaTime * rescaleFactorMean + randomizerWhiteGaussianNoise(deviation: deviationDeltaTime * rescaleFactorVariance) 
+                     , meanDeltaEnergy * rescaleFactorMean + randomizerWhiteGaussianNoise(deviation: deviationDeltaEnergy * rescaleFactorVariance))        
         Log.debug("Read mean (time,energy) deltas from emulation database: \((meanDeltaTime,meanDeltaEnergy)). With (Statistics) noise: \(deltas).")        
 
         return deltas
-
     }
   }
 
