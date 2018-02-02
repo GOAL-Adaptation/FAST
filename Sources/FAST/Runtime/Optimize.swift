@@ -233,6 +233,8 @@ func optimize
     func trace(intent: IntentSpec) {
 
         Log.info("Tracing optimize scope \(id).")
+        runtime.setIntent(intent)
+        
         if let myApp = runtime.application as? EmulateableApplication, let myArch = runtime.architecture as? EmulateableArchitecture {
 
             // step 1: Emit SQL to insert application and architecture properties based on an intent specification.
