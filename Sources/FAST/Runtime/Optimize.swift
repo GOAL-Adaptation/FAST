@@ -322,6 +322,9 @@ func optimize
                 let knobSettings = knobRefSpace[i]
                 Log.info("Start tracing of configuration: \(knobSettings.settings).")
                 knobSettings.apply(runtime: runtime)
+                if let streamingApplication = runtime.application as? StreamApplication {
+                        streamingApplication.initializeStream()
+                }
 
                 // step 3.1: Emit SQL to insert current application configuration and
                 // return the name of the current application configuration to be used in subsequent steps.
@@ -353,7 +356,7 @@ func optimize
                 var lastTime = runtime.getMeasure("time")!
                 var lastEnergy = runtime.getMeasure("energy")!
                 var deltaTimeDeltaEnergyInsertion = ""
-                loop( iterations: profileSize - 1) {
+                loop( iterations: profileSize) {
                     inputNum += 1
                     executeAndReportProgress(measuringDevice, routine)
                     let time = runtime.getMeasure("time")!
