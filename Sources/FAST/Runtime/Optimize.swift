@@ -262,9 +262,6 @@ func optimize
             + "\n" + appInputStreamInsertion               // step 2.1
             + "\n" + jobLogParamInsertion                  // step 2.2
 
-            // Initialize measuring device, that will update measures at every input
-            let measuringDevice = MeasuringDevice(ProgressSamplingPolicy(period: 1), windowSize, intent.measures, runtime)
-
             // Number of inputs to process when profiling a configuration
             let defaultProfileSize: UInt64 = UInt64(1000)
             let profileSize = initialize(type: UInt64.self, name: "profileSize", from: key, or: defaultProfileSize)
@@ -313,8 +310,14 @@ func optimize
                 }
             }
 
-            // loop to trace only those configurations in knobRefSpace:
+            // Trace only those configurations in knobRefSpace:
             for i in 0 ..< knobRefSpace.count {
+
+                resetMeasures()
+
+                // Initialize measuring device, that will update measures at every input
+                let measuringDevice = MeasuringDevice(ProgressSamplingPolicy(period: 1), windowSize, intent.measures, runtime)
+                runtime.measuringDevices[id] = measuringDevice
 
                 let knobSettings = knobRefSpace[i]
                 Log.info("Start tracing of configuration: \(knobSettings.settings).")
