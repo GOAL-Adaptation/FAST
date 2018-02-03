@@ -241,7 +241,7 @@ func optimize
             let applicationAndArchictectureInsertion
             = emitScriptForApplicationAndArchitectureInsertion(
                 application   : myApp
-                , warmupInputNum: 0
+                , warmupInputNum: 2
                 , architecture  : myArch
                 , intent        : intent)
 
