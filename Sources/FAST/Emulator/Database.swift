@@ -847,6 +847,8 @@ func getCurrentConfigurationId(architecture: Architecture) -> Int {
         "       AND [SystemConfiguration].[id] = :5 " +
         "       AND [ApplicationSystemInputLog].[inputNumber] = :6;"     
 
+          Log.debug("Database.readDelta case1 progressCounter(\(progressCounter)) <= warmupInputs(\(warmupInputs))")
+
         // post-warmup: given a global app ID, a global sys ID, find average delta time and energy and their corresponding variances:
         } else {
 
@@ -870,7 +872,10 @@ func getCurrentConfigurationId(architecture: Architecture) -> Int {
         "       AND [ApplicationConfiguration].[id] = :3" +
         "       AND [ApplicationInputStream].[id] = :4 " +
         "       AND [SystemConfiguration].[id] = :5;"
-        }
+      
+          Log.debug("Database.readDelta case2 progressCounter(\(progressCounter)) > warmupInputs(\(warmupInputs))")
+
+      }
 
         var meanDeltaTime       : Double = 0
         var deviationDeltaTime  : Double = 0
@@ -925,9 +930,12 @@ func getCurrentConfigurationId(architecture: Architecture) -> Int {
         }
 
         // Adding noise
+        Log.debug("Database.readDelta with (Statistics) meanDeltaTime(\(meanDeltaTime)) deviationDeltaTime(\(deviationDeltaTime)) meanDeltaEnergy(\(meanDeltaEnergy)) deviationDeltaEnergy(\(deviationDeltaEnergy)) rescaleFactorMean(\(rescaleFactorMean)) rescaleFactorVariance(\(rescaleFactorVariance))")
+
         let deltas = (meanDeltaTime * rescaleFactorMean + randomizerWhiteGaussianNoise(deviation: deviationDeltaTime * rescaleFactorVariance) 
                      , meanDeltaEnergy * rescaleFactorMean + randomizerWhiteGaussianNoise(deviation: deviationDeltaEnergy * rescaleFactorVariance))        
-        Log.debug("Read mean (time,energy) deltas from emulation database: \((meanDeltaTime,meanDeltaEnergy)). With (Statistics) noise: \(deltas).")        
+        
+        Log.debug("Database.readDelta get deltas with noises from emulation database: \(deltas).")        
 
         return deltas
     }
