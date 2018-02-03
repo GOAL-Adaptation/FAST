@@ -131,8 +131,11 @@ class XilinxZcu: Architecture,
                 // Use emulated system Measures
                 case ExecutionMode.Emulated:
                     // Create an emulator
-                    // TODO check application exictence and conformance, Emulator should detect app input
-                    let emulator = Emulator(application: runtime.application! as! EmulateableApplication, applicationInput: 0, architecture: self, runtime: runtime)
+                    // TODO check application exictence and conformance
+                    let emulator = Emulator(application: runtime.application! as! EmulateableApplication, 
+                                            applicationInput: 1, // FIXME: set to 1 for now, Emulator should detect app input stream 
+                                            architecture: self, 
+                                            runtime: runtime)
 
                     // Assign it as monitors (Reference Counting will keep it alive as long as this is not changed)
                     self.clockMonitor  = emulator
