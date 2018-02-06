@@ -123,7 +123,7 @@ emulate:           		export proteus_xilinxZcu_executionMode                  := 
 emulate:           		run                                                     
 
 emulate-scripted:  		export proteus_armBigLittle_executionMode               := Emulated
-emulate:           		export proteus_xilinxZcu_executionMode                  := Emulated
+emulate-scripted:     export proteus_xilinxZcu_executionMode                  := Emulated
 emulate-scripted:  		run-scripted                                            
 
 evaluate:          		export proteus_runtime_executeWithTestHarness           := true
