@@ -141,7 +141,7 @@ class XilinxZcu: Architecture,
                     self.clockMonitor  = emulator
                     self.energyMonitor = emulator
             }
-            Log.info("Xilinx execution mode set to: \(newMode).")
+            Log.info("Xilinx execution mode set to \(newMode): clockMonitor = \(clockMonitor) energyMonitor = \(energyMonitor)")
         }
     }
 
