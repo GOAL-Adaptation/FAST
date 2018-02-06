@@ -118,6 +118,7 @@ func optimize
 
     /** Re-set the internal variables used to compute measures, and register them in the runtime */
     func resetMeasures() {
+        Log.debug("optimize.resetMeasuresBegin")
         iteration = 0 // iteration counter // FIXME what if the counter overflows
         startTime = ProcessInfo.processInfo.systemUptime // used for runningTime counter
         runningTime = 0.0 // counts only time spent inside the loop body
@@ -126,12 +127,14 @@ func optimize
         runtime.measure("runningTime", runningTime) // running time in seconds
         runtime.measure("latency", 0.0) // latency in seconds
         runtime.measure("windowSize", Double(windowSize))
+        Log.debug("optimize.resetMeasuresEnd")
     }
 
     /** Loop body for a given number of iterations (or infinitely, if iterations == nil) */
     func loop(iterations: UInt64? = nil, _ body: (Void) -> Void) {
 
         func updateMeasures() {
+            Log.debug("optimize.loop.updateMeasuresBegin")
             // update measures provided by runtime
             runningTime += ProcessInfo.processInfo.systemUptime - startTime
             let latency: Double = runtime.getMeasure("time")! - latencyStartTime
@@ -146,6 +149,7 @@ func optimize
             }
             runtime.measure("windowSize", Double(windowSize))
             latencyStartTime = runtime.getMeasure("time")! // begin measuring latency
+            Log.debug("optimize.loop.updateMeasuresEnd")
         }
 
         if let i = iterations {
