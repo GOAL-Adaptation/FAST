@@ -359,20 +359,16 @@ func optimize
                 // the current application configuration and current system configuration,
                 // and emit the SQL script to insert the measured delta time, delta energy.
                 var inputNum = 0
+                var lastTime = runtime.getMeasure("time")!
+                var lastEnergy = runtime.getMeasure("energy")!
                 var deltaTimeDeltaEnergyInsertion = ""
                 loop( iterations: profileSize) {
                     inputNum += 1
-
-                    let lastTime = runtime.getMeasure("time")!
-                    let lastEnergy = runtime.getMeasure("energy")!
-
                     executeAndReportProgress(measuringDevice, routine)
-
                     let time = runtime.getMeasure("time")!
                     let energy = runtime.getMeasure("energy")!
                     let deltaTime = time - lastTime
                     let deltaEnergy = energy - lastEnergy
-
                     deltaTimeDeltaEnergyInsertion += "\n" +
                         emitScriptForDeltaTimeDeltaEnergyInsertion(
                             applicationName: myApp.name,
@@ -383,6 +379,8 @@ func optimize
                             deltaTime      : deltaTime,
                             deltaEnergy    : deltaEnergy
                         )
+                    lastTime = time
+                    lastEnergy = energy
                 }
 
                 insertionScript +=
