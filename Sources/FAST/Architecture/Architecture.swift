@@ -146,11 +146,14 @@ extension ClockAndEnergyArchitecture {
   // Register System Measures
   func registerSystemMeasures(runtime: Runtime) {
     if runtime.isSystemMeasuresRegistered {
+      Log.debug("ClockAndEnergyArchitecture.registerSystemMeasures_2 for \(self) clockMonitor = \(self.clockMonitor) energyMonitor = \(self.energyMonitor)")
       Log.verbose("System measures have been registered.")
       return
     }
     runtime.isSystemMeasuresRegistered = true
 
+    Log.debug("ClockAndEnergyArchitecture.registerSystemMeasures_1 for \(self) clockMonitor = \(self.clockMonitor) energyMonitor = \(self.energyMonitor)")
+    
     DispatchQueue.global(qos: .utility).async {
       var lastEnergy = Double(self.energyMonitor.readEnergy())
       var lastTime = self.clockMonitor.readClock()
