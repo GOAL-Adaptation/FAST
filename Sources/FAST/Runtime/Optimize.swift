@@ -403,7 +403,7 @@ func optimize
 
     func run(model: Model, intent: IntentSpec, numberOfInputsToProcess: UInt64? = nil) {
 
-        Log.info("Executing optimize scope \(id).")
+        Log.info("Running optimize scope \(id).")
 
         // Initialize the controller with the knob-to-mesure model, intent and window size
         runtime.initializeController(model, intent, windowSize)
