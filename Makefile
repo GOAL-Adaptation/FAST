@@ -81,6 +81,7 @@ execute:              export proteus_runtime_address                          :=
 execute:              export proteus_client_rest_serverAddress                := brass-th
 execute:              export proteus_client_rest_serverPort                   := 8080
 execute:              export proteus_emulator_database_db                     := /Users/adam/project/FAST/Sources/ExampleIncrementer/incrementer.db
+execute:              export proteus_emulator_database_db                     := ./incrementer_emulation.db
 execute:              export proteus_emulator_database_readingMode            := Statistics
 
 execute:              export proteus_armBigLittle_policy                      := Simple
