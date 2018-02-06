@@ -49,6 +49,7 @@ class Emulator: TextApiModule, ClockMonitor, EnergyMonitor {
   // ClockMonitor Interface
   func readClock() -> Double {
     updateGlobalCounters()
+    Log.debug("Emulator.readClock = \(globalTime) ")
     return self.globalTime
   }
 
