@@ -42,14 +42,15 @@ class Emulator: TextApiModule, ClockMonitor, EnergyMonitor {
   // Global Counters
   var numberOfProcessedInputs: UInt64
   var globalEnergy: UInt64
-  var globalTime: UInt64
+  var globalTime: Double
 
   private unowned let runtime: Runtime
 
   // ClockMonitor Interface
   func readClock() -> Double {
     updateGlobalCounters()
-    return Double(self.globalTime)
+    Log.debug("Emulator.readClock = \(globalTime) ")
+    return self.globalTime
   }
 
   // EnergyMonitor Interface
@@ -72,7 +73,7 @@ class Emulator: TextApiModule, ClockMonitor, EnergyMonitor {
       self.architecture = architecture
       self.numberOfProcessedInputs = 0
       self.globalEnergy = 0
-      self.globalTime = 0
+      self.globalTime = 0.0
 
       self.addSubModule(newModule: database)
   }
@@ -86,25 +87,28 @@ class Emulator: TextApiModule, ClockMonitor, EnergyMonitor {
 
   /** Interpolate System Measurements */
   func readDelta(appCfg applicationConfigurationID: Int,
-                 appInp applicationInputID: Int,
+                 appInp applicationInputID: Int,  // ID of application inputstream
                  sysCfg systemConfigurationID: Int,
                  processing progressCounter: Int)
                     ->
-                 (UInt64, UInt64) {
+                 (Double, Double) {
+
+    Log.debug("Emulator readDelta: get deltaTime and deltaEnergy from the emulation database.")
 
     let referenceApplicationConfigurationID = self.database.getReferenceApplicationConfigurationID(application: application.name)
     let referenceSystemConfigurationID      = self.database.getReferenceSystemConfigurationID(architecture: architecture.name)
 
-    var readDeltaTime: Int
-    var readDeltaEnergy: Int
+    var readDeltaTime: Double
+    var readDeltaEnergy: Double
 
     // Data is profiled
     if ((applicationConfigurationID == referenceApplicationConfigurationID) || (systemConfigurationID == referenceSystemConfigurationID)) {
 
       (readDeltaTime, readDeltaEnergy) = self.database.readDelta(application: application.name, architecture: architecture.name, appCfg: applicationConfigurationID, appInp: applicationInputID, sysCfg: systemConfigurationID, processing: progressCounter)
-
-      // Convert to UInt64
-      return (UInt64(readDeltaTime), UInt64(readDeltaEnergy))
+      
+      Log.debug("Emulator readDelta-profiled: for applicationConfigurationID = \(applicationConfigurationID) systemConfigurationID = \(systemConfigurationID) applicationInputStreamID = \(applicationInputID) progressCounter = \(progressCounter) readDeltaTime = \(readDeltaTime) readDeltaEnergy = \(readDeltaEnergy)")
+      
+      return (readDeltaTime, readDeltaEnergy)
 
     /* Data is interpolated: Value(appCfg, sysCfg) ~    [ Value(appCfg0, sysCfg)  / Value(appCfg0, sysCfg0) ] *
      *                                                * [ Value(appCfg,  sysCfg0) / Value(appCfg0, sysCfg0) ]
@@ -114,26 +118,38 @@ class Emulator: TextApiModule, ClockMonitor, EnergyMonitor {
      *                                                  [ Value(appCfg0, sysCfg)  / Value(appCfg0, sysCfg0) ] * Value(appCfg, sysCfg0)         */
     } else {
 
+      Log.debug("Emulator readDelta-interpolated: data is interpolated for applicationConfigurationID = \(applicationConfigurationID) systemConfigurationID = \(systemConfigurationID) applicationInputStreamID = \(applicationInputID)")
+
       var cumulativeDeltaTime: Double   = 0.0
       var cumulativeDeltaEnergy: Double = 0.0
 
       // Value(appCfg0, sysCfg)
       (readDeltaTime, readDeltaEnergy) = self.database.readDelta(application: application.name, architecture: architecture.name, appCfg: referenceApplicationConfigurationID, appInp: applicationInputID, sysCfg: systemConfigurationID, processing: progressCounter)
-      cumulativeDeltaTime   = Double(readDeltaTime)
-      cumulativeDeltaEnergy = Double(readDeltaEnergy)
+      
+      Log.debug("Emulator readDelta: get deltas for referenceApplicationConfigurationID = \(referenceApplicationConfigurationID) systemConfigurationID = \(systemConfigurationID) readDeltaTime = \(readDeltaTime) readDeltaEnergy = \(readDeltaEnergy)")
+
+      cumulativeDeltaTime   = readDeltaTime
+      cumulativeDeltaEnergy = readDeltaEnergy
 
       // Value(appCfg0, sysCfg) / Value(appCfg0, sysCfg0)
       (readDeltaTime, readDeltaEnergy) = self.database.readDelta(application: application.name, architecture: architecture.name, appCfg: referenceApplicationConfigurationID, appInp: applicationInputID, sysCfg: referenceSystemConfigurationID, processing: progressCounter)
-      cumulativeDeltaTime   = cumulativeDeltaTime   / Double(readDeltaTime)
-      cumulativeDeltaEnergy = cumulativeDeltaEnergy / Double(readDeltaEnergy)
+
+      Log.debug("Emulator readDelta1: get deltas for referenceApplicationConfigurationID = \(referenceApplicationConfigurationID) referenceSystemConfigurationID = \(referenceSystemConfigurationID) readDeltaTime = \(readDeltaTime) readDeltaEnergy = \(readDeltaEnergy)")
+
+      cumulativeDeltaTime   = cumulativeDeltaTime   / readDeltaTime
+      cumulativeDeltaEnergy = cumulativeDeltaEnergy / readDeltaEnergy
 
       // [ Value(appCfg0, sysCfg) / Value(appCfg0, sysCfg0) ] * Value(appCfg, sysCfg0)
       (readDeltaTime, readDeltaEnergy) = self.database.readDelta(application: application.name, architecture: architecture.name, appCfg: applicationConfigurationID, appInp: applicationInputID, sysCfg: referenceSystemConfigurationID, processing: progressCounter)
-      cumulativeDeltaTime   = cumulativeDeltaTime   * Double(readDeltaTime)
-      cumulativeDeltaEnergy = cumulativeDeltaEnergy * Double(readDeltaEnergy)
+      
+      Log.debug("Emulator readDelta2: get deltas for applicationConfigurationID = \(applicationConfigurationID) referenceSystemConfigurationID = \(referenceSystemConfigurationID) readDeltaTime = \(readDeltaTime) readDeltaEnergy = \(readDeltaEnergy)")
 
-      // Convert to UInt64
-      return (UInt64(cumulativeDeltaTime), UInt64(cumulativeDeltaEnergy))
+      cumulativeDeltaTime   = cumulativeDeltaTime   * readDeltaTime
+      cumulativeDeltaEnergy = cumulativeDeltaEnergy * readDeltaEnergy
+      
+      Log.debug("Emulator readDelta3: interpolated deltas for applicationConfigurationID = \(applicationConfigurationID) systemConfigurationID = \(systemConfigurationID) cumulativeDeltaTime = \(cumulativeDeltaTime) cumulativeDeltaEnergy = \(cumulativeDeltaEnergy)")
+
+      return (cumulativeDeltaTime, cumulativeDeltaEnergy)
     }
   }
 
@@ -159,11 +175,13 @@ class Emulator: TextApiModule, ClockMonitor, EnergyMonitor {
         for i in unemulatedInputs {
 
           // Read Deltas based on Interpolation from profiled data in the Database
+          Log.debug("Emulator updateGlobalCounters: call internal func readDelta() to get deltaTime and deltaEnegy.")
+
           let (deltaTime, deltaEnergy) = readDelta(appCfg: applicationConfigurationId, appInp: self.applicationInputId, sysCfg: systemConfigurationId, processing: Int(i))
 
           // Increase the Global Counters
           self.globalTime   += deltaTime
-          self.globalEnergy += deltaEnergy
+          self.globalEnergy += UInt64(deltaEnergy)
         }
 
         // Update the Counter of Processed Inputs

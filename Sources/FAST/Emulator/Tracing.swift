@@ -195,6 +195,7 @@ import SQLite3
         // Build the application configuration name corresponding to the current application configuration:
         var appConfigName = application.name 
         let appKnobs = application.getStatus()!["applicationKnobs"] as! [String : Any]
+        Log.info("Tracing.emitScriptForCurrentApplicationConfigurationInsertion: appKnobs = \(appKnobs)")
         for (knobName, knobValueAny) in appKnobs {
             if let knobValueDict = knobValueAny as? [String : Any], let knobValue = knobValueDict["value"] {
                 appConfigName += "_\(knobName):\(knobValue)"
@@ -363,6 +364,7 @@ import SQLite3
         // Build the system configuration name corresponding to the current system configuration:
         var sysConfigName = architecture.name 
         let sysKnobs = architecture.getStatus()!["systemConfigurationKnobs"] as! [String : Any]
+        Log.info("Tracing.emitScriptForCurrentSystemConfigurationInsertion: sysKnobs = \(sysKnobs)")
         for (knobName, knobValueAny) in sysKnobs {
             if let knobValueDict = knobValueAny as? [String : Any], let knobValue = knobValueDict["value"] {
                 sysConfigName += "_\(knobName):\(knobValue)"

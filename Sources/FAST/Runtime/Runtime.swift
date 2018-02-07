@@ -50,7 +50,7 @@ public class Runtime {
         controller               = ConstantController()
         controllerLock           = NSLock()
 
-        architecture             = DefaultArchitecture(runtime: self)
+        architecture             = nil // DefaultArchitecture(runtime: self): this calls registerSystemMeasures, not good!
         application              = nil
 
         communicationChannel     = nil

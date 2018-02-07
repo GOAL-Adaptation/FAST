@@ -110,16 +110,58 @@ func optimize
     //        the Runtime class, once it is made non-static.
     let (restServer, initializationParameters) = startRestServer(using: runtime)
 
+    // initialize local variables used to compute measures
+    var iteration: UInt32 = 0 // iteration counter // FIXME what if the counter overflows
+    var startTime = ProcessInfo.processInfo.systemUptime // used for runningTime counter
+    var runningTime = 0.0 // counts only time spent inside the loop body
+    var latencyStartTime = runtime.getMeasure("time")! // used for latency counter
+
+    /** Re-set the internal variables used to compute measures, and register them in the runtime */
+    func resetMeasures() {
+        Log.debug("optimize.resetMeasuresBegin")
+        iteration = 0 // iteration counter // FIXME what if the counter overflows
+        startTime = ProcessInfo.processInfo.systemUptime // used for runningTime counter
+        runningTime = 0.0 // counts only time spent inside the loop body
+        latencyStartTime = runtime.getMeasure("time")! // used for latency counter
+        runtime.measure("iteration", Double(iteration))
+        runtime.measure("runningTime", runningTime) // running time in seconds
+        runtime.measure("latency", 0.0) // latency in seconds
+        runtime.measure("windowSize", Double(windowSize))
+        Log.debug("optimize.resetMeasuresEnd")
+    }
+
     /** Loop body for a given number of iterations (or infinitely, if iterations == nil) */
     func loop(iterations: UInt64? = nil, _ body: (Void) -> Void) {
+
+        func updateMeasures() {
+            Log.debug("optimize.loop.updateMeasuresBegin")
+            // update measures provided by runtime
+            runningTime += ProcessInfo.processInfo.systemUptime - startTime
+            let latency: Double = runtime.getMeasure("time")! - latencyStartTime
+            runtime.measure("iteration", Double(iteration))
+            runtime.measure("runningTime", runningTime) // running time in seconds
+            runtime.measure("latency", latency) // latency in seconds per input
+            if latency > 0 {
+                runtime.measure("performance", 1.0 / latency) // performance in seconds per input    
+            }
+            else {
+                Log.warning("Zero time passed between two measurements of time. Performance cannot be computed.")
+            }
+            runtime.measure("windowSize", Double(windowSize))
+            latencyStartTime = runtime.getMeasure("time")! // begin measuring latency
+            Log.debug("optimize.loop.updateMeasuresEnd")
+        }
+
         if let i = iterations {
             var localIteration: UInt64 = 0
             while localIteration < i && !shouldTerminate() && !runtime.shouldTerminate {
+                updateMeasures()
                 body()
                 localIteration += 1
             }
         } else {
             while !shouldTerminate() && !runtime.shouldTerminate {
+                updateMeasures()
                 body()
             }
         }
@@ -157,6 +199,9 @@ func optimize
                 measureTableOutputStream.write(measureTableHeader, maxLength: measureTableHeader.characters.count)
 
                 for i in 0 ..< knobSpace.count {
+
+                    resetMeasures()
+
                     // Initialize measuring device, that will update measures at every input
                     let measuringDevice = MeasuringDevice(ProgressSamplingPolicy(period: 1), windowSize, intent.measures, runtime)
                     runtime.measuringDevices[id] = measuringDevice
@@ -192,13 +237,15 @@ func optimize
     func trace(intent: IntentSpec) {
 
         Log.info("Tracing optimize scope \(id).")
+        runtime.setIntent(intent)
+        
         if let myApp = runtime.application as? EmulateableApplication, let myArch = runtime.architecture as? EmulateableArchitecture {
 
             // step 1: Emit SQL to insert application and architecture properties based on an intent specification.
             let applicationAndArchictectureInsertion
             = emitScriptForApplicationAndArchitectureInsertion(
                 application   : myApp
-                , warmupInputNum: 0
+                , warmupInputNum: 2
                 , architecture  : myArch
                 , intent        : intent)
 
@@ -220,9 +267,6 @@ func optimize
             + "\n" + applicationAndArchictectureInsertion  // step 1
             + "\n" + appInputStreamInsertion               // step 2.1
             + "\n" + jobLogParamInsertion                  // step 2.2
-
-            // Initialize measuring device, that will update measures at every input
-            let measuringDevice = MeasuringDevice(ProgressSamplingPolicy(period: 1), windowSize, intent.measures, runtime)
 
             // Number of inputs to process when profiling a configuration
             let defaultProfileSize: UInt64 = UInt64(1000)
@@ -272,12 +316,21 @@ func optimize
                 }
             }
 
-            // loop to trace only those configurations in knobRefSpace:
+            // Trace only those configurations in knobRefSpace:
             for i in 0 ..< knobRefSpace.count {
+
+                resetMeasures()
+
+                // Initialize measuring device, that will update measures at every input
+                let measuringDevice = MeasuringDevice(ProgressSamplingPolicy(period: 1), windowSize, intent.measures, runtime)
+                runtime.measuringDevices[id] = measuringDevice
 
                 let knobSettings = knobRefSpace[i]
                 Log.info("Start tracing of configuration: \(knobSettings.settings).")
                 knobSettings.apply(runtime: runtime)
+                if let streamingApplication = runtime.application as? StreamApplication {
+                        streamingApplication.initializeStream()
+                }
 
                 // step 3.1: Emit SQL to insert current application configuration and
                 // return the name of the current application configuration to be used in subsequent steps.
@@ -309,11 +362,9 @@ func optimize
                 var lastTime = runtime.getMeasure("time")!
                 var lastEnergy = runtime.getMeasure("energy")!
                 var deltaTimeDeltaEnergyInsertion = ""
-                loop( iterations: profileSize - 1) {
-                // let numberOfProcessedInputs   = runtime.getMeasure("iteration")   // NOTE: no such measure
+                loop( iterations: profileSize) {
                     inputNum += 1
                     executeAndReportProgress(measuringDevice, routine)
-                 // let runningTime               = runtime.getMeasure("runningTime") // NOTE: no such measure
                     let time = runtime.getMeasure("time")!
                     let energy = runtime.getMeasure("energy")!
                     let deltaTime = time - lastTime
@@ -352,7 +403,7 @@ func optimize
 
     func run(model: Model, intent: IntentSpec, numberOfInputsToProcess: UInt64? = nil) {
 
-        Log.info("Executing optimize scope \(id).")
+        Log.info("Running optimize scope \(id).")
 
         // Initialize the controller with the knob-to-mesure model, intent and window size
         runtime.initializeController(model, intent, windowSize)
@@ -375,16 +426,15 @@ func optimize
                     fatalError()
                 }
             }
-            var iteration: UInt32 = 0 // iteration counter // FIXME what if the counter overflows
-            var startTime = ProcessInfo.processInfo.systemUptime // used for runningTime counter
-            var runningTime = 0.0 // counts only time spent inside the loop body
-            runtime.measure("iteration", Double(iteration))
-            runtime.measure("runningTime", runningTime) // running time in seconds
+
             runtime.measure("currentConfiguration", Double(currentKnobSettings.kid)) // The id of the configuration given in the knobtable
-            runtime.measure("windowSize", Double(windowSize))
+
+            resetMeasures()
+
             // Initialize measuring device, that will update measures based on the samplingPolicy
             let measuringDevice = MeasuringDevice(samplingPolicy, windowSize, intent.measures, runtime)
             runtime.measuringDevices[id] = measuringDevice
+
             // Start the input processing loop
             loop(iterations: numberOfInputsToProcess) {
                 startTime = ProcessInfo.processInfo.systemUptime // reset, in case something paused execution between iterations
@@ -398,11 +448,10 @@ func optimize
                     // FIXME This should only apply when the schedule actually needs to change knobs
                     currentKnobSettings.apply(runtime: runtime)
                 }
+
+                // execute the routine (body of the optimize constuct)
                 executeAndReportProgress(measuringDevice, routine)
-                runningTime += ProcessInfo.processInfo.systemUptime - startTime
-                runtime.measure("iteration", Double(iteration))
-                runtime.measure("runningTime", runningTime) // running time in seconds
-                runtime.measure("windowSize", Double(windowSize))
+
                 // FIXME maybe stalling in scripted mode should not be done inside of optimize but somewhere else in an independent and better way
                 runtime.reportProgress()
 
@@ -414,6 +463,7 @@ func optimize
                 }
                 iteration += 1
             }
+
         }
         else {
             Log.error("Attempt to execute using controller with undefined model.")
