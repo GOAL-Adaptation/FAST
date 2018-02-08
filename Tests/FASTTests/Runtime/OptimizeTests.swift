@@ -51,6 +51,7 @@ class OptimizeTests: FASTTestCase {
 
     func withThMockRestServer(_ test: (RestServer) -> ()) {
         let thMockServer = startThMockRestServer()
+        self.runtime.measure("time", 0.0)  // ensure "time" measurement exists for Optimize.optimize
         test(thMockServer)
         stopThMockRestServer(server: thMockServer)
     }
