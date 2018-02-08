@@ -167,7 +167,7 @@ func optimize
         }
     }
 
-    func profile(intent: IntentSpec) {
+    func profile(intent: IntentSpec, exhaustive: Bool = true) {
 
         Log.info("Profiling optimize scope \(id).")
 
@@ -184,7 +184,7 @@ func optimize
         withOpenFile(atPath: profileOutputPrefix + ".knobtable") { (knobTableOutputStream: Foundation.OutputStream) in
             withOpenFile(atPath: profileOutputPrefix + ".measuretable") { (measureTableOutputStream: Foundation.OutputStream) in
 
-                let knobSpace = intent.knobSpace()
+                let knobSpace = intent.knobSpace(exhaustive: exhaustive)
                 let knobNames = Array(knobSpace[0].settings.keys).sorted()
                 let measureNames = intent.measures
 
@@ -510,6 +510,8 @@ func optimize
                 case .ExhaustiveProfiling:
 
                     profile(intent: intent)
+                case .EndPointsProfiling:
+                    profile(intent: intent, exhaustive: false)
 
                 case .EmulatorTracing:
 
