@@ -9,6 +9,7 @@ enum ApplicationExecutionMode {
 
     // Run application, without adaptation, once for every configuration in the intent specification.
     case ExhaustiveProfiling
+    case EndPointsProfiling
 
     // Let [appCfg0, appCfg1, .., appCfgn] be the list of application configurations, where appCfg0
     // is the reference configuration specified in the intent specification.
@@ -33,6 +34,7 @@ extension ApplicationExecutionMode: Equatable {
         case (.Adaptive, .Adaptive),
              (.NonAdaptive, .NonAdaptive),
              (.ExhaustiveProfiling, .ExhaustiveProfiling),
+             (.EndPointsProfiling, .EndPointsProfiling),
              (.EmulatorTracing, .EmulatorTracing):
             return true
         case (let .SelectiveProfiling(pl, el), let .SelectiveProfiling(pr, er)):
@@ -53,6 +55,8 @@ extension ApplicationExecutionMode: InitializableFromString {
             self = .NonAdaptive
         case "ExhaustiveProfiling":
             self = .ExhaustiveProfiling
+        case "EndPointsProfiling":
+            self = .EndPointsProfiling
         case "EmulatorTracing":
             self = .EmulatorTracing
         default:

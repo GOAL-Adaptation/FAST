@@ -135,6 +135,11 @@ profile:           		export proteus_runtime_applicationExecutionMode         := 
 profile:           		export proteus_runtime_profileSize                      := $(if $(TEST),$(TEST),100)
 profile:           		build execute ## To select number of inputs to process when profiling: make size=<NUMBER_OF_RUNS> profile
 
+profile-bounds:    		export proteus_runtime_logLevel                         := Info
+profile-bounds:    		export proteus_runtime_applicationExecutionMode         := EndPointsProfiling
+profile-bounds:    		export proteus_runtime_profileSize                      := $(if $(TEST),$(TEST),100)
+profile-bounds:    		build execute ## To select number of inputs to process when profiling: make size=<NUMBER_OF_RUNS> profile
+
 trace:           		export proteus_runtime_logLevel                         := Info
 trace:           		export proteus_runtime_applicationExecutionMode         := EmulatorTracing
 trace:           		export proteus_runtime_profileSize                      := 11
