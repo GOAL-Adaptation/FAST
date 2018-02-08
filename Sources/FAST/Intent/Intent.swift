@@ -37,7 +37,16 @@ public protocol IntentSpec {
 extension IntentSpec {
 
   /** All possbile knob settings. */
-  func knobSpace() -> [KnobSettings] {
+  func knobSpace(exhaustive: Bool = true) -> [KnobSettings] {
+    func getKnobValues(for name: String) -> [Any] {
+      let (exhaustiveKnobValues, _) = knobs[name]!
+      var knobValues = exhaustiveKnobValues
+      if !exhaustive, let leftEndKnobValue = knobValues.first, let rightEndKnobValue = knobValues.last {
+        knobValues = [leftEndKnobValue, rightEndKnobValue]
+      }
+      return knobValues
+    }
+
     /** Builds up the space by extending it with the elements of
      *  successive elements of remainingKnobs. */
      func build(space: [[String : Any]], remainingKnobs: [String]) -> [[String : Any]] {
@@ -46,7 +55,7 @@ extension IntentSpec {
       }
       else {
         let knobName = remainingKnobs.first!
-        let (knobValues, _) = knobs[knobName]!
+        let knobValues = getKnobValues(for: knobName)
         var extendedSpace = [[String : Any]]()
         for knobValue in knobValues {
           for partialConfiguration in space {
@@ -67,7 +76,7 @@ extension IntentSpec {
     }
     else {
         let firstKnobName = knobNames.first!
-        let (firstKnobValues, _) = knobs[firstKnobName]!
+        let firstKnobValues = getKnobValues(for: firstKnobName)
         let spaceWithFirstKnobsValuesOnly = firstKnobValues.map{ [firstKnobName: $0] }
         return build( space: spaceWithFirstKnobsValuesOnly
                     , remainingKnobs: Array(knobNames.dropFirst(1))

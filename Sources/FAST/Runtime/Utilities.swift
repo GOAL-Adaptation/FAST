@@ -11,9 +11,10 @@ func synchronized<L: NSLocking>(_ lock: L, routine: () -> ()) {
 func readFile( withName name: String, ofType type: String
              , fromBundle bundle: Bundle = Bundle.main ) -> String? {
 
-    if let path = bundle.path(forResource: name, ofType: type) {       
+    if let path = bundle.path(forResource: name, ofType: type) {
         do {
             let contents = try String(contentsOfFile: path, encoding: String.Encoding.utf8)
+              .split(separator: "\n").filter({ !$0.hasPrefix("#") }).joined(separator: "\n")
             Log.debug("Loaded file '\(path)'.")
             return contents
         }
@@ -22,7 +23,7 @@ func readFile( withName name: String, ofType type: String
             return nil
         }
     }
-    else {        
+    else {
         Log.warning("No file '\(name).\(type)' in \(Bundle.main).")
         return nil
     }
