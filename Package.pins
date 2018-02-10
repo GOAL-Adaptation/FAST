@@ -59,7 +59,7 @@
       "package": "FASTController",
       "reason": null,
       "repositoryURL": "git@github.mit.edu:proteus/FASTController",
-      "version": "1.0.0"
+      "version": "1.0.2"
     },
     {
       "package": "HeliumLogger",

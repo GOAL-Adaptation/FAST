@@ -34,8 +34,8 @@ open class Model {
         let knobTable = CSwiftV(with: knobCSV)
         let measureTable = CSwiftV(with: measureCSV)
         assert(knobTable.rows.count == measureTable.rows.count, "number of rows in knob and measure config files must match")
-        let knobNames = Array(knobTable.headers.dropFirst())
-        self.measureNames = Array(measureTable.headers.dropFirst())
+        let knobNames = Array(knobTable.headers.dropFirst()).sorted()
+        self.measureNames = Array(measureTable.headers.dropFirst()).sorted()
         var configurations: [Configuration] = []
         for configId in 0 ..< knobTable.rows.count {
             let knobNameValuePairs = Array(zip(knobNames, knobTable.rows[configId].dropFirst().map{ parseKnobSetting(setting: $0) }))
