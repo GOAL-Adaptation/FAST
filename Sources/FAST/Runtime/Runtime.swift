@@ -389,9 +389,14 @@ public class Runtime {
 
     /** Intialize intent preserving controller with the intent, keeping the previous model and window */
     public func reinitializeController(_ spec: IntentSpec) {
-        if let model = controller.model {
-            // FIXME Check that the model and updated intent are consistent (that measure and knob sets coincide)
-            initializeController(model, spec, controller.window)
+        // If the current controller is an IntentPreservingController and:
+        //  - The constraint measure has not changed
+        //  - The knob space has not changed (FIXME: implement this)
+        if let intentPreservingController = self.controller as? IntentPreservingController,               
+               spec.constraintName == intentPreservingController.intent.constraintName {
+            
+            // FIXME Thoroughly check that the model and updated intent are consistent (that measure and knob sets coincide)
+            initializeController(intentPreservingController.model!, spec, controller.window)
         } else if let model = readModelFromFile(spec.name) {
             Log.debug("Current controller doesn't contain a model, so we read the model from file again!")
             initializeController(model, spec, controller.window)
