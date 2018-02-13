@@ -401,6 +401,23 @@ public class Runtime {
         }
     }
 
+    public func changeIntent(_ spec: IntentSpec) {
+      guard let fastController = controller as? IntentPreservingController else {
+        Log.error("Active controller type '\(type(of: controller))' does not support setting of constraint, reinitializing the entire controller.")
+        reinitializeController(spec)
+        return
+      }
+
+      if spec.areKnobsAndMeasuresIdentical(to: intents[spec.name]) {
+        Log.verbose("Knob or measure sets of the new intent are identical to those of the previous intent. Setting the constraint goal of the existing controller to '\(spec.constraint)'.")
+        fastController.fastController.setConstraint(spec.constraint)
+      }
+      else {
+        Log.verbose("Reinitializing the controller for `\(spec.name)`.")
+        reinitializeController(spec)
+      }
+    }
+
     /** Update the value of name in the global measure store and return that value */
     @discardableResult func measure(_ name: String, _ value: Double) -> Double {
         synchronized(measuresLock) {
