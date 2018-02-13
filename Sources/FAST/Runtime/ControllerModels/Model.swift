@@ -34,14 +34,18 @@ open class Model {
         let knobTable = CSwiftV(with: knobCSV)
         let measureTable = CSwiftV(with: measureCSV)
         assert(knobTable.rows.count == measureTable.rows.count, "number of rows in knob and measure config files must match")
-        let knobNames = Array(knobTable.headers.dropFirst()).sorted()
-        self.measureNames = Array(measureTable.headers.dropFirst()).sorted()
+        let knobNames = Array(knobTable.headers.dropFirst())
+        let measureNonIdHeaders = measureTable.headers.dropFirst()
+        self.measureNames = Array(measureNonIdHeaders).sorted()
         var configurations: [Configuration] = []
         for configId in 0 ..< knobTable.rows.count {
             let knobNameValuePairs = Array(zip(knobNames, knobTable.rows[configId].dropFirst().map{ parseKnobSetting(setting: $0) }))
             let knobSettings = KnobSettings(kid: configId, [String:Any](knobNameValuePairs))
-            let measureNameValuePairs = Array(zip(measureNames, measureTable.rows[configId].dropFirst().map{ Double($0)! })) // FIXME Add error handling
-            let measures = [String:Double](measureNameValuePairs)
+            var measures = [String : Double]()
+            for m in measureNames {
+                let indexOfM = measureNonIdHeaders.index(of: m)! 
+                measures[m] = Double(measureTable.rows[configId].dropFirst()[indexOfM])! // FIXME Add error handling
+            }
             configurations.append(Configuration(configId, knobSettings, measures))
         }
         self.configurations = configurations
