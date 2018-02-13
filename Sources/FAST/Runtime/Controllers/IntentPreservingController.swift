@@ -6,6 +6,7 @@ class IntentPreservingController : Controller {
     let model: Model? // Always defined for this Controller
     let window: UInt32
     let fastController: FASTController
+    let intent: IntentSpec
 
     init?(_ model: Model,
           _ intent: IntentSpec,
@@ -13,6 +14,7 @@ class IntentPreservingController : Controller {
         let sortedModel = model.sorted(by: intent.constraintName)
         self.model = sortedModel
         self.window = window
+        self.intent = intent
         if let constraintMeasureIdx = sortedModel.measureNames.index(of: intent.constraintName) {
             self.fastController =
                 FASTController( model: sortedModel.getFASTControllerModel()
