@@ -408,7 +408,7 @@ public class Runtime {
         return
       }
 
-      if spec.areKnobsAndMeasuresIdentical(to: intents[spec.name]) {
+      if spec.isEverythingExceptConstraitValueIdentical(to: intents[spec.name]) {
         Log.verbose("Knob or measure sets of the new intent are identical to those of the previous intent. Setting the constraint goal of the existing controller to '\(spec.constraint)'.")
         fastController.fastController.setConstraint(spec.constraint)
       }
