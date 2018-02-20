@@ -401,7 +401,7 @@ func optimize
     }
 
 
-    func run(model: Model, intent: IntentSpec, numberOfInputsToProcess: UInt64? = nil) {
+    func run(model: Model, intent: IntentSpec, missionLength: UInt64? = nil) {
 
         Log.info("Running optimize scope \(id).")
 
@@ -436,7 +436,7 @@ func optimize
             runtime.measuringDevices[id] = measuringDevice
 
             // Start the input processing loop
-            loop(iterations: numberOfInputsToProcess) {
+            loop(iterations: missionLength) {
                 startTime = ProcessInfo.processInfo.systemUptime // reset, in case something paused execution between iterations
                 if iteration > 0 && iteration % windowSize == 0 {
                     Log.debug("Computing schedule from window averages: \(measuringDevice.windowAverages()).")
@@ -490,7 +490,7 @@ func optimize
             // FIXME handle error from request
             let _ = RestClient.sendRequest(to: "initialized")
 
-            run(model: model, intent: ips.initialConditions.missionIntent, numberOfInputsToProcess: ips.numberOfInputsToProcess)
+            run(model: model, intent: ips.initialConditions.missionIntent, missionLength: ips.missionLength)
 
             // FIXME handle error from request
             let _ = RestClient.sendRequest(to: "done", withBody: runtime.statusDictionary())
@@ -523,9 +523,9 @@ func optimize
 
                         Log.info("Model loaded for optimize scope \(id).")
 
-                        let numberOfInputsToProcess = initialize(type: UInt64.self, name: "inputsToProcess", from: key)
+                        let missionLength = initialize(type: UInt64.self, name: "missionLength", from: key)
 
-                        run(model: model, intent: intent, numberOfInputsToProcess: numberOfInputsToProcess)
+                        run(model: model, intent: intent, missionLength: missionLength)
 
                     } else {
 

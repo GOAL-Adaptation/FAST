@@ -13,7 +13,7 @@ struct InitializationParameters {
     let architecture             : ArchitectureName
     let applicationName          : ApplicationName
     let applicationInputFileName : String
-    let numberOfInputsToProcess  : UInt64?
+    let missionLength  : UInt64?
     let adaptationEnabled        : Bool
     let statusInterval           : UInt64
     let randomSeed               : UInt64
@@ -30,7 +30,7 @@ struct InitializationParameters {
          , let initialConditionsJson    = json["initialConditions"] as? [String : Any]
          , let initialConditions        = Perturbation(json: initialConditionsJson)
         {
-            let numberOfInputsToProcess  = extract(type: UInt64.self         , name: "numberOfInputsToProcess", json: json)
+            let missionLength  = extract(type: UInt64.self         , name: "missionLength", json: json)
 
             if String(describing: applicationName) != initialConditions.missionIntent.name {
                 Log.error("Intent name '\(initialConditions.missionIntent.name)' differs from application name: '\(applicationName)'.")
@@ -40,7 +40,7 @@ struct InitializationParameters {
             self.architecture             = architecture
             self.applicationName          = applicationName
             self.applicationInputFileName = applicationInputFileName
-            self.numberOfInputsToProcess  = numberOfInputsToProcess
+            self.missionLength  = missionLength
             self.adaptationEnabled        = adaptationEnabled
             self.statusInterval           = statusInterval
             self.randomSeed               = randomSeed

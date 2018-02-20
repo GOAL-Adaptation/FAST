@@ -43,10 +43,10 @@ class FastRestServer : RestServer {
             if let json = self.readRequestBody(request: request, fromEndpoint: "/process") {
 
                 if let n = json["inputs"],
-                   let numberOfInputsToProcess = n as? Int {
+                   let numberOfInputs = n as? Int {
                     Log.debug("Received JSON on /process endpoint: \(json)")
-                    runtime.process(numberOfInputs: UInt64(numberOfInputsToProcess))
-                    Log.info("Processed \(numberOfInputsToProcess) input(s).")
+                    runtime.process(numberOfInputs: UInt64(numberOfInputs))
+                    Log.info("Processed \(numberOfInputs) input(s).")
                 }
                 else {
                     logAndPostErrorToTh("Failed to extract number of inputs to process from JSON: \(json).")
