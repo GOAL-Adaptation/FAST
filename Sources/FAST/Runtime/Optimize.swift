@@ -178,7 +178,7 @@ func optimize
         // File prefix of knob- and measure tables
         let defaultProfileOutputPrefix: String = runtime.application?.name ?? "fast"
 
-        let profileSize         = initialize(type: UInt64.self, name: "profileSize",         from: key, or: defaultProfileSize)
+        let profileSize         = initialize(type: UInt64.self, name: "missionLength",         from: key, or: defaultProfileSize)
         let profileOutputPrefix = initialize(type: String.self, name: "profileOutputPrefix", from: key, or: defaultProfileOutputPrefix)
 
         withOpenFile(atPath: profileOutputPrefix + ".knobtable") { (knobTableOutputStream: Foundation.OutputStream) in
@@ -270,7 +270,7 @@ func optimize
 
             // Number of inputs to process when profiling a configuration
             let defaultProfileSize: UInt64 = UInt64(1000)
-            let profileSize = initialize(type: UInt64.self, name: "profileSize", from: key, or: defaultProfileSize)
+            let profileSize = initialize(type: UInt64.self, name: "missionLength", from: key, or: defaultProfileSize)
             let knobSpace = intent.knobSpace()
 
             // For application knobs that appear in the intent knob list,

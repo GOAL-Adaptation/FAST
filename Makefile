@@ -74,30 +74,33 @@ clean:
 
 rebuild: clean build
 
-execute:              export proteus_runtime_inputsToProcess                  := 2000
-execute:              export proteus_runtime_missionLength                    := 1000
-execute:              export proteus_runtime_sceneObfuscation                 := 0.0
-execute:              export proteus_runtime_address                          := 0.0.0.0
-execute:              export proteus_client_rest_serverAddress                := brass-th
-execute:              export proteus_client_rest_serverPort                   := 8080
-execute:              export proteus_emulator_database_db                     := ./incrementer_emulation.db
-execute:              export proteus_emulator_database_readingMode            := Statistics
+setup:              export proteus_runtime_inputsToProcess                  := 2000
+setup:              export proteus_runtime_missionLength                    := 1000
+setup:              export proteus_runtime_sceneObfuscation                 := 0.0
+setup:              export proteus_runtime_address                          := 0.0.0.0
+setup:              export proteus_client_rest_serverAddress                := brass-th
+setup:              export proteus_client_rest_serverPort                   := 8080
+setup:              export proteus_emulator_database_db                     := ./incrementer_emulation.db
+setup:              export proteus_emulator_database_readingMode            := Statistics
 
-execute:              export proteus_armBigLittle_policy                      := Simple
-execute:              export proteus_armBigLittle_actuationPolicy             := Actuate
-execute:              export proteus_armBigLittle_availableBigCores           := 4
-execute:              export proteus_armBigLittle_availableLittleCores        := 4
-execute:              export proteus_armBigLittle_maximalBigCoreFrequency     := 2000
-execute:              export proteus_armBigLittle_maximalLittleCoreFrequency  := 1400
-execute:              export proteus_armBigLittle_utilizedBigCores            := 4
-execute:              export proteus_armBigLittle_utilizedLittleCores         := 0
+setup:              export proteus_armBigLittle_policy                      := Simple
+setup:              export proteus_armBigLittle_actuationPolicy             := Actuate
+setup:              export proteus_armBigLittle_availableBigCores           := 4
+setup:              export proteus_armBigLittle_availableLittleCores        := 4
+setup:              export proteus_armBigLittle_maximalBigCoreFrequency     := 2000
+setup:              export proteus_armBigLittle_maximalLittleCoreFrequency  := 1400
+setup:              export proteus_armBigLittle_utilizedBigCores            := 4
+setup:              export proteus_armBigLittle_utilizedLittleCores         := 0
 
-execute:              export proteus_xilinxZcu_policy                         := Simple
-execute:              export proteus_xilinxZcu_actuationPolicy                := NoActuation
-execute:              export proteus_xilinxZcu_availableCores                 := 4
-execute:              export proteus_xilinxZcu_maximalCoreFrequency           := 1200
-execute:              export proteus_xilinxZcu_utilizedCores                  := 4
-execute:              export proteus_xilinxZcu_utilizedCoreFrequency          := 1200
+setup:              export proteus_xilinxZcu_policy                         := Simple
+setup:              export proteus_xilinxZcu_actuationPolicy                := NoActuation
+setup:              export proteus_xilinxZcu_availableCores                 := 4
+setup:              export proteus_xilinxZcu_maximalCoreFrequency           := 1200
+setup:              export proteus_xilinxZcu_utilizedCores                  := 4
+setup:              export proteus_xilinxZcu_utilizedCoreFrequency          := 1200
+
+setup:
+	true
 
 execute: copy-resources-build
 	.build/debug/${APPNAME}
@@ -106,43 +109,47 @@ go:                     build run
 
 all:                    rebuild run
 
+run:               		setup
 run:               		export proteus_runtime_applicationExecutionMode         := Adaptive
-run:               		execute                                                 
+run:               		execute
 
 run-scripted:      		export proteus_runtime_interactionMode                  := Scripted
-run-scripted:      		run                                                     
+run-scripted:      		run
 
 run-harness:       		export proteus_runtime_executeWithTestHarness           := true
-run-harness:       		run                                                     
+run-harness:       		run
 
 run-harness-scripted:   export proteus_runtime_executeWithTestHarness           := true
 run-harness-scripted:   run-scripted
 
 emulate:           		export proteus_armBigLittle_executionMode               := Emulated
 emulate:           		export proteus_xilinxZcu_executionMode                  := Emulated
-emulate:           		run                                                     
+emulate:           		run
 
 emulate-scripted:  		export proteus_armBigLittle_executionMode               := Emulated
 emulate-scripted:     export proteus_xilinxZcu_executionMode                  := Emulated
-emulate-scripted:  		run-scripted                                            
+emulate-scripted:  		run-scripted
 
 evaluate:          		export proteus_runtime_executeWithTestHarness           := true
-evaluate:          		emulate                                                 
+evaluate:          		emulate
 
 evaluate-scripted: 		export proteus_runtime_executeWithTestHarness           := true
-evaluate-scripted: 		emulate-scripted                                        
+evaluate-scripted: 		emulate-scripted
 
+profile:           		setup
 profile:           		export proteus_runtime_logLevel                         := Info
 profile:           		export proteus_runtime_applicationExecutionMode         := ExhaustiveProfiling
-profile:           		export proteus_runtime_profileSize                      := $(if $(TEST),$(TEST),200)
+profile:           		export proteus_runtime_missionLength                    := 200
 profile:           		build execute ## To select number of inputs to process when profiling: make size=<NUMBER_OF_RUNS> profile
 
+profile-bounds:    		setup
 profile-bounds:    		export proteus_runtime_logLevel                         := Info
 profile-bounds:    		export proteus_runtime_applicationExecutionMode         := EndPointsProfiling
-profile-bounds:    		export proteus_runtime_profileSize                      := $(if $(TEST),$(TEST),100)
+profile-bounds:    		export proteus_runtime_missionLength                    := 200
 profile-bounds:    		build execute ## To select number of inputs to process when profiling: make size=<NUMBER_OF_RUNS> profile
 
+trace:           		setup
 trace:           		export proteus_runtime_logLevel                         := Info
 trace:           		export proteus_runtime_applicationExecutionMode         := EmulatorTracing
-trace:           		export proteus_runtime_profileSize                      := $(if $(TEST),$(TEST),200)
-trace:           		build execute 
+trace:           		export proteus_runtime_missionLength                    := 200
+trace:           		build execute
