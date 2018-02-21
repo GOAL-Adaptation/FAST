@@ -34,8 +34,8 @@ func randomizerWhiteGaussianNoise(deviation standardDeviation: Double) -> Double
 
   let x = rand(min: 0, max: 1)
   let y = rand(min: 0, max: 1)
-  let z = sqrt(-2.0 * log(x)) * cos(2.0 * 3.14159 * y);
-  return standardDeviation * z;
+  let z = sqrt(-2.0 * log(x)) * cos(2.0 * 3.14159 * y)
+  return standardDeviation * z
 
 }
 
