@@ -49,5 +49,5 @@ func randomizerEliminateOutliers(measurement: Double, error: Double, factor: ino
 */
 func randomDouble(min: Double, max: Double) -> Double {
   return (Double(arc4random()) / 0xFFFFFFFF) * (max - min) + min
-
+}
 //-------------------------------
