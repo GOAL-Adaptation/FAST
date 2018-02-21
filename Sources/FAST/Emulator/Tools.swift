@@ -44,4 +44,10 @@ func randomizerEliminateOutliers(measurement: Double, error: Double, factor: ino
   factor = (error == 0) ? factor : min(factor, measurement / (error * safetyMargin) )
 }
 
+/**
+* Return an random Double in the closed interval [min, max]
+*/
+func randomDouble(min: Double, max: Double) -> Double {
+  return (Double(arc4random()) / 0xFFFFFFFF) * (max - min) + min
+
 //-------------------------------
