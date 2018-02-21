@@ -259,8 +259,8 @@ func optimize
             = emitScriptForJobLogParameterInsertion(  // TODO: must pass in energyOutlier, tapeNoise and timeOutlier
                 applicationName: myApp.name,
                 energyOutlier  : 64.3,
-                tapeNoise      : 0.00012345,
-                timeOutlier    : 18.5)
+                tapeNoise      : 0.001953125,
+                timeOutlier    : 16.1)
 
             var insertionScript =
             "PRAGMA foreign_keys = 'off'; BEGIN;"
