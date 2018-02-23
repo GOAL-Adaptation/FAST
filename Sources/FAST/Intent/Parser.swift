@@ -124,6 +124,29 @@ public class IntentDecl : Expression {
 }
 
 /**
+ * An unconstrained intent declaration consists of a name, 
+ * an optimization type (maximize or minimize), an expression to be optimized.
+ */
+public class UnconstrainedIntentDecl : IntentDecl {
+
+    public init(name: String, optimizationType : FASTControllerOptimizationType,
+        optimizedExpr: Expression) {
+        super.init(name: name, optimizationType: optimizationType, optimizedExpr: optimizedExpr,
+                   constraintName: "", constraint: LiteralExpression(kind: .`nil`))
+    }
+
+    override public init(name: String, optimizationType : FASTControllerOptimizationType,
+        optimizedExpr: Expression, constraintName: String, constraint:Expression) {
+        fatalError("Wrong initilizer for unconstrainted intent declaration.")
+    }
+
+    override public var textDescription: String {
+        return "UncostrainedIntentDecl(\(name), \(optimizationType), \(optimizedExpr)"
+    }
+
+}
+
+/**
  * An intent section consists of an intent declaration.
  */
 public class IntentSection : Expression {
@@ -289,17 +312,21 @@ class IntentParser : Parser {
                 _lexer.advance(by: 2)
                 let optimizationType = (optimizer == "max") ? FASTControllerOptimizationType.maximize : FASTControllerOptimizationType.minimize
                 let optimizedExpr = try super.parseExpression(config: config)
-                if _lexer.look().kind == .rightParen, 
-                    case .identifier(let suchKeyword) = _lexer.look(ahead: 1).kind, suchKeyword == "such",
-                    case .identifier(let thatKeyword) = _lexer.look(ahead: 2).kind, thatKeyword == "that",
-                    case .identifier(let constraintName) = _lexer.look(ahead: 3).kind, 
-                    _lexer.look(ahead: 4).kind == .binaryOperator("==") {
-                        _lexer.advance(by: 5)
-                        let constraint = try super.parseExpression(config: config)
-                        return IntentDecl(name: intentName, optimizationType : optimizationType,
-                                        optimizedExpr: optimizedExpr, constraintName: constraintName, constraint: constraint)
+                if _lexer.look().kind == .rightParen,
+                   case .identifier(let myKeyword) = _lexer.look(ahead: 1).kind, myKeyword == "trainingSet" {
+					   _lexer.advance(by: 1)
+                       return UnconstrainedIntentDecl(name: intentName, optimizationType: optimizationType, optimizedExpr: optimizedExpr)
+                } else if _lexer.look().kind == .rightParen,
+                          case .identifier(let suchKeyword) = _lexer.look(ahead: 1).kind, suchKeyword == "such",
+                          case .identifier(let thatKeyword) = _lexer.look(ahead: 2).kind, thatKeyword == "that",
+                          case .identifier(let constraintName) = _lexer.look(ahead: 3).kind, 
+                          _lexer.look(ahead: 4).kind == .binaryOperator("==") {
+                    _lexer.advance(by: 5)
+                    let constraint = try super.parseExpression(config: config)
+                    return IntentDecl(name: intentName, optimizationType : optimizationType,
+                                      optimizedExpr: optimizedExpr, constraintName: constraintName, constraint: constraint)
                 } else {
-                    fatalError("expected right parenthesis followed by 'such that', a measure name, and '=='. Found: \(_lexer.look().kind).")
+                        fatalError("expected right parenthesis followed by 'such that', a measure name, and '=='. Found: \(_lexer.look().kind).")
                 }
             } else {
                 fatalError("expected 'max' or 'min' followed by a left parenthesis. Found: \(_lexer.look().kind).")

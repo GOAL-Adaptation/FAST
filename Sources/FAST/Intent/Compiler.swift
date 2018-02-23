@@ -60,17 +60,28 @@ public class Compiler {
             for i in 0 ..< measures.count {
                 measuresStore[measures[i]] = i
             }
-            return CompiledIntentSpec(
-                    name             : intentExpr.intentSection.intentDecl.name
-                , knobs            : compileKnobs(intentExpr)
-                , measures         : compileMeasures(intentExpr)
-                , constraint       : compileConstraintValue(intentExpr)
-                , constraintName   : intentExpr.intentSection.intentDecl.constraintName
-                , costOrValue      : compileCostOrValue(intentExpr, measuresStore)
-                , optimizationType : intentExpr.intentSection.intentDecl.optimizationType
-                , trainingSet      : compileTrainingSet(intentExpr)
-            )
-
+            if let constraint = intentExpr.intentSection.intentDecl.constraint as? LiteralExpression,
+               case .`nil` = constraint.kind {
+                return CompiledUnconstrainedIntentSpec(
+                      name             : intentExpr.intentSection.intentDecl.name
+                    , knobs            : compileKnobs(intentExpr)
+                    , measures         : compileMeasures(intentExpr)
+                    , costOrValue      : compileCostOrValue(intentExpr, measuresStore)
+                    , optimizationType : intentExpr.intentSection.intentDecl.optimizationType
+                    , trainingSet      : compileTrainingSet(intentExpr)
+                )
+            } else {
+                return CompiledIntentSpec(
+                      name             : intentExpr.intentSection.intentDecl.name
+                    , knobs            : compileKnobs(intentExpr)
+                    , measures         : compileMeasures(intentExpr)
+                    , constraint       : compileConstraintValue(intentExpr)
+                    , constraintName   : intentExpr.intentSection.intentDecl.constraintName
+                    , costOrValue      : compileCostOrValue(intentExpr, measuresStore)
+                    , optimizationType : intentExpr.intentSection.intentDecl.optimizationType
+                    , trainingSet      : compileTrainingSet(intentExpr)
+                )
+            }
         }
         else {
             Log.warning("Could not parse intent specification: \(firstStatement).")
@@ -105,10 +116,39 @@ public class Compiler {
             self.constraintName   = constraintName  
             self.costOrValue      = costOrValue     
             self.optimizationType = optimizationType
-            self.trainingSet      = trainingSet     	
+            self.trainingSet      = trainingSet
         }
     }
 
+    /** SWIFT representation of a FAST unconstrained intent specification file. */
+    class CompiledUnconstrainedIntentSpec : IntentSpec {
+            let name             : String
+            let knobs            : [String : ([Any], Any)]
+            let measures         : [String]
+            let constraint       : Double
+            let constraintName   : String
+            let costOrValue      : ([Double]) -> Double
+            let optimizationType : FASTControllerOptimizationType
+            let trainingSet      : [String]
+            let unconstrained    : Bool = true
+        init( name             : String
+                , knobs            : [String : ([Any], Any)]
+                , measures         : [String]
+                , costOrValue      : @escaping ([Double]) -> Double
+                , optimizationType : FASTControllerOptimizationType
+                , trainingSet      : [String]
+            ) 
+        {
+            self.name             = name            
+            self.knobs            = knobs           
+            self.measures         = measures        
+            self.constraint       = 0    
+            self.constraintName   = ""
+            self.costOrValue      = costOrValue     
+            self.optimizationType = optimizationType
+            self.trainingSet      = trainingSet
+        }
+    }
     //---------------------------------------
 
     /** 

@@ -12,6 +12,7 @@ import Foundation
 import Dispatch
 import LoggerAPI
 import FASTController
+import UnconstrainedOptimizer
 
 //---------------------------------------
 
@@ -454,10 +455,12 @@ func optimize
 
                 // FIXME maybe stalling in scripted mode should not be done inside of optimize but somewhere else in an independent and better way
                 runtime.reportProgress()
-
-                let statusDictionary = runtime.statusDictionary()
-                Log.debug("Current status: \(convertToJsonSR4783(from: statusDictionary ?? [:])).")
-                if runtime.executeWithTestHarness {
+                
+				let statusDictionary = runtime.statusDictionary()
+                
+				Log.debug("Current status: \(convertToJsonSR4783(from: statusDictionary ?? [:])).")
+				
+				if runtime.executeWithTestHarness {
                     // FIXME handle error from request
                     let _ = RestClient.sendRequest(to: "status", withBody: statusDictionary)
                 }

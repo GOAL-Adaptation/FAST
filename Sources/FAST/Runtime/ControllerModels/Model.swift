@@ -78,6 +78,14 @@ open class Model {
         return configurations[initialConfigurationIndex!] // FIXME propagate nil
     }
 
+    func getDomainArray() -> [UInt32] {
+        return (configurations.map{UInt32($0.id)})
+    }
+
+    func getMeasureVectorFunction() -> (UInt32) -> [Double] {
+        return {(id: UInt32) in self.configurations[Int(id)].measureValues}
+    }
+
     func getFASTControllerModel() -> FASTControllerModel {
         return FASTControllerModel(measures: configurations.map{ $0.measureValues })
     }

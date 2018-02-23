@@ -187,7 +187,6 @@ public class Runtime {
         func extractStatus(of subModule: String, from module: TextApiModule?) -> [String : Any] {
             return (module?.getStatus()?[subModule] as? [String: Any]).map{ unwrapValues($0) } ?? [:]
         }
-
         if let appName               = application?.name {
 
             let applicationKnobs         = extractStatus(of: "applicationKnobs",         from: application  )
@@ -200,9 +199,14 @@ public class Runtime {
                     (intentName, measuringDevice) in
                     let intentSpec = intents[intentName]!
                     let windowAverages = measuringDevice.windowAverages()
-                    let constraintVariableValue = windowAverages[intentSpec.constraintName]!
-                    var components =
-                        [ "constraintVariableValue" : constraintVariableValue ]
+                    var components : [String : Any]
+                    if let constraintVariableValue = windowAverages[intentSpec.constraintName] {
+					    components = [ "constraintVariableValue" : constraintVariableValue ]
+                    } else {
+                        print("No constraint.")
+					    components = [ "constraintVariableValue" : "NAN" ]
+                    }
+
                     if let objectiveFunction = intentSpec.currentCostOrValue(runtime: self) {
                         components["objectiveFunction"] = objectiveFunction
                     }
@@ -373,16 +377,33 @@ public class Runtime {
     /** Intialize intent preserving controller with the given model, intent and window. */
     func initializeController(_ model: Model, _ intent: IntentSpec, _ window: UInt32 = 20) {
         synchronized(controllerLock) {
-            if let c = IntentPreservingController(model, intent, window) {
-                setIntent(intent)
-                setModel(name: intent.name, model)
-                // controller_ = c
-                controller = c
-                Log.info("Controller initialized.")
-            }
-            else {
-                Log.error("Controller failed to initialize.")
-                fatalError()
+            switch intent.constraintName {
+			case "": 
+                if let c = UnconstrainedIntentPreservingController(model, intent, window) {
+                    setIntent(intent)
+                    setModel(name: intent.name, model)
+                    controller = c
+                    Log.info("Controller initialized.")
+                }
+                else {
+                    Log.error("Controller failed to initialize.")
+                    fatalError()
+                }
+			default:
+                if let c = IntentPreservingController(model, intent, window) {
+                    setIntent(intent)
+                    setModel(name: intent.name, model)
+                    // controller_ = c
+                    controller = c
+                    Log.info("Controller initialized.")
+                }
+                else {
+                    Log.error("Controller failed to initialize.")
+                    fatalError()
+                }
+            //default: 
+            //    Log.error("Controller cannot recognize this unknown type of intent.")
+            //    fatalError()
             }
         }
     }
