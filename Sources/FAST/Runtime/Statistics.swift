@@ -11,28 +11,55 @@ import LoggerAPI
     Computes total and window statistics for a single quantity,
     using constant-time algorithms.
 
-    - Cumulative moving average is computed over all observed values.
-    - Window average is computed over the N latest observations,
-      where N is the windowSize passed to init().
+    - Cumulative average and variance is computed over all observed values.
+
+    - Window average are computed over the N latest observations, 
+      where N is the windowSize passed to init()
+
 */
 internal class Statistics {
 
     private var measure: String
 
+    /* Total statistics */
     private var _totalAverage: Double = 0
     private var totalCount: Int = 0
+    private var deviations: Double = 0 // Used for Welford incremental variance (TAOCP, vol 2, ed 3, p 232)
 
+    /* Window statistics */
     private var _windowAverage: Double = 0
     private var window: [Double] = []
     private var windowHead: Int = 0
     private var windowIsComplete: Bool = false
     private var windowLock: NSLock = NSLock()
 
-    /** Returns the cumulative moving average, computed over all observations. */
+    /** Cumulative average, computed over all observations.
+     *  Note: Undefined (Double.nan) when the number of observations is less than 2. */
     var totalAverage: Double {
-        get { return _totalAverage }
+        get { 
+            if totalCount < 2 {
+                return Double.nan
+            }
+            else {
+                return _totalAverage
+            }
+        }
     }
 
+    /** Cumulative variance, computed over all observations. 
+     *  Note: Undefined (Double.nan) when the number of observations is less than 2. */
+    var totalVariance: Double {
+        get { 
+            if totalCount < 2 {
+                return Double.nan
+            }
+            else {
+                return deviations / Double(totalCount - 1) 
+            }
+        }
+    }
+
+    /** Window average, computed over the past windowSize observations. */
     var windowAverage: Double {
         get { return _windowAverage }
     }
@@ -67,9 +94,13 @@ internal class Statistics {
 
     /** Update statistics */
     @discardableResult func observe(_ value: Double) -> Double {
-        /* Total average */
-        _totalAverage = cumulativeMovingAverage(current: _totalAverage, count: totalCount, newValue: value)
+        /* Total mean/variance statistics, incremental algorithm by Welford (TAOCP, vol 2, ed 3, p 232) */
         totalCount += 1
+        let delta = value - _totalAverage
+        _totalAverage += delta / Double(totalCount)
+        let delta2 = value - _totalAverage
+        deviations += delta * delta2
+        /* Window statistics */
         synchronized(windowLock) {
             /* Window average */
             if windowIsComplete {
@@ -84,12 +115,8 @@ internal class Statistics {
             window[windowHead] = value
             windowHead = (windowHead + 1) % windowSize
         }
-        Log.verbose("Statistics for \(measure). Total average: \(totalAverage), window average: \(windowAverage).")
+        Log.verbose("Statistics for \(measure). Total average: \(totalAverage), total variance: \(totalVariance), window average: \(windowAverage).")
         return value
-    }
-
-    @inline(__always) private func cumulativeMovingAverage(current: Double, count: Int, newValue: Double) -> Double {
-        return (current * Double(count) + newValue) / Double(count + 1)
     }
 
 }
