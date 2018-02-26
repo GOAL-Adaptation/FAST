@@ -932,8 +932,14 @@ func getCurrentConfigurationId(architecture: Architecture) -> Int {
         // Adding noise
         Log.debug("Database.readDelta with (Statistics) meanDeltaTime(\(meanDeltaTime)) deviationDeltaTime(\(deviationDeltaTime)) meanDeltaEnergy(\(meanDeltaEnergy)) deviationDeltaEnergy(\(deviationDeltaEnergy)) rescaleFactorMean(\(rescaleFactorMean)) rescaleFactorVariance(\(rescaleFactorVariance))")
 
-        let deltas = (meanDeltaTime * rescaleFactorMean + randomizerWhiteGaussianNoise(deviation: deviationDeltaTime * rescaleFactorVariance) 
-                     , meanDeltaEnergy * rescaleFactorMean + randomizerWhiteGaussianNoise(deviation: deviationDeltaEnergy * rescaleFactorVariance))        
+        let n = 3.0
+        let deltaTimeNoise = rand(min: -meanDeltaTime, max: meanDeltaTime) / n
+        let deltaEnergyNoise = rand(min: -meanDeltaEnergy, max: meanDeltaEnergy) / n
+        
+        Log.debug("Database.readDelta n = \(n) deltaTimeNoise = \(deltaTimeNoise) deltaEnergyNoise = \(deltaEnergyNoise) ")
+		
+        let deltas = (meanDeltaTime * rescaleFactorMean + deltaTimeNoise
+                     , meanDeltaEnergy * rescaleFactorMean + deltaEnergyNoise)   
         
         Log.debug("Database.readDelta get deltas with noises from emulation database: \(deltas).")        
 
