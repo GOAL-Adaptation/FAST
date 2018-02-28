@@ -87,14 +87,21 @@ public class RestServer {
     var routes = Routes()
     let requestQueue : DispatchQueue
 
+    var responses: [String: HTTPResponse] = [:]
+
     /**
       * Add a route that modifiers the handler to make invocations happen serially,
       * in the order that they were received.
       */
     func addSerialRoute(method: HTTPMethod, uri: String, handler: @escaping (HTTPRequest, HTTPResponse) -> Void) {
-        routes.add(method: method, uri: uri,
-            handler: { request, response in self.requestQueue.async { handler(request, response) } }
-        )
+        routes.add(method: method, uri: uri) { request, response in
+            self.requestQueue.async {
+                let randId = UUID().uuidString
+                self.responses[randId] = response
+                handler(request, response)
+                self.responses.removeValue(forKey: randId)
+            }
+        }
     }
 
     /** Add a JSON object as the body of the HTTPResponse parameter. */
@@ -125,6 +132,14 @@ public class RestServer {
     }
 
     func stop() {
+        for (_, response) in responses {
+            let jsonString = convertToJsonSR4783(from: ["Error": "The server is shutting down."])
+            response.setBody(string: jsonString)
+            response.setHeader(.contentType, value: contentTypeApplicationJson)
+            response.status = .notAcceptable
+            Log.verbose("Send signal to active connections.")
+            response.completed()
+        }
         server.stop()
         Log.info("\(String(describing: name())) stopped (was using port \(server.serverPort)).")
     }

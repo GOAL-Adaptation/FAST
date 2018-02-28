@@ -57,7 +57,7 @@ class ThMockRestServer : RestServer {
             [ "applicationName" : "incrementer"
             , "InputFileName"   : ""
             ]
-        , "numberOfInputsToProcess" : 567
+        , "missionLength" : 567
         , "adaptationEnabled"       : "true"
         , "statusInterval"          : 1
         , "randomSeed"              : 0

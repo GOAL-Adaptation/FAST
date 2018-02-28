@@ -16,5 +16,5 @@ Typical environment setting for profiling:
 
 ```sh
 export proteus_runtime_applicationExecutionMode=ExhaustiveProfiling
-export proteus_runtime_profileSize=1000
+export proteus_runtime_missionLength=100
 ```
