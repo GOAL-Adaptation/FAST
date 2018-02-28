@@ -32,9 +32,12 @@ public protocol IntentSpec {
 
   var trainingSet: [String]  { get }
 
+  var objectiveFunctionRawString: String? { get }
+
 }
 
 extension IntentSpec {
+  var objectiveFunctionRawString: String? { return nil }
 
   /** All possbile knob settings. */
   func knobSpace(exhaustive: Bool = true) -> [KnobSettings] {
@@ -167,4 +170,30 @@ extension IntentSpec {
     return measureWindowAverages(runtime: runtime).map({ costOrValue($0) })
   }
 
+  func isEverythingExceptConstraitValueIdentical(to spec: IntentSpec?) -> Bool {
+    guard let other = spec else { return false }
+    guard
+      Set(measures) == Set(other.measures), // measures
+      knobs.count == other.knobs.count, Set(knobs.keys) == Set(other.knobs.keys), // knobs
+      objectiveFunctionRawString == other.objectiveFunctionRawString, // objective function
+      optimizationType == other.optimizationType, // optimization type
+      constraintName == other.constraintName // constraint name
+    else { return false }
+    for key in knobs.keys {
+      if
+        let values = knobs[key]?.0 as? [Int], let refValue = knobs[key]?.1 as? Int,
+        let otherValues = other.knobs[key]?.0 as? [Int], let otherRefValue = other.knobs[key]?.1 as? Int
+      {
+        guard values == otherValues && refValue == otherRefValue else { return false }
+      } else if
+        let values = knobs[key]?.0 as? [Double], let refValue = knobs[key]?.1 as? Double,
+        let otherValues = other.knobs[key]?.0 as? [Double], let otherRefValue = other.knobs[key]?.1 as? Double
+      {
+        guard values == otherValues && refValue == otherRefValue else { return false }
+      } else {
+        return false
+      }
+    }
+    return true
+  }
 }

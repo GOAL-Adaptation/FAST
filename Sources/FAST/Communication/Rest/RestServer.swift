@@ -252,7 +252,7 @@ public class RestServer {
     func changeIntent(_ missionIntent: String, accumulatedStatus: HTTPResponseStatus) -> HTTPResponseStatus {
         if let intentSpec = runtime.intentCompiler.compileIntentSpec(source: missionIntent) {
             // TODO Figure out if it is better to delay intent change/controller re-init until the end of the window
-            runtime.reinitializeController(intentSpec)
+            runtime.changeIntent(intentSpec)
             Log.info("Successfully received request on /changeIntent REST endpoint.")
             return accumulatedStatus
         }

@@ -69,6 +69,7 @@ public class Compiler {
                 , costOrValue      : compileCostOrValue(intentExpr, measuresStore)
                 , optimizationType : intentExpr.intentSection.intentDecl.optimizationType
                 , trainingSet      : compileTrainingSet(intentExpr)
+                , objectiveFunctionRawString : intentExpr.intentSection.intentDecl.optimizedExpr.textDescription
             )
 
         }
@@ -88,6 +89,9 @@ public class Compiler {
             let costOrValue      : ([Double]) -> Double
             let optimizationType : FASTControllerOptimizationType
             let trainingSet      : [String]
+
+            var objectiveFunctionRawString : String?
+
         init( name             : String
                 , knobs            : [String : ([Any], Any)]
                 , measures         : [String]
@@ -96,7 +100,8 @@ public class Compiler {
                 , costOrValue      : @escaping ([Double]) -> Double
                 , optimizationType : FASTControllerOptimizationType
                 , trainingSet      : [String]
-            ) 
+                , objectiveFunctionRawString : String? = nil
+            )
         {
             self.name             = name            
             self.knobs            = knobs           
@@ -106,6 +111,7 @@ public class Compiler {
             self.costOrValue      = costOrValue     
             self.optimizationType = optimizationType
             self.trainingSet      = trainingSet     	
+            self.objectiveFunctionRawString = objectiveFunctionRawString
         }
     }
 
