@@ -64,14 +64,15 @@ class FastRestServer : RestServer {
 
         addSerialRoute(method: .post, uri: "/perturb", handler: {
             request, response in
-            if let json = self.readRequestBody(request: request, fromEndpoint: "/perturb") {
+            if
+              let json = self.readRequestBody(request: request, fromEndpoint: "/perturb"),
+              let perturbation_pre = Perturbation(json: json),
+              let intentOnFile = runtime.readIntentFromFile(perturbation_pre.missionIntent.name),
+              let perturbation = Perturbation(json: json, intentOnFile: intentOnFile)
+            {
                 Log.debug("Received valid JSON on /perturb endpoint: \(json)")
-
-                let missionIntentString = RestServer.mkIntentString(from: json)
-
-                let testParameter = TestParameter(from: json)
-
-                response.status = self.changeIntent(missionIntentString, accumulatedStatus: response.status)
+                runtime.changeIntent(perturbation.missionIntent)
+                Log.info("Successfully received request on /changeIntent REST endpoint.")
             }
             else {
                 logAndPostErrorToTh("Message sent to /perturb endpoint is not valid JSON: \(request.postBodyString ?? "<nil-post-body-string>").")
