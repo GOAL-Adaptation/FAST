@@ -411,12 +411,15 @@ func optimize
     }
 
 
-    func run(model: Model, intent: IntentSpec, missionLength: UInt64? = nil) {
+    func run(model: Model, intent: IntentSpec, missionLength: UInt64? = nil, energyLimit: UInt64? = nil) {
 
         Log.info("Running optimize scope \(id).")
 
+        let maybeMissionLengthAndEnergyLimit: (UInt64,UInt64)? = 
+            missionLength != nil && energyLimit != nil ? (missionLength!,energyLimit!) : nil
+
         // Initialize the controller with the knob-to-mesure model, intent and window size
-        runtime.initializeController(model, intent, windowSize)
+        runtime.initializeController(model, intent, windowSize, maybeMissionLengthAndEnergyLimit)
 
         if let controllerModel = runtime.controller.model {
             // Compute initial schedule that meets the active intent, by using the measure values of
@@ -500,7 +503,7 @@ func optimize
             // FIXME handle error from request
             let _ = RestClient.sendRequest(to: "initialized")
 
-            run(model: model, intent: ips.initialConditions.missionIntent, missionLength: ips.missionLength)
+            run(model: model, intent: ips.initialConditions.missionIntent, missionLength: ips.missionLength, energyLimit: ips.energyLimit)
 
             // FIXME handle error from request
             let _ = RestClient.sendRequest(to: "done", withBody: runtime.statusDictionary())
@@ -533,9 +536,10 @@ func optimize
 
                         Log.info("Model loaded for optimize scope \(id).")
 
-                        let missionLength = initialize(type: UInt64.self, name: "missionLength", from: key)
+                        let missionLength = initialize(type: UInt64.self, name: "missionLength"  , from: key)
+                        let energyLimit   = initialize(type: UInt64.self, name: "energyLimit", from: key)
 
-                        run(model: model, intent: intent, missionLength: missionLength)
+                        run(model: model, intent: intent, missionLength: missionLength, energyLimit: energyLimit)
 
                     } else {
 

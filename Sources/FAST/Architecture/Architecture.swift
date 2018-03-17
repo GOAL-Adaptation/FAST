@@ -153,6 +153,9 @@ extension ClockAndEnergyArchitecture {
     runtime.isSystemMeasuresRegistered = true
 
     Log.debug("ClockAndEnergyArchitecture.registerSystemMeasures_1 for \(self) clockMonitor = \(self.clockMonitor) energyMonitor = \(self.energyMonitor)")
+
+    // Energy at the time when the architecture was initialized
+    let initialEnergy = Double(self.energyMonitor.readEnergy())
     
     DispatchQueue.global(qos: .utility).async {
       var lastEnergy = Double(self.energyMonitor.readEnergy())
@@ -160,7 +163,7 @@ extension ClockAndEnergyArchitecture {
       while true {
         let time = self.clockMonitor.readClock()
         let timeDelta = time - lastTime
-        let energy = Double(self.energyMonitor.readEnergy())
+        let energy = Double(self.energyMonitor.readEnergy()) - initialEnergy // Make energy start at 0
         runtime.measure("time", time)
         runtime.measure("energy", energy)
         if timeDelta != 0.0 {
