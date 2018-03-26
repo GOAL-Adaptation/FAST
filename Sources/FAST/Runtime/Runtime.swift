@@ -73,6 +73,11 @@ public class Runtime {
     // and posting to brass-th/status after the processing of each input.
     let executeWithTestHarness = initialize(type: Bool.self, name: "executeWithTestHarness", from: key, or: false)
 
+    // Names of measures registered by the runtime. 
+    // Along with the systemMeasures registered by the architecture, these are reserved measure names.
+    let runtimeMeasures = 
+        ["iteration", "runningTime", "energy", "energyDelta", "performance", "powerConsumption", "windowSize", "currentConfiguration"]
+
     var isSystemMeasuresRegistered = false
 
     private var measures: [String : Double] = [:]

@@ -115,6 +115,8 @@ func optimize
     var startTime = ProcessInfo.processInfo.systemUptime // used for runningTime counter
     var runningTime = 0.0 // counts only time spent inside the loop body
     var latencyStartTime = runtime.getMeasure("time")! // used for latency counter
+    var initialEnergy = runtime.getMeasure("systemEnergy")! // energy at the time when the application was initialized
+    var lastEnergy = initialEnergy
 
     /** Re-set the internal variables used to compute measures, and register them in the runtime */
     func resetMeasures() {
@@ -123,9 +125,15 @@ func optimize
         startTime = ProcessInfo.processInfo.systemUptime // used for runningTime counter
         runningTime = 0.0 // counts only time spent inside the loop body
         latencyStartTime = runtime.getMeasure("time")! // used for latency counter
+        initialEnergy = runtime.getMeasure("systemEnergy")!
+        lastEnergy = 0.0
         runtime.measure("iteration", Double(iteration))
         runtime.measure("runningTime", runningTime) // running time in seconds
         runtime.measure("latency", 0.0) // latency in seconds
+        runtime.measure("energy", 0.0) // energy since application started or was last reset
+        runtime.measure("energyDelta", 0.0) // energy per iteration
+        runtime.measure("powerConsumption", 0.0) // rate of energy
+        runtime.measure("performance", 0.0) // seconds per iteration
         runtime.measure("windowSize", Double(windowSize))
         Log.debug("optimize.resetMeasuresEnd")
     }
@@ -138,17 +146,24 @@ func optimize
             // update measures provided by runtime
             runningTime += ProcessInfo.processInfo.systemUptime - startTime
             let latency: Double = runtime.getMeasure("time")! - latencyStartTime
+            let systemEnergy = runtime.getMeasure("systemEnergy")!
+            let energy = systemEnergy - initialEnergy
+            let energyDelta: Double = energy - lastEnergy
             runtime.measure("iteration", Double(iteration))
             runtime.measure("runningTime", runningTime) // running time in seconds
-            runtime.measure("latency", latency) // latency in seconds per input
+            runtime.measure("latency", latency) // latency in seconds
+            runtime.measure("energy", energy) // energy since application started or was last reset
+            runtime.measure("energyDelta", energyDelta) // energy per iteration
             if latency > 0 {
-                runtime.measure("performance", 1.0 / latency) // performance in seconds per input    
+                runtime.measure("powerConsumption", energyDelta / latency) // rate of energy
+                runtime.measure("performance", 1.0 / latency) // seconds per iteration
             }
             else {
-                Log.warning("Zero time passed between two measurements of time. Performance cannot be computed.")
+                Log.warning("Zero time passed between two measurements of time. The performance and powerConsumption measures cannot be computed.")
             }
             runtime.measure("windowSize", Double(windowSize))
             latencyStartTime = runtime.getMeasure("time")! // begin measuring latency
+            lastEnergy = energy
             Log.debug("optimize.loop.updateMeasuresEnd")
         }
 

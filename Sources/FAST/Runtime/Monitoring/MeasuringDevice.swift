@@ -15,8 +15,9 @@ class MeasuringDevice {
         self.samplingPolicy = samplingPolicy
         self.runtime = runtime
         samplingPolicy.registerSampler(sample)
+        let runtimeMeasures = runtime.runtimeMeasures
         let systemMeasures = runtime.architecture?.systemMeasures ?? []
-        for m in applicationMeasures + systemMeasures {
+        for m in applicationMeasures + systemMeasures + runtimeMeasures {
             stats[m] = Statistics(measure: m, windowSize: Int(windowSize))
         }
     }
