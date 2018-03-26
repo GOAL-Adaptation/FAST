@@ -24,18 +24,15 @@ class IntentPreservingController : Controller {
             // on average. Otherwise use the unmodified user-defined objective function.
             var objectiveFunction: ([Double]) -> Double 
             if let (missionLength, energyLimit) = missionLengthAndEnergyLimit,
-               let energyMeasureIdx           = sortedModel.measureNames.index(of: "energy"),
-               let powerConsumptionMeasureIdx = sortedModel.measureNames.index(of: "powerConsumption"),
-               let latencyMeasureIdx          = sortedModel.measureNames.index(of: "latency"),
-               let iterationMeasureIdx        = sortedModel.measureNames.index(of: "iteration") {
+               let energyMeasureIdx      = sortedModel.measureNames.index(of: "energy"),
+               let energyDeltaMeasureIdx = sortedModel.measureNames.index(of: "energyDelta"),
+               let iterationMeasureIdx   = sortedModel.measureNames.index(of: "iteration") {
                 func missionLengthRespectingObjectiveFunction(_ scheduleMeasureAverages: [Double]) -> Double {
                     
-                    let energySinceStart = UInt64(scheduleMeasureAverages[energyMeasureIdx])
-                    let powerConsumption = UInt64(scheduleMeasureAverages[powerConsumptionMeasureIdx])
-                    let latency          = UInt64(scheduleMeasureAverages[latencyMeasureIdx])
-                    let iteration        = UInt64(scheduleMeasureAverages[iterationMeasureIdx])
+                    let energySinceStart   = UInt64(scheduleMeasureAverages[energyMeasureIdx])
+                    let energyPerIteration = UInt64(scheduleMeasureAverages[energyDeltaMeasureIdx])
+                    let iteration          = UInt64(scheduleMeasureAverages[iterationMeasureIdx])
 
-                    let energyPerIteration = powerConsumption * latency
                     let remainingIterations = missionLength - iteration
 
                     // If schedule consumes too much energy per input, make it sub-optimal
