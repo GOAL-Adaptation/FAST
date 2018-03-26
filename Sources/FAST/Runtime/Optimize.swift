@@ -216,12 +216,12 @@ func optimize
                     let varianceTableHeader = makeRow(id: "id", rest: measureNames)
                     varianceTableOutputStream.write(varianceTableHeader, maxLength: varianceTableHeader.characters.count)
 
-                for i in 0 ..< knobSpace.count {
+                    for i in 0 ..< knobSpace.count {
 
-                    resetMeasures()
-                    // Initialize measuring device, that will update measures at every input
-                    let measuringDevice = MeasuringDevice(ProgressSamplingPolicy(period: 1), windowSize, intent.measures, runtime)
-                    runtime.measuringDevices[id] = measuringDevice
+                        resetMeasures()
+                        // Initialize measuring device, that will update measures at every input
+                        let measuringDevice = MeasuringDevice(ProgressSamplingPolicy(period: 1), windowSize, intent.measures, runtime)
+                        runtime.measuringDevices[id] = measuringDevice
 
                         let knobSettings = knobSpace[i]
                         Log.info("Start profiling of configuration: \(knobSettings.settings).")
