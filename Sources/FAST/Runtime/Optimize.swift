@@ -202,7 +202,7 @@ func optimize
 
                     let knobSpace = intent.knobSpace(exhaustive: exhaustive)
                     let knobNames = Array(knobSpace[0].settings.keys).sorted()
-                    let measureNames = intent.measures
+                    let measureNames = Array(Set(intent.measures + runtime.runtimeAndSystemMeasures)).sorted()
 
                     func makeRow(id: Any, rest: [Any]) -> String {
                         return "\(id)\(rest.reduce( "", { l,r in "\(l),\(r)" }))\n"

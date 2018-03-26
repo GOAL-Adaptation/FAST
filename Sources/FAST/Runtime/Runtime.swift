@@ -78,6 +78,13 @@ public class Runtime {
     let runtimeMeasures = 
         ["iteration", "runningTime", "energy", "energyDelta", "performance", "powerConsumption", "windowSize", "currentConfiguration"]
 
+    var runtimeAndSystemMeasures: [String] {
+        get {
+            let systemMeasures = architecture?.systemMeasures ?? []
+            return systemMeasures + runtimeMeasures
+        }
+    }
+
     var isSystemMeasuresRegistered = false
 
     private var measures: [String : Double] = [:]
