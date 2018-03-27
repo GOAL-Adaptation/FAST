@@ -448,9 +448,10 @@ func optimize
             // Start the input processing loop
             loop(iterations: missionLength) {
                 startTime = ProcessInfo.processInfo.systemUptime // reset, in case something paused execution between iterations
-                if iteration > 0 && iteration % windowSize == 0 {
+                if (iteration > 0 && iteration % windowSize == 0) || runtime.scheduleInvalidated {
                     Log.debug("Computing schedule from window averages: \(measuringDevice.windowAverages()).")
                     schedule = runtime.controller.getSchedule(intent, measuringDevice.windowAverages())
+                    runtime.scheduleInvalidated = false
                 }
                 if runtime.runtimeKnobs.applicationExecutionMode.get() == ApplicationExecutionMode.Adaptive {
                     currentKnobSettings = schedule[iteration % windowSize]

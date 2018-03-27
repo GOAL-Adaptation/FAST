@@ -72,6 +72,7 @@ class FastRestServer : RestServer {
             {
                 Log.debug("Received valid JSON on /perturb endpoint: \(json)")
                 runtime.changeIntent(perturbation.missionIntent)
+                runtime.scheduleInvalidated = true
                 Log.info("Successfully received request on /changeIntent REST endpoint.")
             }
             else {
