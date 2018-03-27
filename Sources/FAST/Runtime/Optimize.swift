@@ -151,11 +151,11 @@ func optimize
             let energyDelta: Double = energy - lastEnergy
             runtime.measure("iteration", Double(iteration))
             runtime.measure("runningTime", runningTime) // running time in seconds
-            runtime.measure("latency", latency) // latency in seconds
             runtime.measure("energy", energy) // energy since application started or was last reset
             runtime.measure("energyDelta", energyDelta) // energy per iteration
             if latency > 0 {
                 runtime.measure("powerConsumption", energyDelta / latency) // rate of energy
+                runtime.measure("latency", latency) // latency in seconds
                 runtime.measure("performance", 1.0 / latency) // seconds per iteration
             }
             else {
