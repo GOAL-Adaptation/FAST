@@ -66,13 +66,39 @@ class FastRestServer : RestServer {
             request, response in
             if
               let json = self.readRequestBody(request: request, fromEndpoint: "/perturb"),
-              let perturbation_pre = Perturbation(json: json),
-              let intentOnFile = runtime.readIntentFromFile(perturbation_pre.missionIntent.name),
+              let perturbationPre = Perturbation(json: json),
+              let intentOnFile = runtime.readIntentFromFile(perturbationPre.missionIntent.name),
               let perturbation = Perturbation(json: json, intentOnFile: intentOnFile)
             {
                 Log.debug("Received valid JSON on /perturb endpoint: \(json)")
                 runtime.changeIntent(perturbation.missionIntent)
-                runtime.scheduleInvalidated = true
+
+                let knobsPre = intentOnFile.knobs
+                let knobsPost = perturbation.missionIntent.knobs
+
+                if
+                  let corePre = knobsPre["utilizedCores"],
+                  let corePost = knobsPost["utilizedCores"],
+                  let corePreList = corePre.0 as? [Int],
+                  let corePostList = corePost.0 as? [Int],
+                  let corePreRef = corePre.1 as? Int,
+                  let corePostRef = corePost.1 as? Int,
+                  (corePreList != corePostList || corePreRef != corePostRef)
+                {
+                  runtime.scheduleInvalidated = true
+                }
+                if
+                  let freqPre = knobsPre["utilizedCoreFrequency"],
+                  let freqPost = knobsPost["utilizedCoreFrequency"],
+                  let freqPreList = freqPre.0 as? [Int],
+                  let freqPostList = freqPost.0 as? [Int],
+                  let freqPreRef = freqPre.1 as? Int,
+                  let freqPostRef = freqPost.1 as? Int,
+                  (freqPreList != freqPostList || freqPreRef != freqPostRef)
+                {
+                  runtime.scheduleInvalidated = true
+                }
+
                 Log.info("Successfully received request on /changeIntent REST endpoint.")
             }
             else {
