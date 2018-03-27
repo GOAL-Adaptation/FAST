@@ -216,15 +216,16 @@ func optimize
                     let varianceTableHeader = makeRow(id: "id", rest: measureNames)
                     varianceTableOutputStream.write(varianceTableHeader, maxLength: varianceTableHeader.characters.count)
 
-                    for i in 0 ..< knobSpace.count {
+                    for currentConfiguration in 0 ..< knobSpace.count {
 
                         resetMeasures()
                         // Initialize measuring device, that will update measures at every input
                         let measuringDevice = MeasuringDevice(ProgressSamplingPolicy(period: 1), windowSize, intent.measures, runtime)
                         runtime.measuringDevices[id] = measuringDevice
 
-                        let knobSettings = knobSpace[i]
+                        let knobSettings = knobSpace[currentConfiguration]
                         Log.info("Start profiling of configuration: \(knobSettings.settings).")
+                        runtime.measure("currentConfiguration", Double(currentConfiguration))
                         knobSettings.apply(runtime: runtime)
                         if let streamingApplication = runtime.application as? StreamApplication {
                             streamingApplication.initializeStream()
@@ -234,17 +235,17 @@ func optimize
 
                         // Output profile entry as line in knob table
                         let knobValues = knobNames.map{ knobSettings.settings[$0]! }
-                        let knobTableLine = makeRow(id: i, rest: knobValues)
+                        let knobTableLine = makeRow(id: currentConfiguration, rest: knobValues)
                         knobTableOutputStream.write(knobTableLine, maxLength: knobTableLine.characters.count)
 
                         // Output profile entry as line in measure table
                         let measureValues = measureNames.map{ measuringDevice.stats[$0]!.totalAverage }
-                        let measureTableLine = makeRow(id: i, rest: measureValues)
+                        let measureTableLine = makeRow(id: currentConfiguration, rest: measureValues)
                         measureTableOutputStream.write(measureTableLine, maxLength: measureTableLine.characters.count)
 
                         // Output profile entry as line in variance table
                         let varianceValues = measureNames.map{ measuringDevice.stats[$0]!.totalVariance }
-                        let varianceTableLine = makeRow(id: i, rest: varianceValues)
+                        let varianceTableLine = makeRow(id: currentConfiguration, rest: varianceValues)
                         varianceTableOutputStream.write(varianceTableLine, maxLength: varianceTableLine.characters.count)
 
                         Log.debug("Profile for this configuration: \((0..<measureNames.count).map{ "\(measureNames[$0]): \(measureValues[$0]) ~ \(varianceValues[$0])" }.joined(separator: ", ")).")
