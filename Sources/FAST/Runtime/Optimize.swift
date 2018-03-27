@@ -159,7 +159,7 @@ func optimize
                 runtime.measure("performance", 1.0 / latency) // seconds per iteration
             }
             else {
-                Log.warning("Zero time passed between two measurements of time. The performance and powerConsumption measures cannot be computed.")
+                Log.debug("Zero time passed between two measurements of time. The performance and powerConsumption measures cannot be computed.")
             }
             runtime.measure("windowSize", Double(windowSize))
             latencyStartTime = runtime.getMeasure("time")! // begin measuring latency
