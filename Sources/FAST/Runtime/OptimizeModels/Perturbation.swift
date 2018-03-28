@@ -8,7 +8,9 @@ struct Perturbation {
     let missionLength          : UInt64
     let sceneObfuscation       : Double
 
-    init?(json: [String: Any], currentIntent: IntentSpec? = nil) {
+    let scenarioChanged        : Bool
+
+    init?(json: [String: Any]) {
         if let availableCores         = extract(type: UInt16.self, name: "availableCores"        , json: json)
          , let availableCoreFrequency = extract(type: UInt64.self, name: "availableCoreFrequency", json: json)
          , let missionLength          = extract(type: UInt64.self, name: "missionLength"         , json: json)
@@ -21,7 +23,8 @@ struct Perturbation {
 
             if let missionIntentString = json["missionIntent"] as? String {
                 if let compiledMissionIntent = compiler.compileIntentSpec(source: missionIntentString) as? Compiler.CompiledIntentSpec {
-                    self.missionIntent = handleTestParameters(compiledMissionIntent, currentIntent, availableCores, availableCoreFrequency)
+                    (self.missionIntent, self.scenarioChanged) =
+                      handleTestParameters(compiledMissionIntent, availableCores, availableCoreFrequency)
                 }
                 else {
                     Log.error("Unable to compile missionIntent from string: \(missionIntentString), which is part of the perturbation JSON: \(json).")
@@ -32,7 +35,8 @@ struct Perturbation {
                 if let missionIntentJson = json["missionIntent"] as? [String : Any] {
                     let missionIntentString = RestServer.mkIntentString(from: json)
                     if let compiledMissionIntent = compiler.compileIntentSpec(source: missionIntentString) as? Compiler.CompiledIntentSpec {
-                        self.missionIntent = handleTestParameters(compiledMissionIntent, currentIntent, availableCores, availableCoreFrequency)
+                        (self.missionIntent, self.scenarioChanged) =
+                          handleTestParameters(compiledMissionIntent, availableCores, availableCoreFrequency)
                     }
                     else {
                         Log.error("Unable to compile missionIntent from string: \(missionIntentString), obtained from missionIntent JSON: \(missionIntentJson), which is part of the perturbation JSON: \(json).")
@@ -54,34 +58,34 @@ struct Perturbation {
 
 fileprivate func handleTestParameters(
   _ newIntent: Compiler.CompiledIntentSpec,
-  _ localIntent: IntentSpec?,
   _ availableCores: UInt16,
   _ availableCoreFrequency: UInt64
-) -> IntentSpec {
-  guard let fileIntent = localIntent else { return newIntent }
-
+) -> (IntentSpec, Bool) {
+  var scenarioChanged = false
   var knobs = newIntent.knobs
 
-  for (knobName, knobInfo) in fileIntent.knobs {
+  for (knobName, knobInfo) in knobs {
     switch knobName {
     case "utilizedCores":
       let values = (knobInfo.0 as! [Int]).filter { $0 <= Int(availableCores) }
       if values.count >= 1 {
         let refValue = values.max()!
         knobs[knobName] = (values, refValue)
+        scenarioChanged = true
       }
     case "utilizedCoreFrequency":
       let values = (knobInfo.0 as! [Int]).filter { $0 <= Int(availableCoreFrequency) }
       if values.count >= 1 {
         let refValue = values.max()!
         knobs[knobName] = (values, refValue)
+        scenarioChanged = true
       }
     default:
       continue
     }
   }
 
-  return Compiler.CompiledIntentSpec(
+  return (Compiler.CompiledIntentSpec(
     name: newIntent.name,
     knobs: knobs,
     measures: newIntent.measures,
@@ -90,6 +94,5 @@ fileprivate func handleTestParameters(
     costOrValue: newIntent.costOrValue,
     optimizationType: newIntent.optimizationType,
     trainingSet: newIntent.trainingSet,
-    objectiveFunctionRawString: newIntent.objectiveFunctionRawString
-  )
+    objectiveFunctionRawString: newIntent.objectiveFunctionRawString), scenarioChanged)
 }

@@ -66,36 +66,12 @@ class FastRestServer : RestServer {
             request, response in
             if
               let json = self.readRequestBody(request: request, fromEndpoint: "/perturb"),
-              let perturbationPre = Perturbation(json: json),
-              let intentOnFile = runtime.readIntentFromFile(perturbationPre.missionIntent.name),
-              let perturbation = Perturbation(json: json, currentIntent: intentOnFile)
+              let perturbation = Perturbation(json: json)
             {
                 Log.debug("Received valid JSON on /perturb endpoint: \(json)")
                 runtime.changeIntent(perturbation.missionIntent)
 
-                let knobsPre = intentOnFile.knobs
-                let knobsPost = perturbation.missionIntent.knobs
-
-                if
-                  let corePre = knobsPre["utilizedCores"],
-                  let corePost = knobsPost["utilizedCores"],
-                  let corePreRange = corePre.0 as? [Int],
-                  let corePostRange = corePost.0 as? [Int],
-                  let corePreRef = corePre.1 as? Int,
-                  let corePostRef = corePost.1 as? Int,
-                  (corePreRange != corePostRange || corePreRef != corePostRef)
-                {
-                  runtime.schedule = nil
-                }
-                if
-                  let freqPre = knobsPre["utilizedCoreFrequency"],
-                  let freqPost = knobsPost["utilizedCoreFrequency"],
-                  let freqPreRange = freqPre.0 as? [Int],
-                  let freqPostRange = freqPost.0 as? [Int],
-                  let freqPreRef = freqPre.1 as? Int,
-                  let freqPostRef = freqPost.1 as? Int,
-                  (freqPreRange != freqPostRange || freqPreRef != freqPostRef)
-                {
+                if perturbation.scenarioChanged {
                   runtime.schedule = nil
                 }
 
