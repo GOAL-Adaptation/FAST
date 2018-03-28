@@ -85,7 +85,7 @@ class FastRestServer : RestServer {
                   let corePostRef = corePost.1 as? Int,
                   (corePreRange != corePostRange || corePreRef != corePostRef)
                 {
-                  runtime.scheduleInvalidated = true
+                  runtime.schedule = nil
                 }
                 if
                   let freqPre = knobsPre["utilizedCoreFrequency"],
@@ -96,7 +96,7 @@ class FastRestServer : RestServer {
                   let freqPostRef = freqPost.1 as? Int,
                   (freqPreRange != freqPostRange || freqPreRef != freqPostRef)
                 {
-                  runtime.scheduleInvalidated = true
+                  runtime.schedule = nil
                 }
 
                 Log.info("Successfully received request on /changeIntent REST endpoint.")

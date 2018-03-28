@@ -65,7 +65,7 @@ public class Runtime {
 
         apiModule                = RuntimeApiModule(runtime: self)
 
-        scheduleInvalidated      = false
+        schedule                 = nil
     }
 
     let restServerPort    = initialize(type: UInt16.self, name: "port",    from: key, or: 1338)
@@ -92,7 +92,7 @@ public class Runtime {
 
     let intentCompiler = Compiler()
 
-    var scheduleInvalidated = false
+    var schedule: Schedule? = nil
 
     /**
      * Read it from the file system. The intent will be loaded from a file whose

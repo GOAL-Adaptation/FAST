@@ -425,7 +425,7 @@ func optimize
             var currentKnobSettings = currentConfiguration.knobSettings
             let measureValuesOfReferenceConfiguration = Dictionary(Array(zip(currentConfiguration.measureNames, currentConfiguration.measureValues)))
             Log.debug("Computing schedule from model window averages: \(measureValuesOfReferenceConfiguration).")
-            var schedule: Schedule = runtime.controller.getSchedule(intent, measureValuesOfReferenceConfiguration)
+            runtime.schedule = runtime.controller.getSchedule(intent, measureValuesOfReferenceConfiguration)
             // Initialize measures
             for measure in intent.measures {
                 if let measureValue = measureValuesOfReferenceConfiguration[measure] {
@@ -448,12 +448,14 @@ func optimize
             // Start the input processing loop
             loop(iterations: missionLength) {
                 startTime = ProcessInfo.processInfo.systemUptime // reset, in case something paused execution between iterations
-                if (iteration > 0 && iteration % windowSize == 0) || runtime.scheduleInvalidated {
+                if (iteration > 0 && iteration % windowSize == 0) || runtime.schedule == nil {
                     Log.debug("Computing schedule from window averages: \(measuringDevice.windowAverages()).")
-                    schedule = runtime.controller.getSchedule(intent, measuringDevice.windowAverages())
-                    runtime.scheduleInvalidated = false
+                    runtime.schedule = runtime.controller.getSchedule(intent, measuringDevice.windowAverages())
                 }
-                if runtime.runtimeKnobs.applicationExecutionMode.get() == ApplicationExecutionMode.Adaptive {
+                if
+                  runtime.runtimeKnobs.applicationExecutionMode.get() == ApplicationExecutionMode.Adaptive,
+                  let schedule = runtime.schedule
+                {
                     currentKnobSettings = schedule[iteration % windowSize]
                     runtime.measure("currentConfiguration", Double(currentKnobSettings.kid)) // The id of the configuration given in the knobtable
                     // FIXME This should only apply when the schedule actually needs to change knobs
