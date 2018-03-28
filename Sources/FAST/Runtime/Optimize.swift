@@ -141,29 +141,29 @@ func optimize
     /** Loop body for a given number of iterations (or infinitely, if iterations == nil) */
     func loop(iterations: UInt64? = nil, _ body: (Void) -> Void) {
 
+        /** Update measures provided by runtime */
         func updateMeasures() {
             Log.debug("optimize.loop.updateMeasuresBegin")
-            // update measures provided by runtime
-            runningTime += ProcessInfo.processInfo.systemUptime - startTime
             let latency: Double = runtime.getMeasure("time")! - latencyStartTime
-            let systemEnergy = runtime.getMeasure("systemEnergy")!
-            let energy = systemEnergy - initialEnergy
-            let energyDelta: Double = energy - lastEnergy
-            runtime.measure("windowSize", Double(windowSize))
-            runtime.measure("iteration", Double(iteration))
-            runtime.measure("runningTime", runningTime) // running time in seconds
-            runtime.measure("energy", energy) // energy since application started or was last reset
-            runtime.measure("energyDelta", energyDelta) // energy per iteration
             if latency > 0 {
+                runningTime += latency
+                let systemEnergy = runtime.getMeasure("systemEnergy")!
+                let energy = systemEnergy - initialEnergy
+                let energyDelta: Double = energy - lastEnergy
+                runtime.measure("windowSize", Double(windowSize))
+                runtime.measure("iteration", Double(iteration))
+                runtime.measure("runningTime", runningTime) // running time in seconds
+                runtime.measure("energy", energy) // energy since application started or was last reset
+                runtime.measure("energyDelta", energyDelta) // energy per iteration
                 runtime.measure("latency", latency) // latency in seconds
                 runtime.measure("performance", 1.0 / latency) // seconds per iteration
                 runtime.measure("powerConsumption", energyDelta / latency) // rate of energy
+                lastEnergy = energy
+                latencyStartTime = runtime.getMeasure("time")! // begin measuring latency
             }
             else {
                 Log.debug("Zero time passed between two measurements of time. The performance and powerConsumption measures cannot be computed.")
             }
-            latencyStartTime = runtime.getMeasure("time")! // begin measuring latency
-            lastEnergy = energy
             Log.debug("optimize.loop.updateMeasuresEnd")
         }
 
