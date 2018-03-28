@@ -68,7 +68,7 @@ class FastRestServer : RestServer {
               let json = self.readRequestBody(request: request, fromEndpoint: "/perturb"),
               let perturbationPre = Perturbation(json: json),
               let intentOnFile = runtime.readIntentFromFile(perturbationPre.missionIntent.name),
-              let perturbation = Perturbation(json: json, intentOnFile: intentOnFile)
+              let perturbation = Perturbation(json: json, currentIntent: intentOnFile)
             {
                 Log.debug("Received valid JSON on /perturb endpoint: \(json)")
                 runtime.changeIntent(perturbation.missionIntent)
@@ -79,22 +79,22 @@ class FastRestServer : RestServer {
                 if
                   let corePre = knobsPre["utilizedCores"],
                   let corePost = knobsPost["utilizedCores"],
-                  let corePreList = corePre.0 as? [Int],
-                  let corePostList = corePost.0 as? [Int],
+                  let corePreRange = corePre.0 as? [Int],
+                  let corePostRange = corePost.0 as? [Int],
                   let corePreRef = corePre.1 as? Int,
                   let corePostRef = corePost.1 as? Int,
-                  (corePreList != corePostList || corePreRef != corePostRef)
+                  (corePreRange != corePostRange || corePreRef != corePostRef)
                 {
                   runtime.scheduleInvalidated = true
                 }
                 if
                   let freqPre = knobsPre["utilizedCoreFrequency"],
                   let freqPost = knobsPost["utilizedCoreFrequency"],
-                  let freqPreList = freqPre.0 as? [Int],
-                  let freqPostList = freqPost.0 as? [Int],
+                  let freqPreRange = freqPre.0 as? [Int],
+                  let freqPostRange = freqPost.0 as? [Int],
                   let freqPreRef = freqPre.1 as? Int,
                   let freqPostRef = freqPost.1 as? Int,
-                  (freqPreList != freqPostList || freqPreRef != freqPostRef)
+                  (freqPreRange != freqPostRange || freqPreRef != freqPostRef)
                 {
                   runtime.scheduleInvalidated = true
                 }
