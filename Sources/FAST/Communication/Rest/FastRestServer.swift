@@ -72,7 +72,7 @@ class FastRestServer : RestServer {
                 runtime.changeIntent(perturbation.missionIntent)
 
                 if perturbation.scenarioChanged {
-                  runtime.schedule = nil
+                  runtime.schedule = nil // invalidate current schedule
                 }
 
                 Log.info("Successfully received request on /changeIntent REST endpoint.")

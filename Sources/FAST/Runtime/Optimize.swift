@@ -448,7 +448,7 @@ func optimize
             // Start the input processing loop
             loop(iterations: missionLength) {
                 startTime = ProcessInfo.processInfo.systemUptime // reset, in case something paused execution between iterations
-                if (iteration > 0 && iteration % windowSize == 0) || runtime.schedule == nil {
+                if (iteration > 0 && iteration % windowSize == 0) || runtime.schedule == nil { // if iteration is the first in a window, or if the schedule has been invalidated
                     Log.debug("Computing schedule from window averages: \(measuringDevice.windowAverages()).")
                     runtime.schedule = runtime.controller.getSchedule(intent, measuringDevice.windowAverages())
                 }
