@@ -47,8 +47,16 @@ class XilinxZcuSystemConfigurationKnobs: TextApiModule {
     var utilizedCoreFrequency : Knob<Int>
 
     init() {
-        utilizedCores         = Knob(name: "utilizedCores",         from: key, or:       4)
+        utilizedCores = Knob(name: "utilizedCores", from: key, or: 4)
         utilizedCoreFrequency = Knob(name: "utilizedCoreFrequency", from: key, or: 1200)
+        #if os(Linux)
+          utilizedCores.overridePostSetter(newPostSetter: { _, newValue in
+            actuateLinuxSystemConfigurationKnobs(actuationPolicy: .Actuate, utilizedCores: newValue, utilizedCoreFrequency: self.utilizedCoreFrequency.get())
+          })
+          utilizedCoreFrequency.overridePostSetter(newPostSetter: { _, newValue in
+            actuateLinuxSystemConfigurationKnobs(actuationPolicy: .Actuate, utilizedCores: self.utilizedCores.get(), utilizedCoreFrequency: newValue)
+          })
+        #endif
 
         self.addSubModule(newModules: [utilizedCores, utilizedCoreFrequency])
     }
