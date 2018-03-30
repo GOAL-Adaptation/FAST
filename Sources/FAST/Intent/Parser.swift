@@ -10,7 +10,6 @@
 //---------------------------------------
 
 import Foundation
-import Frontend
 import AST
 import Parser
 import Source
@@ -212,12 +211,12 @@ class IntentParser : Parser {
 
     func parseKnobDecl(config: ParserExpressionConfig = ParserExpressionConfig())
     throws -> KnobDecl {
-        if case .identifier(let knobName) = _lexer.look().kind {
+        if case .identifier(let knobName, _) = _lexer.look().kind {
             _lexer.advance(by:1)
             if case.assignmentOperator = _lexer.look().kind {
                 _lexer.advance(by:1)
                 let knobValue = try super.parseExpression(config: config)
-                if case .identifier(let myKeyword) = _lexer.look().kind, myKeyword == "reference" {
+                if case .identifier(let myKeyword, _) = _lexer.look().kind, myKeyword == "reference" {
                     _lexer.advance(by:1)
                     let referenceExpr = try super.parseExpression(config: config)
                 return KnobDecl(name: knobName, range: knobValue, reference: referenceExpr)
@@ -239,7 +238,7 @@ class IntentParser : Parser {
             repeat {
                 let knobDecl = try parseKnobDecl(config: config)
                 knobDecls.append(knobDecl)
-                if case .identifier(let myKeyword) = _lexer.look().kind, myKeyword == "measures" {
+                if case .identifier(let myKeyword, _) = _lexer.look().kind, myKeyword == "measures" {
                     break
                 }
             } while true 
@@ -250,10 +249,10 @@ class IntentParser : Parser {
 
     func parseMeasureDecl(config: ParserExpressionConfig = ParserExpressionConfig())
     -> MeasureDecl {
-        if case .identifier(let measureName) = _lexer.look().kind,
+        if case .identifier(let measureName, _) = _lexer.look().kind,
             _lexer.look(ahead: 1).kind == .colon {
             _lexer.advance(by:2)
-            if case .identifier(let measureType) = _lexer.look().kind {
+            if case .identifier(let measureType, _) = _lexer.look().kind {
                 _lexer.advance(by:1)
                 return MeasureDecl(name: measureName, type: measureType)
             } else {
@@ -271,7 +270,7 @@ class IntentParser : Parser {
             repeat {
                     let measureDecl = parseMeasureDecl(config: config)
                     measureDecls.append(measureDecl)
-                    if case .identifier(let myKeyword) = _lexer.look().kind, myKeyword == "intent" {
+                    if case .identifier(let myKeyword, _) = _lexer.look().kind, myKeyword == "intent" {
                         break
                     }
             } while true
@@ -282,17 +281,17 @@ class IntentParser : Parser {
 
     func parseIntentDecl(config: ParserExpressionConfig = ParserExpressionConfig())
     throws -> IntentDecl {
-        if case .identifier(let intentName) = _lexer.look().kind {
+        if case .identifier(let intentName, _) = _lexer.look().kind {
             _lexer.advance(by: 1)
-            if case .identifier(let optimizer) = _lexer.look().kind,
+            if case .identifier(let optimizer, _) = _lexer.look().kind,
             (optimizer == "max" || optimizer == "min" ), _lexer.look(ahead: 1).kind == .leftParen {
                 _lexer.advance(by: 2)
                 let optimizationType = (optimizer == "max") ? FASTControllerOptimizationType.maximize : FASTControllerOptimizationType.minimize
                 let optimizedExpr = try super.parseExpression(config: config)
-                if _lexer.look().kind == .rightParen, 
-                    case .identifier(let suchKeyword) = _lexer.look(ahead: 1).kind, suchKeyword == "such",
-                    case .identifier(let thatKeyword) = _lexer.look(ahead: 2).kind, thatKeyword == "that",
-                    case .identifier(let constraintName) = _lexer.look(ahead: 3).kind, 
+                if _lexer.look().kind == .rightParen,
+              case .identifier(let suchKeyword, _) = _lexer.look(ahead: 1).kind, suchKeyword == "such",
+              case .identifier(let thatKeyword, _) = _lexer.look(ahead: 2).kind, thatKeyword == "that",
+              case .identifier(let constraintName, _) = _lexer.look(ahead: 3).kind,
                     _lexer.look(ahead: 4).kind == .binaryOperator("==") {
                         _lexer.advance(by: 5)
                         let constraint = try super.parseExpression(config: config)
@@ -332,16 +331,16 @@ class IntentParser : Parser {
 
     override func parseExpression(config: ParserExpressionConfig = ParserExpressionConfig())
     throws -> Expression {
-        if case .identifier(let myKeyword) = _lexer.look().kind, myKeyword == "knobs" {
+        if case .identifier(let myKeyword, _) = _lexer.look().kind, myKeyword == "knobs" {
             let knobSection = try parseKnobSection(config: config)
             let measureSection = parseMeasureSection(config: config)
             let intentSection = try parseIntentSection(config:config)
-            if case .identifier(let myKeyword) = _lexer.look().kind, myKeyword == "trainingSet" {
-                let trainingSetSection = try parseTrainingSetSection(config:config)            
+            if case .identifier(let myKeyword, _) = _lexer.look().kind, myKeyword == "trainingSet" {
+                let trainingSetSection = try parseTrainingSetSection(config:config)
                 return IntentExpression(knobSection: knobSection, measureSection: measureSection,
-                                        intentSection:intentSection, trainingSetSection: trainingSetSection)  
+                                        intentSection:intentSection, trainingSetSection: trainingSetSection)
             } else {
-                fatalError("expected 'trainingSet'. Found: \(_lexer.look().kind).")  
+                fatalError("expected 'trainingSet'. Found: \(_lexer.look().kind).")
             }
         } else {
             return try super.parseExpression(config: config)
