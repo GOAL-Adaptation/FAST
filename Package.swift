@@ -21,7 +21,8 @@ let package = Package(
   targets: [
     .target(name: "FAST", dependencies: [
       "HeliumLogger", "PerfectHTTPServer", "PerfectSQLite", "SwiftAST", "FASTController", "CSwiftV", "Venice"]),
-    .target(name: "incrementer", dependencies: ["FAST"])
+    .target(name: "incrementer", dependencies: ["FAST"]),
+    .testTarget(name: "FASTTests", dependencies: ["FAST"]),
   ],
   swiftLanguageVersions: [4]
 )
