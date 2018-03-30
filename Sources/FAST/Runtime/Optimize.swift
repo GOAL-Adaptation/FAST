@@ -100,7 +100,7 @@ func optimize
     , until shouldTerminate: @escaping @autoclosure () -> Bool = false
     , across windowSize: UInt32 = 20
     , samplingPolicy: SamplingPolicy = ProgressSamplingPolicy(period: 1)
-    , _ routine: @escaping (Void) -> Void ) {
+    , _ routine: @escaping () -> Void ) {
 
     initializeRandomNumberGenerators()
 
@@ -131,7 +131,7 @@ func optimize
     }
 
     /** Loop body for a given number of iterations (or infinitely, if iterations == nil) */
-    func loop(iterations: UInt64? = nil, _ body: (Void) -> Void) {
+    func loop(iterations: UInt64? = nil, _ body: () -> Void) {
 
         func updateMeasures() {
             Log.debug("optimize.loop.updateMeasuresBegin")

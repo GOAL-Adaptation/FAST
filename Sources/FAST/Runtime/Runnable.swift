@@ -51,7 +51,7 @@ public func optimize(
     until shouldTerminate: @escaping @autoclosure () -> Bool = false,
     across windowSize: UInt32 = 20,
     samplingPolicy: SamplingPolicy = ProgressSamplingPolicy(period: 1),
-    _ routine: @escaping (Void) -> Void)
+    _ routine: @escaping () -> Void)
 {
     let logLevel = initialize(type: LoggerMessageType.self, name: "logLevel", from: ["proteus","runtime"], or: .verbose)
     HeliumLogger.use(logLevel)
