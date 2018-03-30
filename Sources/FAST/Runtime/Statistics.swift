@@ -119,4 +119,15 @@ internal class Statistics {
         return value
     }
 
+    /** JSON representation of the current state of these statistics */
+    var asJson: [String : Double] {
+        get {
+            return 
+                [ "totalVariance" : totalVariance
+                , "totalAverage"  : totalAverage
+                , "windowAverage" : windowAverage 
+                ]
+        }
+    }
+
 }
