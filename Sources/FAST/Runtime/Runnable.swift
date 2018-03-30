@@ -48,7 +48,6 @@ public func optimize(
     usingRuntime providedRuntime: Runtime? = nil,
     architecture: String = "XilinxZcu",
     streamInit: (() -> Void)? = nil,
-    establishCommuncationChannel: Bool = true,
     until shouldTerminate: @escaping @autoclosure () -> Bool = false,
     across windowSize: UInt32 = 20,
     samplingPolicy: SamplingPolicy = ProgressSamplingPolicy(period: 1),
@@ -66,9 +65,6 @@ public func optimize(
 
     // configure runtime
     runtime.initializeArchitecture(name: architecture)
-    if establishCommuncationChannel {
-        runtime.establishCommuncationChannel()
-    }
 
     // run stream init if needed
     app.initializeStream()
