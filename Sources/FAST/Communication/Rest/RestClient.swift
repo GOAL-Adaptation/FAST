@@ -11,7 +11,13 @@
 
 import Foundation
 import LoggerAPI
-import KituraRequest
+
+enum Request {
+  enum Method: String {
+    case post
+    case get
+  }
+}
 
 //---------------------------------------
 
@@ -60,53 +66,53 @@ class RestClient {
 
         // Send the request
 
-        /**
-         *  Custom JSON encoding, used in place of the built-in KituraRequest JSONEncoding,
-         *  to work around https://bugs.swift.org/browse/SR-4783.
-         */
-        struct SR4783WorkAroundJSONEncoding: Encoding {
-            public static let `default` = SR4783WorkAroundJSONEncoding()
-            public func encode(_ request: inout URLRequest, parameters: Request.Parameters?) throws {
-                request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-                guard let parameters = parameters, !parameters.isEmpty else { return }
-                request.httpBody = convertToJsonSR4783(from: parameters).data(using: .utf8)
-            }
+        guard let url = URL(string: urlString) else { return nil }
+        var httpBody: Data?
+        if method == .post, let body = body {
+          httpBody = try? JSONSerialization.data(withJSONObject: body)
         }
+        var urlRequest = URLRequest(url: url)
+        urlRequest.httpBody = httpBody
+        urlRequest.httpMethod = method.rawValue
+        urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
-        KituraRequest.request(method, urlString, parameters: body, encoding: SR4783WorkAroundJSONEncoding.default).response {
-            _, response, maybeResponseData, maybeError in
+        let semaphore = DispatchSemaphore(value: 0)
 
-            // If the response decodes to a dictionary, return that, otherwise log an error and return nil
+        let task = URLSession.shared.dataTask(with: urlRequest) { (data, response, error) in
+            guard let responseData = data else {
+                res = nilAndLogError("Error sending \(method) request to \(urlString) with body: \(body ?? [:]). Error: \(error?.localizedDescription ?? "<unknown error>").")
+                semaphore.signal()
+                return
+            }
+            guard let responseDataString = String(data: responseData, encoding: String.Encoding.utf8) else {
+                res = nilAndLogError("Error UTF8-decoding \(method) response from \(urlString). Error: \(error?.localizedDescription ?? "<unknown error>").")
+                semaphore.signal()
+                return
+            }
 
-            if let responseData = maybeResponseData {
-                if let responseDataString = String(data: responseData, encoding: String.Encoding.utf8) {
+            if responseDataString.isEmpty {
+                Log.verbose("Successfully received empty response from \(method) to \(path).")
+                res = [:]
+            }
+            else {
+                if let maybeResponseDataJson = try? responseDataString.jsonDecode(),
+                let responseDataJson         = maybeResponseDataJson as? [String:Any] {
 
-                    if responseDataString.isEmpty {
-                        Log.verbose("Successfully received empty response from \(method) to \(path).")
-                        res = [:]
-                    }
-                    else {
-                        if let maybeResponseDataJson = try? responseDataString.jsonDecode(),
-                        let responseDataJson         = maybeResponseDataJson as? [String:Any] {
-
-                            Log.verbose("Successfully JSON decoded response from \(method) to \(urlString): \(responseDataJson).")
-                            res = responseDataJson
-
-                        }
-                        else {
-                            res = nilAndLogError("Error JSON-decoding \(method) response data from \(urlString): '\(responseDataString)'. Error: \(String(describing: maybeError)).")
-                        }
-                    }
+                    Log.verbose("Successfully JSON decoded response from \(method) to \(urlString): \(responseDataJson).")
+                    res = responseDataJson
 
                 }
                 else {
-                    res = nilAndLogError("Error UTF8-decoding \(method) response from \(urlString). Error: \(String(describing: maybeError)).")
+                    res = nilAndLogError("Error JSON-decoding \(method) response data from \(urlString): '\(responseDataString)'. Error: \(error?.localizedDescription ?? "<unknown error>").")
                 }
-            } else {
-                res = nilAndLogError("Error sending \(method) request to \(urlString) with body: \(body ?? [:]). Error: \(String(describing: maybeError)).")
             }
 
+            semaphore.signal()
         }
+
+        task.resume()
+
+        _ = semaphore.wait(timeout: .distantFuture)
 
         return res
 
