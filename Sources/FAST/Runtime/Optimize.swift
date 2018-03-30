@@ -195,11 +195,11 @@ func optimize
 
                     // Output headers for tables
                     let knobTableHeader = makeRow(id: "id", rest: knobNames)
-                    knobTableOutputStream.write(knobTableHeader, maxLength: knobTableHeader.characters.count)
+                    knobTableOutputStream.write(knobTableHeader, maxLength: knobTableHeader.count)
                     let measureTableHeader = makeRow(id: "id", rest: measureNames)
-                    measureTableOutputStream.write(measureTableHeader, maxLength: measureTableHeader.characters.count)
+                    measureTableOutputStream.write(measureTableHeader, maxLength: measureTableHeader.count)
                     let varianceTableHeader = makeRow(id: "id", rest: measureNames)
-                    varianceTableOutputStream.write(varianceTableHeader, maxLength: varianceTableHeader.characters.count)
+                    varianceTableOutputStream.write(varianceTableHeader, maxLength: varianceTableHeader.count)
 
                 for i in 0 ..< knobSpace.count {
 
@@ -220,17 +220,17 @@ func optimize
                         // Output profile entry as line in knob table
                         let knobValues = knobNames.map{ knobSettings.settings[$0]! }
                         let knobTableLine = makeRow(id: i, rest: knobValues)
-                        knobTableOutputStream.write(knobTableLine, maxLength: knobTableLine.characters.count)
+                        knobTableOutputStream.write(knobTableLine, maxLength: knobTableLine.count)
 
                         // Output profile entry as line in measure table
                         let measureValues = measureNames.map{ measuringDevice.stats[$0]!.totalAverage }
                         let measureTableLine = makeRow(id: i, rest: measureValues)
-                        measureTableOutputStream.write(measureTableLine, maxLength: measureTableLine.characters.count)
+                        measureTableOutputStream.write(measureTableLine, maxLength: measureTableLine.count)
 
                         // Output profile entry as line in variance table
                         let varianceValues = measureNames.map{ measuringDevice.stats[$0]!.totalVariance }
                         let varianceTableLine = makeRow(id: i, rest: varianceValues)
-                        varianceTableOutputStream.write(varianceTableLine, maxLength: varianceTableLine.characters.count)
+                        varianceTableOutputStream.write(varianceTableLine, maxLength: varianceTableLine.count)
 
                         Log.debug("Profile for this configuration: \((0..<measureNames.count).map{ "\(measureNames[$0]): \(measureValues[$0]) ~ \(varianceValues[$0])" }.joined(separator: ", ")).")
 
@@ -404,7 +404,7 @@ func optimize
             let profileOutputPrefix = initialize(type: String.self, name: "profileOutputPrefix", from: key, or: defaultProfileOutputPrefix)
             withOpenFile(atPath: profileOutputPrefix + ".trace.sql") {
                 (sqlScriptOutputStream: Foundation.OutputStream) in
-                    sqlScriptOutputStream.write(insertionScript, maxLength: insertionScript.characters.count)
+                    sqlScriptOutputStream.write(insertionScript, maxLength: insertionScript.count)
             }
         }
 
