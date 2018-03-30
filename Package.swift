@@ -15,7 +15,6 @@ let package = Package(
     .package(url: "git@github.mit.edu:proteus/CEnergymon", .exact("1.0.1")),
     .package(url: "git@github.mit.edu:proteus/FASTController", .exact("1.0.2")),
     .package(url: "https://github.com/PerfectlySoft/Perfect-SQLite.git", .exact("3.0.1")),
-    .package(url: "https://github.com/IBM-Swift/CCurl", .exact("1.0.0")),
     .package(url: "https://github.com/jasonm128/Perfect-HTTPServer", .exact("99.0.2")),
     .package(url: "https://github.com/ryuichis/swift-ast", .revision("06c530a196ce8ef55fc03ecfa542ac7652cbc440")),
   ],

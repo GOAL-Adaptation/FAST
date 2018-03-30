@@ -2,39 +2,12 @@
   "object": {
     "pins": [
       {
-        "package": "Socket",
-        "repositoryURL": "https://github.com/IBM-Swift/BlueSocket.git",
-        "state": {
-          "branch": null,
-          "revision": "26c8f4e4e3000421a0c97aaf0c7b5e9aa5475222",
-          "version": "0.12.94"
-        }
-      },
-      {
-        "package": "SSLService",
-        "repositoryURL": "https://github.com/IBM-Swift/BlueSSLService.git",
-        "state": {
-          "branch": null,
-          "revision": "3a87b64a97fb8e923f52f2a68e31e7bd4fc46b42",
-          "version": "0.12.84"
-        }
-      },
-      {
         "package": "bocho",
         "repositoryURL": "https://github.com/yanagiba/bocho",
         "state": {
           "branch": null,
           "revision": "411fb57fe99824ebe8f107c69cf61fc8bc68853d",
           "version": "0.1.1"
-        }
-      },
-      {
-        "package": "CCurl",
-        "repositoryURL": "https://github.com/IBM-Swift/CCurl.git",
-        "state": {
-          "branch": null,
-          "revision": "2a431e3a5fb8d004aa7d4d1bebb5d511f568c43e",
-          "version": "1.0.0"
         }
       },
       {
@@ -80,24 +53,6 @@
           "branch": null,
           "revision": "2afeb4c02f5a48a7fbd081fe8607b91eeebd7ecb",
           "version": "1.7.1"
-        }
-      },
-      {
-        "package": "Kitura-net",
-        "repositoryURL": "https://github.com/IBM-Swift/Kitura-net.git",
-        "state": {
-          "branch": null,
-          "revision": "9b4221e7378f76e0c5e04acaf30cdee99594aed3",
-          "version": "2.0.4"
-        }
-      },
-      {
-        "package": "KituraRequest",
-        "repositoryURL": "https://github.com/IBM-Swift/Kitura-Request.git",
-        "state": {
-          "branch": null,
-          "revision": "a371f8a348d8f4eee0ef4a63da8df7d1eb072dc4",
-          "version": "0.9.0"
         }
       },
       {
