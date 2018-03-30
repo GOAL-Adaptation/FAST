@@ -15,7 +15,7 @@
 
 import Foundation
 import LoggerAPI
-import SQLite
+import PerfectSQLite
 
 //-------------------------------
 
