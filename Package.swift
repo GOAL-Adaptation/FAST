@@ -9,7 +9,6 @@ let package = Package(
     .library(name: "FAST", targets: ["FAST"]),
   ],
   dependencies: [
-    .package(url: "https://github.com/Zewo/Venice", .exact("0.20.0")),
     .package(url: "https://github.com/IBM-Swift/HeliumLogger", .exact("1.7.1")),
     .package(url: "https://github.com/Daniel1of1/CSwiftV", .exact("0.0.7")),
     .package(url: "git@github.mit.edu:proteus/CEnergymon", .exact("1.0.1")),
@@ -20,7 +19,7 @@ let package = Package(
   ],
   targets: [
     .target(name: "FAST", dependencies: [
-      "HeliumLogger", "PerfectHTTPServer", "PerfectSQLite", "SwiftAST", "FASTController", "CSwiftV", "Venice"]),
+      "HeliumLogger", "PerfectHTTPServer", "PerfectSQLite", "SwiftAST", "FASTController", "CSwiftV"]),
     .target(name: "incrementer", dependencies: ["FAST"]),
     .testTarget(name: "FASTTests", dependencies: ["FAST"]),
   ],
