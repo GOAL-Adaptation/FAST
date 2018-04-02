@@ -127,14 +127,7 @@ func optimize
         latencyStartTime = runtime.getMeasure("time")! // used for latency counter
         initialEnergy = runtime.getMeasure("systemEnergy")!
         lastEnergy = 0.0
-        runtime.measure("windowSize", Double(windowSize))
-        runtime.measure("iteration", Double(iteration))
-        runtime.measure("runningTime", runningTime) // running time in seconds
-        runtime.measure("energy", 0.0) // energy since application started or was last reset
-        runtime.measure("energyDelta", 0.0) // energy per iteration
-        runtime.measure("latency", 0.0) // latency in seconds
-        runtime.measure("performance", 0.0) // seconds per iteration
-        runtime.measure("powerConsumption", 0.0) // rate of energy
+        runtime.resetRuntimeMeasures(windowSize: windowSize)
         Log.debug("optimize.resetMeasuresEnd")
     }
 

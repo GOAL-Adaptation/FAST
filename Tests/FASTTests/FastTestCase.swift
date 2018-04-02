@@ -15,10 +15,14 @@ import XCTest
 
 class FASTTestCase : XCTestCase {
     var runtime = Runtime.newRuntime()
+    let windowSize: UInt32 = 40
 
     /** Note: When overriding this, remember to call super.setUp(). */
     override func setUp() {
         runtime = Runtime.newRuntime()
+        runtime.measure("time", 0.0)
+        runtime.measure("systemEnergy", 0.0)
+        runtime.resetRuntimeMeasures(windowSize: windowSize)
     }
 
     override func tearDown() {
