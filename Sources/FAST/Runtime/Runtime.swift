@@ -14,7 +14,6 @@
 
 import Foundation
 import Dispatch
-import Venice
 import LoggerAPI
 import CSwiftV
 
@@ -52,8 +51,6 @@ public class Runtime {
 
         architecture             = nil // DefaultArchitecture(runtime: self): this calls registerSystemMeasures, not good!
         application              = nil
-
-        communicationChannel     = nil
 
         runtimeKnobs             = RuntimeKnobs(key, runtime: self)
 
@@ -157,20 +154,6 @@ public class Runtime {
     // The runtime registers the APIs of the platform and application
     var architecture: Architecture? = nil
     var application: Application? = nil
-
-    // The runtime manages communcations e.g. TCP
-    var communicationChannel: CommunicationServer? = nil
-
-    func shutdown() -> Void {
-        // TODO implement global exit, now only the server thread quits
-        exit(0)
-    }
-
-    func establishCommuncationChannel(port: Int = 1337) {
-
-        communicationChannel = TcpSocketServer(port: port, runtime: self)
-        communicationChannel!.run(MessageHandler(runtime: self))
-    }
 
     private var _runtimeKnobs: RuntimeKnobs?
     var runtimeKnobs: RuntimeKnobs {

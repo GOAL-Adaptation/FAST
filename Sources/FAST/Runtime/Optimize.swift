@@ -100,7 +100,7 @@ func optimize
     , until shouldTerminate: @escaping @autoclosure () -> Bool = false
     , across windowSize: UInt32 = 20
     , samplingPolicy: SamplingPolicy = ProgressSamplingPolicy(period: 1)
-    , _ routine: @escaping (Void) -> Void ) {
+    , _ routine: @escaping () -> Void ) {
 
     initializeRandomNumberGenerators()
 
@@ -131,7 +131,7 @@ func optimize
     }
 
     /** Loop body for a given number of iterations (or infinitely, if iterations == nil) */
-    func loop(iterations: UInt64? = nil, _ body: (Void) -> Void) {
+    func loop(iterations: UInt64? = nil, _ body: () -> Void) {
 
         func updateMeasures() {
             Log.debug("optimize.loop.updateMeasuresBegin")
@@ -195,11 +195,11 @@ func optimize
 
                     // Output headers for tables
                     let knobTableHeader = makeRow(id: "id", rest: knobNames)
-                    knobTableOutputStream.write(knobTableHeader, maxLength: knobTableHeader.characters.count)
+                    knobTableOutputStream.write(knobTableHeader, maxLength: knobTableHeader.count)
                     let measureTableHeader = makeRow(id: "id", rest: measureNames)
-                    measureTableOutputStream.write(measureTableHeader, maxLength: measureTableHeader.characters.count)
+                    measureTableOutputStream.write(measureTableHeader, maxLength: measureTableHeader.count)
                     let varianceTableHeader = makeRow(id: "id", rest: measureNames)
-                    varianceTableOutputStream.write(varianceTableHeader, maxLength: varianceTableHeader.characters.count)
+                    varianceTableOutputStream.write(varianceTableHeader, maxLength: varianceTableHeader.count)
 
                     for i in 0 ..< knobSpace.count {
 
@@ -462,7 +462,7 @@ func optimize
             let profileOutputPrefix = initialize(type: String.self, name: "profileOutputPrefix", from: key, or: defaultProfileOutputPrefix)
             withOpenFile(atPath: profileOutputPrefix + ".trace.sql") {
                 (sqlScriptOutputStream: Foundation.OutputStream) in
-                    sqlScriptOutputStream.write(insertionScript, maxLength: insertionScript.characters.count)
+                    sqlScriptOutputStream.write(insertionScript, maxLength: insertionScript.count)
             }
         }
 

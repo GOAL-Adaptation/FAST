@@ -13,7 +13,7 @@
 
 //-------------------------------
 
-import SQLite
+import PerfectSQLite
 import LoggerAPI
 
 //-------------------------------

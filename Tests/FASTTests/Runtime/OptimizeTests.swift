@@ -10,7 +10,6 @@
 
 import Dispatch
 import XCTest
-import KituraRequest
 @testable import FAST
 
 //---------------------------------------

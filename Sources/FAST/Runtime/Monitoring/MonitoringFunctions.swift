@@ -1,5 +1,5 @@
 /* Execute routine and update the progress counter. */
-func executeAndReportProgress(_ m: MeasuringDevice, _ routine: (Void) -> Void) {
+func executeAndReportProgress(_ m: MeasuringDevice, _ routine: () -> Void) {
     routine()
     m.reportProgress()
 }

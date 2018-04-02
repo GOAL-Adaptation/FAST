@@ -11,7 +11,6 @@
 
 import Foundation
 import LoggerAPI
-import Frontend
 import AST
 import Parser
 import Source
@@ -184,8 +183,8 @@ public class Compiler {
                 if let identifierExpr = e as? IdentifierExpression,
                      case let .identifier(identifier, _) = identifierExpr.kind {
                     Log.debug("Compiling identifier '\(identifier)'.")
-                    if let i = store[identifier] {
-                        return { (measures: [Double]) in measures[i] } 
+                    if let i = store[identifier.textDescription] {
+                        return { (measures: [Double]) in measures[i] }
                     }
                     else {
                         fatalError("Unknown measure: \(identifier).")

@@ -12,7 +12,6 @@
 import Foundation
 import Dispatch
 import LoggerAPI
-import KituraRequest
 import PerfectLib
 import PerfectHTTP
 import PerfectHTTPServer

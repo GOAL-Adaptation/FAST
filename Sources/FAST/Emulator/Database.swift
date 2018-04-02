@@ -15,8 +15,8 @@
 
 import Foundation
 import LoggerAPI
-import SQLite
-import SQLite3
+import PerfectSQLite
+import PerfectCSQLite3
 
 //-------------------------------
 
@@ -121,7 +121,7 @@ public class Database: TextApiModule {
 
   public func execute(script: String) throws {
       for statementInScript in script.components(separatedBy: ";") {
-          if statementInScript.characters.count > 0 {
+          if statementInScript.count > 0 {
               try database.execute(statement: statementInScript)
           }
       }

@@ -14,7 +14,7 @@ func readFile( withName name: String, ofType type: String
     if let path = bundle.path(forResource: name, ofType: type) {
         do {
             let contents = try String(contentsOfFile: path, encoding: String.Encoding.utf8)
-              .split(separator: "\n").filter({ !$0.hasPrefix("#") }).joined(separator: "\n")
+              .split(separator: "\n").filter({ !String($0).hasPrefix("#") }).joined(separator: "\n")
             Log.debug("Loaded file '\(path)'.")
             return contents
         }
