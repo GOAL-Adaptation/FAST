@@ -196,4 +196,13 @@ extension IntentSpec {
     }
     return true
   }
+
+  // Used by application running in NonAdpative mode to initialze the KnobSettings for the ConstantController
+  func referenceKnobSettings() -> KnobSettings {
+    return KnobSettings(kid: -1, Dictionary(self.knobs.map{ 
+      (knobName: String, rangeAndReferenceValue: ([Any], Any)) in 
+      (knobName, rangeAndReferenceValue.1)
+    }))
+  }
+
 }

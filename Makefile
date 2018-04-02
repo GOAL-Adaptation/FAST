@@ -78,7 +78,7 @@ execute:              export proteus_runtime_sceneObfuscation                 :=
 execute:              export proteus_runtime_address                          := 0.0.0.0
 execute:              export proteus_client_rest_serverAddress                := brass-th
 execute:              export proteus_client_rest_serverPort                   := 8080
-execute:              export proteus_emulator_database_db                     := ./incrementer_emulation.db
+execute:              export proteus_emulator_database_db                     := ./${APPNAME}_emulation.db
 execute:              export proteus_emulator_database_readingMode            := Statistics
 
 execute:              export proteus_armBigLittle_policy                      := Simple
@@ -145,3 +145,13 @@ trace:           		export proteus_runtime_logLevel                         := In
 trace:           		export proteus_runtime_applicationExecutionMode         := EmulatorTracing
 trace:           		export proteus_runtime_missionLength                    := 200
 trace:           		build execute
+
+create-emulation-db:
+	make trace; \
+	make profile; \
+	mv ${APPNAME}.trace.sql $(RESOURCE_PATH); \
+	mv ${APPNAME}.*table $(RESOURCE_PATH); \
+	sqlite3 ${APPNAME}_emulation.db < ./Sources/FAST/Emulator/Database.sql; \
+	sqlite3 ${APPNAME}_emulation.db < $(RESOURCE_PATH)/${APPNAME}.trace.sql
+
+

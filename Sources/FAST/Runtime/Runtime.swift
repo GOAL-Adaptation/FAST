@@ -65,8 +65,13 @@ public class Runtime {
         schedule                 = nil
     }
 
-    let restServerPort    = initialize(type: UInt16.self, name: "port",    from: key, or: 1338)
-    let restServerAddress = initialize(type: String.self, name: "address", from: key, or: "0.0.0.0")
+    // REST server port used by FAST application
+    let restServerPort          = initialize(type: UInt16.self, name: "port",          from: key, or: 1338)
+    // REST server port used by FAST sub-processes started during profiling
+    let profilingRestServerPort = initialize(type: UInt16.self, name: "profilingPort", from: key, or: 1339)
+    // REST server address used by FAST application
+    let restServerAddress       = initialize(type: String.self, name: "address",       from: key, or: "0.0.0.0")
+
     // Controls whether or not the test harness is involved in the execution.
     // This includes obtaining initialization parameters are obtained from response to post to brass-th/ready,
     // and posting to brass-th/status after the processing of each input.
@@ -197,19 +202,31 @@ public class Runtime {
                     return ( intentName, toArrayOfPairDicts(components) )
                 })
 
+            /** measure name -> (statistic name -> statistic)
+            * Create a Dictionary of (measureName, statisticsValues) where
+            * statisticsValues is a Dictionary of (statisticsName, statisticsValue).
+            */
+            let measureStatistics: [String : [String : Double]] =
+                Dictionary(self.measuringDevices[appName]!.stats.map {
+                    (measureName: String, stats: Statistics) in
+                    (measureName, stats.asJson)
+                })
+
             var arguments : [String : Any] =
                 [ "application"              : appName
                 , "applicationKnobs"         : toArrayOfPairDicts(applicationKnobs)
                 , "architecture"             : archName
                 , "systemConfigurationKnobs" : toArrayOfPairDicts(systemConfigurationKnobs)
                 , "scenarioKnobs"            : toArrayOfPairDicts(scenarioKnobsStatus)
-                , "measures"                 : toArrayOfPairDicts(getMeasures())
+                , "measures"                 : toArrayOfPairDicts(getMeasures()) // Current measure values
+                , "measureStatistics"        : measureStatistics                 // Current measure statistics
                 , "verdictComponents"        : toArrayOfPairDicts(verdictComponents)
                 ]
 
             // The measure values that the controller associates with the current configuration
             if let currentKnobSettingsId = getMeasure("currentConfiguration"), // kid of the currently active KnobSettings
-               let currentConfiguration = models[appName]!.configurations.first(where: { $0.knobSettings.kid == Int(currentKnobSettingsId) }) {
+               let currentModel = models[appName], // Will be undefined when running in NonAdaptive mode, omitting this from the Status message
+               let currentConfiguration = currentModel.configurations.first(where: { $0.knobSettings.kid == Int(currentKnobSettingsId) }) {
                 arguments["measurePredictions"] = zip( currentConfiguration.measureNames
                                                      , currentConfiguration.measureValues
                                                     ).map{ [ "name" : $0, "value" : $1 ] }
@@ -265,7 +282,7 @@ public class Runtime {
     var shouldTerminate = false
 
     // generic function to handle the event that an input has been processed in an optimize loop
-    func reportProgress() {
+    func decrementScriptedCounterAndWaitForRestCall() {
 
         // keeps track of the counter and blocks the application in scripted mode
         if (runtimeKnobs.interactionMode.get() == .Scripted) {

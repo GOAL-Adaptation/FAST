@@ -169,7 +169,7 @@ func optimize
 
     func profile(intent: IntentSpec, exhaustive: Bool = true) {
 
-        Log.info("Profiling optimize scope \(id).")
+        Log.info("\nProfiling optimize scope \(id).\n")
 
         runtime.setIntent(intent)
 
@@ -201,46 +201,104 @@ func optimize
                     let varianceTableHeader = makeRow(id: "id", rest: measureNames)
                     varianceTableOutputStream.write(varianceTableHeader, maxLength: varianceTableHeader.count)
 
-                for i in 0 ..< knobSpace.count {
+                    for i in 0 ..< knobSpace.count {
 
-                    resetMeasures()
-                    // Initialize measuring device, that will update measures at every input
-                    let measuringDevice = MeasuringDevice(ProgressSamplingPolicy(period: 1), windowSize, intent.measures, runtime)
-                    runtime.measuringDevices[id] = measuringDevice
+                        resetMeasures()
+                        // Initialize measuring device, that will update measures at every input
+                        let measuringDevice = MeasuringDevice(ProgressSamplingPolicy(period: 1), windowSize, intent.measures, runtime)
+                        runtime.measuringDevices[id] = measuringDevice
 
                         let knobSettings = knobSpace[i]
-                        Log.info("Start profiling of configuration: \(knobSettings.settings).")
+                        Log.info("\nStart profiling of configuration: \(knobSettings.settings).\n")
                         knobSettings.apply(runtime: runtime)
-                        if let streamingApplication = runtime.application as? StreamApplication {
-                            streamingApplication.initializeStream()
+
+                        let task = Process()
+                        task.launchPath = "/usr/bin/make"
+                        task.arguments = ["run-scripted","proteus_runtime_applicationExecutionMode=NonAdaptive"]
+                        // Override the default REST server port to avoid clash with the current FAST application instance
+                        task.environment = ["proteus_runtime_port" : "\(runtime.profilingRestServerPort)"] 
+                        task.launch()
+
+                        let profilingFastInstanceAddress = "127.0.0.1"
+                        waitUntilUp(endpoint: "alive", host: profilingFastInstanceAddress, port: runtime.profilingRestServerPort, method: .get, description: "Profling REST")
+
+                        /** From knobSettings.settings, which is a dictionary of (name:value) pairs,
+                        * for example, ["threshold": 200000, "utilizedCoreFrequency": 300, "step": 1, "utilizedCores": 1]
+                        * Create an array of dictionaries
+                        * for example, 
+                        * [
+                        *  ["name": "threshold", "value": 20000000], 
+                        *  ["name": "utilizedCoreFrequency", "value":300],
+                        *  ["name": "step", "value" 1].
+                        *  ["name": "utilizedCores", "value": 1]
+                        * ]
+                        */ 
+                        var appSysConfig = [Any]()
+                        for (knobName, knobVal) in knobSettings.settings {
+                            var knobNameKnobValDict = [String:Any]()
+                            knobNameKnobValDict["name"]  = knobName
+                            knobNameKnobValDict["value"] = knobVal
+                            appSysConfig.append(knobNameKnobValDict)
                         }
-                        loop( iterations: profileSize
-                            , { executeAndReportProgress(measuringDevice, routine) } )
 
-                        // Output profile entry as line in knob table
-                        let knobValues = knobNames.map{ knobSettings.settings[$0]! }
-                        let knobTableLine = makeRow(id: i, rest: knobValues)
-                        knobTableOutputStream.write(knobTableLine, maxLength: knobTableLine.count)
+                        RestClient.sendRequest( to: "fixConfiguration"
+                            , at         : profilingFastInstanceAddress
+                            , onPort     : runtime.profilingRestServerPort
+                            , withBody   : ["knobSettings": appSysConfig]
+                            , logErrors  : true
+                        )
 
-                        // Output profile entry as line in measure table
-                        let measureValues = measureNames.map{ measuringDevice.stats[$0]!.totalAverage }
-                        let measureTableLine = makeRow(id: i, rest: measureValues)
-                        measureTableOutputStream.write(measureTableLine, maxLength: measureTableLine.count)
+                        RestClient.sendRequest( to: "process"
+                            , at         : profilingFastInstanceAddress
+                            , onPort     : runtime.profilingRestServerPort
+                            , withBody   : ["inputs": profileSize]
+                            , logErrors  : true
+                        )
 
-                        // Output profile entry as line in variance table
-                        let varianceValues = measureNames.map{ measuringDevice.stats[$0]!.totalVariance }
-                        let varianceTableLine = makeRow(id: i, rest: varianceValues)
-                        varianceTableOutputStream.write(varianceTableLine, maxLength: varianceTableLine.count)
+                        let statusAtEndOfExecution = 
+                            RestClient.sendRequest( to: "query"
+                                , at         : profilingFastInstanceAddress
+                                , onPort     : runtime.profilingRestServerPort
+                                , withMethod : .get
+                                , logErrors  : true
+                            )
 
-                        Log.debug("Profile for this configuration: \((0..<measureNames.count).map{ "\(measureNames[$0]): \(measureValues[$0]) ~ \(varianceValues[$0])" }.joined(separator: ", ")).")
+                        RestClient.sendRequest( to: "terminate"
+                            , at         : profilingFastInstanceAddress
+                            , onPort     : runtime.profilingRestServerPort
+                            , logErrors  : true
+                        )
 
+                        task.waitUntilExit() // waits for call to complete
+
+                        if let statusArgumentsDictAny = statusAtEndOfExecution!["arguments"],
+                           let statusArgumentsDict = statusArgumentsDictAny as? [String: Any],
+                           let measureStatistics = statusArgumentsDict["measureStatistics"] as? [String: Any] {               
+                            var measureTableLine = "\(i)"
+                            var varianceTableLine = "\(i)"
+                            for measureName in measureNames {
+                                let measureNameStats = measureStatistics[measureName] as! [String: Double]
+                                let measureTotalAverage = measureNameStats["totalAverage"]!
+                                let measureTotalVariance = measureNameStats["totalVariance"]!
+                                measureTableLine += ",\(measureTotalAverage)"
+                                varianceTableLine += ",\(measureTotalVariance)"
+                            }
+                            measureTableLine += "\n"
+                            varianceTableLine += "\n"
+
+                            // Output profile entries as lines in measure table and variance table
+                            measureTableOutputStream.write(measureTableLine, maxLength: measureTableLine.characters.count)
+                            varianceTableOutputStream.write(varianceTableLine, maxLength: varianceTableLine.characters.count)
+
+                            // Output profile entry as line in knob table
+                            let knobValues = knobNames.map{ knobSettings.settings[$0]! }
+                            let knobTableLine = makeRow(id: i, rest: knobValues)
+                            knobTableOutputStream.write(knobTableLine, maxLength: knobTableLine.characters.count)
+                        }
                     }
-
                 }
-
             }
         }
-
     }
 
 
@@ -411,80 +469,108 @@ func optimize
     }
 
 
-    func run(model: Model, intent: IntentSpec, missionLength: UInt64? = nil) {
+    func run(model: Model?, intent: IntentSpec, missionLength: UInt64? = nil) {
 
-        Log.info("Running optimize scope \(id).")
+        Log.info("\nRunning optimize scope \(id).\n")
 
-        // Initialize the controller with the knob-to-mesure model, intent and window size
-        runtime.initializeController(model, intent, windowSize)
+        func setUpControllerAndComputeInitialScheduleAndConfiguration() -> (Schedule,KnobSettings) {
+            switch runtime.runtimeKnobs.applicationExecutionMode.get() {
+                
+                case .Adaptive:
 
-        if let controllerModel = runtime.controller.model {
-            // Compute initial schedule that meets the active intent, by using the measure values of
-            // the reference configuration as an estimate of the first measurements.
-            let currentConfiguration = controllerModel.getInitialConfiguration()!
-            var currentKnobSettings = currentConfiguration.knobSettings
-            let measureValuesOfReferenceConfiguration = Dictionary(Array(zip(currentConfiguration.measureNames, currentConfiguration.measureValues)))
-            Log.debug("Computing schedule from model window averages: \(measureValuesOfReferenceConfiguration).")
-            runtime.schedule = runtime.controller.getSchedule(intent, measureValuesOfReferenceConfiguration)
-            // Initialize measures
-            for measure in intent.measures {
-                if let measureValue = measureValuesOfReferenceConfiguration[measure] {
-                    runtime.measure(measure, measureValue)
-                }
-                else {
-                    Log.error("Invalid model: missing values for measure '\(measure)'.")
-                    fatalError()
-                }
+                    if let controllerModel = model {
+
+                        // Initialize the controller with the knob-to-mesure model, intent and window size
+                        runtime.initializeController(controllerModel, intent, windowSize)
+
+                        // Compute initial schedule that meets the active intent, by using the measure values of
+                        // the reference configuration as an estimate of the first measurements.
+                        let currentConfiguration = controllerModel.getInitialConfiguration()!
+                        var currentKnobSettings = currentConfiguration.knobSettings
+                        let measureValuesOfReferenceConfiguration = Dictionary(Array(zip(currentConfiguration.measureNames, currentConfiguration.measureValues)))
+                        // Initialize measures
+                        for measure in intent.measures {
+                            if let measureValue = measureValuesOfReferenceConfiguration[measure] {
+                                runtime.measure(measure, measureValue)
+                            }
+                            else {
+                                Log.error("Invalid model: missing values for measure '\(measure)'.")
+                                fatalError()
+                            }
+                        }
+                        Log.debug("Computing schedule from model window averages: \(measureValuesOfReferenceConfiguration).")
+                        return ( runtime.controller.getSchedule(intent, measureValuesOfReferenceConfiguration)
+                               , currentKnobSettings ) 
+                    }
+                    else {
+                        Log.error("Attempt to execute in adaptive mode using controller with undefined model.")
+                        fatalError()
+                    }
+
+                case .NonAdaptive:
+
+                    // Initialize the constant controller with the reference configuration from the intent
+                    var currentKnobSettings = intent.referenceKnobSettings()
+                    runtime.controller = ConstantController(knobSettings: currentKnobSettings) 
+                    runtime.setIntent(intent)        
+
+                    // Initialize measures
+                    for measure in intent.measures {
+                        runtime.measure(measure, 0.0)
+                    }
+                   
+                    return ( runtime.controller.getSchedule(intent, runtime.getMeasures())
+                           , currentKnobSettings ) 
+                
+                default:
+                    
+                    fatalError("Attempt to execute in unsupported execution mode: \(runtime.runtimeKnobs.applicationExecutionMode.get()).")
+
+            }
+        }
+        
+        var (schedule, currentKnobSettings) = setUpControllerAndComputeInitialScheduleAndConfiguration()
+
+        runtime.measure("currentConfiguration", Double(currentKnobSettings.kid)) // The id of the configuration given in the knobtable
+
+        resetMeasures()
+
+        // Initialize measuring device, that will update measures based on the samplingPolicy
+        let measuringDevice = MeasuringDevice(samplingPolicy, windowSize, intent.measures, runtime)
+        runtime.measuringDevices[id] = measuringDevice
+
+       // Start the input processing loop
+        loop(iterations: missionLength) {
+            startTime = ProcessInfo.processInfo.systemUptime // reset, in case something paused execution between iterations
+            if iteration > 0 && iteration % windowSize == 0 {
+                Log.debug("Computing schedule from window averages: \(measuringDevice.windowAverages()).")
+                schedule = runtime.controller.getSchedule(intent, measuringDevice.windowAverages())
+            }
+            if runtime.runtimeKnobs.applicationExecutionMode.get() == ApplicationExecutionMode.Adaptive {
+                currentKnobSettings = schedule[iteration % windowSize]
+                runtime.measure("currentConfiguration", Double(currentKnobSettings.kid)) // The id of the configuration given in the knobtable
+                // FIXME This should only apply when the schedule actually needs to change knobs
+                currentKnobSettings.apply(runtime: runtime)
             }
 
-            runtime.measure("currentConfiguration", Double(currentKnobSettings.kid)) // The id of the configuration given in the knobtable
+            // execute the routine (body of the optimize constuct)
+            executeAndReportProgress(measuringDevice, routine)
 
-            resetMeasures()
+            // FIXME maybe stalling in scripted mode should not be done inside of optimize but somewhere else in an independent and better way
+            runtime.decrementScriptedCounterAndWaitForRestCall()
 
-            // Initialize measuring device, that will update measures based on the samplingPolicy
-            let measuringDevice = MeasuringDevice(samplingPolicy, windowSize, intent.measures, runtime)
-            runtime.measuringDevices[id] = measuringDevice
-
-            // Start the input processing loop
-            loop(iterations: missionLength) {
-                startTime = ProcessInfo.processInfo.systemUptime // reset, in case something paused execution between iterations
-                if (iteration > 0 && iteration % windowSize == 0) || runtime.schedule == nil { // if iteration is the first in a window, or if the schedule has been invalidated
-                    Log.debug("Computing schedule from window averages: \(measuringDevice.windowAverages()).")
-                    runtime.schedule = runtime.controller.getSchedule(intent, measuringDevice.windowAverages())
-                }
-                if
-                  runtime.runtimeKnobs.applicationExecutionMode.get() == ApplicationExecutionMode.Adaptive,
-                  let schedule = runtime.schedule
-                {
-                    currentKnobSettings = schedule[iteration % windowSize]
-                    runtime.measure("currentConfiguration", Double(currentKnobSettings.kid)) // The id of the configuration given in the knobtable
-                    // FIXME This should only apply when the schedule actually needs to change knobs
-                    currentKnobSettings.apply(runtime: runtime)
-                }
-
-                // execute the routine (body of the optimize constuct)
-                executeAndReportProgress(measuringDevice, routine)
-
-                // FIXME maybe stalling in scripted mode should not be done inside of optimize but somewhere else in an independent and better way
-                runtime.reportProgress()
-
-                let statusDictionary = runtime.statusDictionary()
-                Log.debug("Current status: \(convertToJsonSR4783(from: statusDictionary ?? [:])).")
-                if runtime.executeWithTestHarness {
-                    // FIXME handle error from request
-                    let _ = RestClient.sendRequest(to: "status", withBody: statusDictionary)
-                }
-                iteration += 1
+            let statusDictionary = runtime.statusDictionary()
+            Log.debug("\nCurrent status: \(convertToJsonSR4783(from: statusDictionary ?? [:])).\n")
+            if runtime.executeWithTestHarness {
+                // FIXME handle error from request
+                let _ = RestClient.sendRequest(to: "status", withBody: statusDictionary)
             }
-
+            iteration += 1
         }
-        else {
-            Log.error("Attempt to execute using controller with undefined model.")
-            fatalError()
-        }
+        
     }
 
-    Log.info("Application executing in \(runtime.runtimeKnobs.applicationExecutionMode.get()) mode.")
+    Log.info("\nApplication executing in \(runtime.runtimeKnobs.applicationExecutionMode.get()) mode.\n")
 
     // Run the optimize loop, either based on initializaiton parameters
     // from the Test Harness, or on data read from files.
@@ -523,30 +609,34 @@ func optimize
                 case .ExhaustiveProfiling:
 
                     profile(intent: intent)
+
                 case .EndPointsProfiling:
+
                     profile(intent: intent, exhaustive: false)
 
                 case .EmulatorTracing:
 
                     trace(intent: intent)
 
-                default: // .Adaptive and .NonAdaptive
+                case .Adaptive:
 
                     if let model = runtime.readModelFromFile(id) {
-
                         Log.info("Model loaded for optimize scope \(id).")
-
                         let missionLength = initialize(type: UInt64.self, name: "missionLength", from: key)
-
                         run(model: model, intent: intent, missionLength: missionLength)
-
                     } else {
-
                         Log.error("No model loaded for optimize scope '\(id)'. Cannot execute application in application execution mode \(runtime.runtimeKnobs.applicationExecutionMode.get()).")
                         fatalError()
-
                     }
 
+                case .NonAdaptive:
+
+                    let missionLength = initialize(type: UInt64.self, name: "missionLength", from: key)
+                    run(model: nil, intent: intent, missionLength: missionLength) // No model for ConstantController
+            
+                default:
+
+                    fatalError("Attempt to execute in unsupported execution mode: \(runtime.runtimeKnobs.applicationExecutionMode.get()).")
             }
 
         } else {
