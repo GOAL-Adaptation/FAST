@@ -115,6 +115,8 @@ func optimize
     var startTime = ProcessInfo.processInfo.systemUptime // used for runningTime counter
     var runningTime = 0.0 // counts only time spent inside the loop body
     var latencyStartTime = runtime.getMeasure("time")! // used for latency counter
+    var initialEnergy = runtime.getMeasure("systemEnergy")! // energy at the time when the application was initialized
+    var lastEnergy = initialEnergy
 
     /** Re-set the internal variables used to compute measures, and register them in the runtime */
     func resetMeasures() {
@@ -123,32 +125,38 @@ func optimize
         startTime = ProcessInfo.processInfo.systemUptime // used for runningTime counter
         runningTime = 0.0 // counts only time spent inside the loop body
         latencyStartTime = runtime.getMeasure("time")! // used for latency counter
-        runtime.measure("iteration", Double(iteration))
-        runtime.measure("runningTime", runningTime) // running time in seconds
-        runtime.measure("latency", 0.0) // latency in seconds
-        runtime.measure("windowSize", Double(windowSize))
+        initialEnergy = runtime.getMeasure("systemEnergy")!
+        lastEnergy = 0.0
+        runtime.resetRuntimeMeasures(windowSize: windowSize)
         Log.debug("optimize.resetMeasuresEnd")
     }
 
     /** Loop body for a given number of iterations (or infinitely, if iterations == nil) */
     func loop(iterations: UInt64? = nil, _ body: () -> Void) {
 
+        /** Update measures provided by runtime */
         func updateMeasures() {
             Log.debug("optimize.loop.updateMeasuresBegin")
-            // update measures provided by runtime
-            runningTime += ProcessInfo.processInfo.systemUptime - startTime
             let latency: Double = runtime.getMeasure("time")! - latencyStartTime
-            runtime.measure("iteration", Double(iteration))
-            runtime.measure("runningTime", runningTime) // running time in seconds
-            runtime.measure("latency", latency) // latency in seconds per input
             if latency > 0 {
-                runtime.measure("performance", 1.0 / latency) // performance in seconds per input    
+                runningTime += latency
+                let systemEnergy = runtime.getMeasure("systemEnergy")!
+                let energy = systemEnergy - initialEnergy
+                let energyDelta: Double = energy - lastEnergy
+                runtime.measure("windowSize", Double(windowSize))
+                runtime.measure("iteration", Double(iteration))
+                runtime.measure("runningTime", runningTime) // running time in seconds
+                runtime.measure("energy", energy) // energy since application started or was last reset
+                runtime.measure("energyDelta", energyDelta) // energy per iteration
+                runtime.measure("latency", latency) // latency in seconds
+                runtime.measure("performance", 1.0 / latency) // seconds per iteration
+                runtime.measure("powerConsumption", energyDelta / latency) // rate of energy
+                lastEnergy = energy
+                latencyStartTime = runtime.getMeasure("time")! // begin measuring latency
             }
             else {
-                Log.warning("Zero time passed between two measurements of time. Performance cannot be computed.")
+                Log.debug("Zero time passed between two measurements of time. The performance and powerConsumption measures cannot be computed.")
             }
-            runtime.measure("windowSize", Double(windowSize))
-            latencyStartTime = runtime.getMeasure("time")! // begin measuring latency
             Log.debug("optimize.loop.updateMeasuresEnd")
         }
 
@@ -169,7 +177,7 @@ func optimize
 
     func profile(intent: IntentSpec, exhaustive: Bool = true) {
 
-        Log.info("\nProfiling optimize scope \(id).\n")
+        Log.info("Profiling optimize scope \(id).")
 
         runtime.setIntent(intent)
 
@@ -187,7 +195,7 @@ func optimize
 
                     let knobSpace = intent.knobSpace(exhaustive: exhaustive)
                     let knobNames = Array(knobSpace[0].settings.keys).sorted()
-                    let measureNames = intent.measures
+                    let measureNames = Array(Set(intent.measures + runtime.runtimeAndSystemMeasures)).sorted()
 
                     func makeRow(id: Any, rest: [Any]) -> String {
                         return "\(id)\(rest.reduce( "", { l,r in "\(l),\(r)" }))\n"
@@ -201,7 +209,7 @@ func optimize
                     let varianceTableHeader = makeRow(id: "id", rest: measureNames)
                     varianceTableOutputStream.write(varianceTableHeader, maxLength: varianceTableHeader.count)
 
-                    for i in 0 ..< knobSpace.count {
+                for i in 0 ..< knobSpace.count {
 
                         resetMeasures()
                         // Initialize measuring device, that will update measures at every input
@@ -209,7 +217,7 @@ func optimize
                         runtime.measuringDevices[id] = measuringDevice
 
                         let knobSettings = knobSpace[i]
-                        Log.info("\nStart profiling of configuration: \(knobSettings.settings).\n")
+                        Log.info("Start profiling of configuration: \(knobSettings.settings).")
                         knobSettings.apply(runtime: runtime)
 
                         let task = Process()
@@ -477,9 +485,12 @@ func optimize
     }
 
 
-    func run(model: Model?, intent: IntentSpec, missionLength: UInt64? = nil) {
+    func run(model: Model?, intent: IntentSpec, missionLength: UInt64? = nil, energyLimit: UInt64? = nil) {
 
-        Log.info("\nRunning optimize scope \(id).\n")
+        Log.info("Running optimize scope \(id).")
+
+        let maybeMissionLengthAndEnergyLimit: (UInt64,UInt64)? = 
+            missionLength != nil && energyLimit != nil ? (missionLength!,energyLimit!) : nil
 
         func setUpControllerAndComputeInitialScheduleAndConfiguration() -> (Schedule,KnobSettings) {
             switch runtime.runtimeKnobs.applicationExecutionMode.get() {
@@ -489,7 +500,7 @@ func optimize
                     if let controllerModel = model {
 
                         // Initialize the controller with the knob-to-mesure model, intent and window size
-                        runtime.initializeController(controllerModel, intent, windowSize)
+                        runtime.initializeController(controllerModel, intent, windowSize, maybeMissionLengthAndEnergyLimit)
 
                         // Compute initial schedule that meets the active intent, by using the measure values of
                         // the reference configuration as an estimate of the first measurements.
@@ -597,7 +608,7 @@ func optimize
             // FIXME handle error from request
             let _ = RestClient.sendRequest(to: "initialized")
 
-            run(model: model, intent: ips.initialConditions.missionIntent, missionLength: ips.missionLength)
+            run(model: model, intent: ips.initialConditions.missionIntent, missionLength: ips.missionLength, energyLimit: ips.energyLimit)
 
             // FIXME handle error from request
             let _ = RestClient.sendRequest(to: "done", withBody: runtime.statusDictionary())
@@ -630,8 +641,12 @@ func optimize
 
                     if let model = runtime.readModelFromFile(id) {
                         Log.info("Model loaded for optimize scope \(id).")
+
                         let missionLength = initialize(type: UInt64.self, name: "missionLength", from: key)
-                        run(model: model, intent: intent, missionLength: missionLength)
+                        let energyLimit   = initialize(type: UInt64.self, name: "energyLimit",   from: key)
+
+                        run(model: model, intent: intent, missionLength: missionLength, energyLimit: energyLimit)
+
                     } else {
                         Log.error("No model loaded for optimize scope '\(id)'. Cannot execute application in application execution mode \(runtime.runtimeKnobs.applicationExecutionMode.get()).")
                         fatalError()

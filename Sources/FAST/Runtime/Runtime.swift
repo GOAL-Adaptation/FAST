@@ -63,6 +63,7 @@ public class Runtime {
         apiModule                = RuntimeApiModule(runtime: self)
 
         schedule                 = nil
+
     }
 
     // REST server port used by FAST application
@@ -76,6 +77,32 @@ public class Runtime {
     // This includes obtaining initialization parameters are obtained from response to post to brass-th/ready,
     // and posting to brass-th/status after the processing of each input.
     let executeWithTestHarness = initialize(type: Bool.self, name: "executeWithTestHarness", from: key, or: false)
+
+    // Names of measures registered by the runtime. 
+    // Along with the systemMeasures registered by the architecture, these are reserved measure names.
+    let runtimeMeasures = 
+        ["iteration", "runningTime", "energy", "energyDelta", "latency", "performance", "powerConsumption", "windowSize", "currentConfiguration"]
+
+    func resetRuntimeMeasures(windowSize: UInt32) {
+        self.measure("iteration", 0.0)
+        self.measure("runningTime", 0.0) // running time in seconds
+        self.measure("energy", 0.0) // energy since application started or was last reset
+        self.measure("energyDelta", 0.0) // energy per iteration
+        self.measure("latency", 0.0) // latency in seconds
+        self.measure("performance", 0.0) // seconds per iteration
+        self.measure("powerConsumption", 0.0) // rate of energy
+        self.measure("windowSize", Double(windowSize))
+        self.measure("currentConfiguration", -1.0)
+        let unInitializedRuntimeMeasures = runtimeMeasures.filter{self.getMeasure($0) == nil}
+        assert(unInitializedRuntimeMeasures.isEmpty, "Some runtime measures have not been initialized: \(unInitializedRuntimeMeasures).")
+    }
+
+    var runtimeAndSystemMeasures: [String] {
+        get {
+            let systemMeasures = architecture?.systemMeasures ?? []
+            return systemMeasures + runtimeMeasures
+        }
+    }
 
     var isSystemMeasuresRegistered = false
 
@@ -374,10 +401,10 @@ public class Runtime {
     }
 //------------------- end of very new stuff
 
-    /** Intialize intent preserving controller with the given model, intent and window. */
-    func initializeController(_ model: Model, _ intent: IntentSpec, _ window: UInt32 = 20) {
+    /** Intialize intent preserving controller with the given model, intent, missionLength and window. */
+    func initializeController(_ model: Model, _ intent: IntentSpec, _ window: UInt32 = 20, _ missionLengthAndEnergyLimit: (UInt64, UInt64)? = nil) {
         synchronized(controllerLock) {
-            if let c = IntentPreservingController(model, intent, window) {
+            if let c = IntentPreservingController(model, intent, window, missionLengthAndEnergyLimit) {
                 setIntent(intent)
                 setModel(name: intent.name, model)
                 // controller_ = c
@@ -392,7 +419,7 @@ public class Runtime {
     }
 
     /** Intialize intent preserving controller with the intent, keeping the previous model and window */
-    public func reinitializeController(_ spec: IntentSpec) {
+    public func reinitializeController(_ spec: IntentSpec, _ missionLengthAndEnergyLimit: (UInt64, UInt64)? = nil) {
         // If the current controller is an IntentPreservingController and:
         //  - The constraint measure has not changed
         //  - The knob space has not changed (FIXME: implement this)
@@ -400,31 +427,32 @@ public class Runtime {
                spec.constraintName == intentPreservingController.intent.constraintName {
             
             // FIXME Thoroughly check that the model and updated intent are consistent (that measure and knob sets coincide)
-            initializeController(intentPreservingController.model!, spec, controller.window)
+            initializeController(intentPreservingController.model!, spec, controller.window, missionLengthAndEnergyLimit)
         } else if let model = readModelFromFile(spec.name) {
             Log.debug("Current controller doesn't contain a model, so we read the model from file again!")
-            initializeController(model, spec, controller.window)
+            initializeController(model, spec, controller.window, missionLengthAndEnergyLimit)
         } else {
             Log.error("Attempt to reinitialize controller based on a controller with an undefined model.")
             fatalError()
         }
     }
 
-    public func changeIntent(_ spec: IntentSpec) {
+    public func changeIntent(_ spec: IntentSpec, _ missionLengthAndEnergyLimit: (UInt64, UInt64)? = nil) {
       guard let fastController = controller as? IntentPreservingController else {
         Log.error("Active controller type '\(type(of: controller))' does not support setting of constraint, reinitializing the entire controller.")
-        reinitializeController(spec)
+        reinitializeController(spec, missionLengthAndEnergyLimit)
         return
       }
 
       if spec.isEverythingExceptConstraitValueIdentical(to: intents[spec.name]) {
+        // FIXME Also check that missionLength didnt change
         Log.verbose("Knob or measure sets of the new intent are identical to those of the previous intent. Setting the constraint goal of the existing controller to '\(spec.constraint)'.")
         fastController.fastController.setConstraint(spec.constraint)
         setIntent(spec)
       }
       else {
         Log.verbose("Reinitializing the controller for `\(spec.name)`.")
-        reinitializeController(spec)
+        reinitializeController(spec, missionLengthAndEnergyLimit)
       }
     }
 
