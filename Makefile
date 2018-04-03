@@ -134,17 +134,17 @@ evaluate-scripted: 		emulate-scripted
 profile:           		export proteus_runtime_logLevel                         := Info
 profile:           		export proteus_runtime_applicationExecutionMode         := ExhaustiveProfiling
 profile:           		export proteus_runtime_missionLength                    := 200
-profile:           		build execute ## To select number of inputs to process when profiling: make size=<NUMBER_OF_RUNS> profile
+profile:           		copy-resources-build execute ## To select number of inputs to process when profiling: make size=<NUMBER_OF_RUNS> profile
 
 profile-bounds:    		export proteus_runtime_logLevel                         := Info
 profile-bounds:    		export proteus_runtime_applicationExecutionMode         := EndPointsProfiling
 profile-bounds:    		export proteus_runtime_missionLength                    := 200
-profile-bounds:    		build execute ## To select number of inputs to process when profiling: make size=<NUMBER_OF_RUNS> profile
+profile-bounds:    		copy-resources-build execute ## To select number of inputs to process when profiling: make size=<NUMBER_OF_RUNS> profile
 
 trace:           		export proteus_runtime_logLevel                         := Info
 trace:           		export proteus_runtime_applicationExecutionMode         := EmulatorTracing
 trace:           		export proteus_runtime_missionLength                    := 200
-trace:           		build execute
+trace:           		copy-resources-build execute
 
 create-emulation-db:
 	make trace; \
