@@ -256,11 +256,13 @@ internal func actuateLinuxSystemConfigurationKnobs(actuationPolicy: ActuationPol
 
         let coreMask = utilizedCoreRange.map({String($0)}).joined(separator: ",")
         let pid = getpid()
-        let coreMaskCommand = "ps -eLf | awk '(/\(pid)/) && (!/awk/) {print $4}' | xargs -n1 taskset -c -p \(coreMask) > /dev/null"
+        let utilizedCoresCommand = "/bin/sh"
+        let utilizedCoresCommandArguments = ["-c", "ps -eLf | awk '(/\(pid)/) && (!/awk/) {print $4}' | xargs -n1 taskset -c -p \(coreMask) > /dev/null"] 
 
-        Log.verbose("Applying core allocation '\(coreMaskCommand)'.")
+        Log.verbose("Applying core allocation '\(coreMask).")
+        Log.debug("Applying core allocation command: \(utilizedCoresCommand) \(utilizedCoresCommandArguments.joined(separator: " ")).")
 
-        let (coreMaskReturnCode, coreMaskOutput) = executeInShell(coreMaskCommand)
+        let (coreMaskReturnCode, coreMaskOutput) = executeInShell(utilizedCoresCommand, arguments: utilizedCoresCommandArguments)
         if coreMaskReturnCode != 0 {
             Log.error("Error running taskset: \(coreMaskReturnCode). Output was: \(String(describing: coreMaskOutput)).")
         }
@@ -270,10 +272,12 @@ internal func actuateLinuxSystemConfigurationKnobs(actuationPolicy: ActuationPol
         Log.verbose("Applying CPU frequency: \(utilizedCoreFrequency).")
 
         for coreNumber in utilizedCoreRange {
-          let utilizedCoreFrequencyCommand = "echo \(utilizedCoreFrequency) > /sys/devices/system/cpu/cpu\(coreNumber)/cpufreq/\(dvfsFile)"
-          let (utilizedCoreFrequencyReturnCode, utilizedCoreFrequencyOutput) = executeInShell(utilizedCoreFrequencyCommand)
+          let utilizedCoreFrequencyCommand = "/usr/bin/sudo"
+          let utilizedCoreFrequencyCommandArguments = ["/bin/sh", "-c", "/bin/echo \(utilizedCoreFrequency) > /sys/devices/system/cpu/cpu\(coreNumber)/cpufreq/\(dvfsFile)"]
+          Log.debug("Setting frequency limit for core \(coreNumber): '\(utilizedCoreFrequencyCommand ) \(utilizedCoreFrequencyCommandArguments.joined(separator: " "))'.")
+          let (utilizedCoreFrequencyReturnCode, utilizedCoreFrequencyOutput) = executeInShell(utilizedCoreFrequencyCommand, arguments: utilizedCoreFrequencyCommandArguments)
           if utilizedCoreFrequencyReturnCode != 0 {
-              Log.error("Error setting frequency for core \(coreNumber): \(utilizedCoreFrequencyReturnCode). Output was: \(String(describing: utilizedCoreFrequencyOutput)).")
+              Log.error("Error setting frequency limit for core \(coreNumber): \(utilizedCoreFrequencyReturnCode). Output was: \(String(describing: utilizedCoreFrequencyOutput)).")
           }
         }
 
