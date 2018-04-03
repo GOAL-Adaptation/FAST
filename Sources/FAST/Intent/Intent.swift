@@ -45,7 +45,7 @@ extension IntentSpec {
       let (exhaustiveKnobValues, _) = knobs[name]!
       var knobValues = exhaustiveKnobValues
       if !exhaustive, let leftEndKnobValue = knobValues.first, let rightEndKnobValue = knobValues.last {
-        knobValues = [leftEndKnobValue, rightEndKnobValue]
+        knobValues = exhaustiveKnobValues.count > 1 ? [leftEndKnobValue, rightEndKnobValue] : [rightEndKnobValue]
       }
       return knobValues
     }
