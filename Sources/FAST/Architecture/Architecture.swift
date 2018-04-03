@@ -19,7 +19,7 @@ import Dispatch
 
 fileprivate let key = ["proteus","architecture"]
 
-let linuxDvfsGovernor: LinuxDvfsGovernor = initialize(type: LinuxDvfsGovernor.self, name: "linuxDvfsGovernor", from: key, or: .Userspace)
+let linuxDvfsGovernor: LinuxDvfsGovernor = initialize(type: LinuxDvfsGovernor.self, name: "linuxDvfsGovernor", from: key, or: .Performance)
 
 //---------------------------------------
 
