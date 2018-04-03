@@ -254,7 +254,7 @@ func optimize
                         RestClient.sendRequest( to: "process"
                             , at         : profilingFastInstanceAddress
                             , onPort     : runtime.profilingRestServerPort
-                            , withBody   : ["inputs": profileSize]
+                            , withBody   : ["inputs": profileSize-1]
                             , logErrors  : true
                         )
 
