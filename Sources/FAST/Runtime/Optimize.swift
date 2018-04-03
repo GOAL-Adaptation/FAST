@@ -215,8 +215,11 @@ func optimize
                         let task = Process()
                         task.launchPath = "/usr/bin/make"
                         task.arguments = ["run-scripted","proteus_runtime_applicationExecutionMode=NonAdaptive"]
+                        var environment = ProcessInfo.processInfo.environment 
                         // Override the default REST server port to avoid clash with the current FAST application instance
-                        task.environment = ["proteus_runtime_port" : "\(runtime.profilingRestServerPort)"] 
+                        environment["proteus_runtime_port"] = "\(runtime.profilingRestServerPort)"
+                        environment["proteus_runtime_profileSize"] = "\(profileSize)"
+                        task.environment = environment
                         task.launch()
 
                         let profilingFastInstanceAddress = "127.0.0.1"
