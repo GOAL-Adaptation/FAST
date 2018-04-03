@@ -274,7 +274,8 @@ func optimize
 
                         task.waitUntilExit() // waits for call to complete
 
-                        if let statusArgumentsDictAny = statusAtEndOfExecution!["arguments"],
+                        if let maybeStatusArgumentsDict = statusAtEndOfExecution,
+                           let statusArgumentsDictAny = maybeStatusArgumentsDict["arguments"],
                            let statusArgumentsDict = statusArgumentsDictAny as? [String: Any],
                            let measureStatistics = statusArgumentsDict["measureStatistics"] as? [String: Any] {               
                             var measureTableLine = "\(i)"
@@ -297,6 +298,10 @@ func optimize
                             let knobValues = knobNames.map{ knobSettings.settings[$0]! }
                             let knobTableLine = makeRow(id: i, rest: knobValues)
                             knobTableOutputStream.write(knobTableLine, maxLength: knobTableLine.characters.count)
+                        }
+                        else {
+                            Log.error("Unable to extract profile entry for configuration \(i) from status message: \(statusAtEndOfExecution).")
+                            fatalError()
                         }
                     }
                 }
