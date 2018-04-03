@@ -246,7 +246,7 @@ internal func actuateLinuxSystemConfigurationKnobs(actuationPolicy: ActuationPol
         let utilizedCoresCommand = "/bin/sh"
         let utilizedCoresCommandArguments = ["-c", "ps -eLf | awk '(/\(pid)/) && (!/awk/) {print $4}' | xargs -n1 taskset -c -p \(coreMask) > /dev/null"] 
 
-        Log.verbose("Applying core allocation '\(coreMask).")
+        Log.verbose("Applying core allocation '\(coreMask)'.")
         Log.debug("Applying core allocation command: \(utilizedCoresCommand) \(utilizedCoresCommandArguments.joined(separator: " ")).")
 
         let (coreMaskReturnCode, coreMaskOutput) = executeInShell(utilizedCoresCommand, arguments: utilizedCoresCommandArguments)
