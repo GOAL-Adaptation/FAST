@@ -29,7 +29,7 @@ class XilinxZcuScenarioKnobs: TextApiModule {
 
     // Scenario Knobs
     var availableCores       = Knob(name: "availableCores",       from: key, or: 4)
-    var maximalCoreFrequency = Knob(name: "maximalCoreFrequency", from: key, or: 1199999)
+    var maximalCoreFrequency = Knob(name: "maximalCoreFrequency", from: key, or: 1200)
 
     init() {
         self.addSubModule(newModules: [availableCores, maximalCoreFrequency])
@@ -54,7 +54,8 @@ class XilinxZcuSystemConfigurationKnobs: TextApiModule {
             actuateLinuxSystemConfigurationKnobs(actuationPolicy: .Actuate, utilizedCores: newValue, utilizedCoreFrequency: self.utilizedCoreFrequency.get())
           })
           utilizedCoreFrequency.overridePostSetter(newPostSetter: { _, newValue in
-            actuateLinuxSystemConfigurationKnobs(actuationPolicy: .Actuate, utilizedCores: self.utilizedCores.get(), utilizedCoreFrequency: newValue)
+            let newValueInHz = newValue * 1000 // Convert from MHz (which is used in the intent specification and default value) to Hz
+            actuateLinuxSystemConfigurationKnobs(actuationPolicy: .Actuate, utilizedCores: self.utilizedCores.get(), utilizedCoreFrequency: newValueInHz)
           })
         #endif
 
@@ -62,7 +63,7 @@ class XilinxZcuSystemConfigurationKnobs: TextApiModule {
     }
 
     init(maintainedState: XilinxZcuSystemConfigurationKnobs) {
-        utilizedCores         = Knob(name: "utilizedCores",         from: key, or:        4, preSetter: {_, newValue in maintainedState.utilizedCores.set(newValue)})
+        utilizedCores         = Knob(name: "utilizedCores",         from: key, or:     4, preSetter: {_, newValue in maintainedState.utilizedCores.set(newValue)})
         utilizedCoreFrequency = Knob(name: "utilizedCoreFrequency", from: key, or:  1200, preSetter: {_, newValue in maintainedState.utilizedCoreFrequency.set(newValue)})
 
         self.addSubModule(newModules: [utilizedCores, utilizedCoreFrequency])
