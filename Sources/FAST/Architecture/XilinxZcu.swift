@@ -51,11 +51,12 @@ class XilinxZcuSystemConfigurationKnobs: TextApiModule {
         utilizedCoreFrequency = Knob(name: "utilizedCoreFrequency", from: key, or: 1200)
         #if os(Linux)
           utilizedCores.overridePostSetter(newPostSetter: { _, newValue in
-            actuateLinuxSystemConfigurationKnobs(actuationPolicy: .Actuate, utilizedCores: newValue, utilizedCoreFrequency: self.utilizedCoreFrequency.get())
+            let utilizedCoreFrequencyInHz = self.utilizedCoreFrequency.get() * 1000 // Convert from MHz (which is used in the intent specification and default value) to Hz
+            actuateLinuxSystemConfigurationKnobs(actuationPolicy: .Actuate, utilizedCores: newValue, utilizedCoreFrequency: utilizedCoreFrequencyInHz)
           })
-          utilizedCoreFrequency.overridePostSetter(newPostSetter: { _, newValue in
-            let newValueInHz = newValue * 1000 // Convert from MHz (which is used in the intent specification and default value) to Hz
-            actuateLinuxSystemConfigurationKnobs(actuationPolicy: .Actuate, utilizedCores: self.utilizedCores.get(), utilizedCoreFrequency: newValueInHz)
+          utilizedCoreFrequency.overridePostSetter(newPostSetter: { _, newUtilizedCoreFrequency in
+            let newUtilizedCoreFrequencyInHz = newUtilizedCoreFrequency * 1000 // Convert from MHz (which is used in the intent specification and default value) to Hz
+            actuateLinuxSystemConfigurationKnobs(actuationPolicy: .Actuate, utilizedCores: self.utilizedCores.get(), utilizedCoreFrequency: newUtilizedCoreFrequencyInHz)
           })
         #endif
 
