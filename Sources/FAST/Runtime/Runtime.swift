@@ -84,14 +84,14 @@ public class Runtime {
         ["iteration", "runningTime", "energy", "energyDelta", "latency", "performance", "powerConsumption", "windowSize", "currentConfiguration"]
 
     func resetRuntimeMeasures(windowSize: UInt32) {
+        self.measure("windowSize", Double(windowSize))
         self.measure("iteration", 0.0)
-        self.measure("runningTime", 0.0) // running time in seconds
-        self.measure("energy", 0.0) // energy since application started or was last reset
-        self.measure("energyDelta", 0.0) // energy per iteration
         self.measure("latency", 0.0) // latency in seconds
+        self.measure("energyDelta", 0.0) // energy per iteration
+        self.measure("energy", 0.0) // energy since application started or was last reset
+        self.measure("runningTime", 0.0) // running time in seconds
         self.measure("performance", 0.0) // seconds per iteration
         self.measure("powerConsumption", 0.0) // rate of energy
-        self.measure("windowSize", Double(windowSize))
         self.measure("currentConfiguration", -1.0)
         let unInitializedRuntimeMeasures = runtimeMeasures.filter{self.getMeasure($0) == nil}
         assert(unInitializedRuntimeMeasures.isEmpty, "Some runtime measures have not been initialized: \(unInitializedRuntimeMeasures).")

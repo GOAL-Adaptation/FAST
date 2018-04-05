@@ -114,9 +114,7 @@ func optimize
     var iteration: UInt32 = 0 // iteration counter // FIXME what if the counter overflows
     var startTime = ProcessInfo.processInfo.systemUptime // used for runningTime counter
     var runningTime = 0.0 // counts only time spent inside the loop body
-    var latencyStartTime = runtime.getMeasure("time")! // used for latency counter
-    var initialEnergy = runtime.getMeasure("systemEnergy")! // energy at the time when the application was initialized
-    var lastEnergy = initialEnergy
+    var energy = 0.0 // counts only energy spent inside the loop body
 
     /** Re-set the internal variables used to compute measures, and register them in the runtime */
     func resetMeasures() {
@@ -124,35 +122,53 @@ func optimize
         iteration = 0 // iteration counter // FIXME what if the counter overflows
         startTime = ProcessInfo.processInfo.systemUptime // used for runningTime counter
         runningTime = 0.0 // counts only time spent inside the loop body
-        latencyStartTime = runtime.getMeasure("time")! // used for latency counter
-        initialEnergy = runtime.getMeasure("systemEnergy")!
-        lastEnergy = 0.0
+        energy = 0.0 // counts only energy spent inside the loop body
         runtime.resetRuntimeMeasures(windowSize: windowSize)
         Log.debug("optimize.resetMeasuresEnd")
     }
 
-    /** Loop body for a given number of iterations (or infinitely, if iterations == nil) */
-    func loop(iterations: UInt64? = nil, _ body: () -> Void) {
+    /** 
+     * Loop body for a given number of iterations (or infinitely, if iterations == nil) 
+     * Note: The overhead of preBody and postBody are excluded measures.
+     */
+    func loop( iterations: UInt64? = nil
+             , preBody:  @escaping () -> Void = {}
+             , postBody: @escaping () -> Void = {}
+             , _ body:   @escaping () -> Void
+             ) {
 
-        /** Update measures provided by runtime */
-        func updateMeasures() {
+        /** Execute preBody, execute body, update measures provided by runtime, and update postBody. */
+        func executeBodyAndComputeMeasures() {
             Log.debug("optimize.loop.updateMeasuresBegin")
-            let latency: Double = runtime.getMeasure("time")! - latencyStartTime
-            if latency > 0 {
+            // Run preparatory code for this iteration, e.g. to reconfigure the system using a controller
+            preBody()
+            // Record values of time and energy before executing the loop body
+            let systemEnergyBefore = runtime.getMeasure("systemEnergy")!
+            let timeBefore = runtime.getMeasure("time")! // begin measuring latency
+            // Run the loop body
+            body()
+            // Compute the latency, and if that is greater than 0, record derived measures
+            let latency: Double = runtime.getMeasure("time")! - timeBefore
+            if latency > 0.0 {
+                
+                let systemEnergyAfter = runtime.getMeasure("systemEnergy")!
+                let energyDelta: Double = systemEnergyAfter - systemEnergyBefore
+                
                 runningTime += latency
-                let systemEnergy = runtime.getMeasure("systemEnergy")!
-                let energy = systemEnergy - initialEnergy
-                let energyDelta: Double = energy - lastEnergy
+                energy += energyDelta
+
                 runtime.measure("windowSize", Double(windowSize))
                 runtime.measure("iteration", Double(iteration))
-                runtime.measure("runningTime", runningTime) // running time in seconds
-                runtime.measure("energy", energy) // energy since application started or was last reset
-                runtime.measure("energyDelta", energyDelta) // energy per iteration
                 runtime.measure("latency", latency) // latency in seconds
+                runtime.measure("energyDelta", energyDelta) // energy per iteration
+                runtime.measure("energy", energy) // energy since application started or was last reset
+                runtime.measure("runningTime", runningTime) // running time in seconds
                 runtime.measure("performance", 1.0 / latency) // seconds per iteration
                 runtime.measure("powerConsumption", energyDelta / latency) // rate of energy
-                lastEnergy = energy
-                latencyStartTime = runtime.getMeasure("time")! // begin measuring latency
+
+                // Run wrap-up code for this iteration, e.g. to report progress to a measuring device
+                postBody()
+                
             }
             else {
                 Log.debug("Zero time passed between two measurements of time. The performance and powerConsumption measures cannot be computed.")
@@ -163,14 +179,12 @@ func optimize
         if let i = iterations {
             var localIteration: UInt64 = 0
             while localIteration < i && !shouldTerminate() && !runtime.shouldTerminate {
-                updateMeasures()
-                body()
+                executeBodyAndComputeMeasures()
                 localIteration += 1
             }
         } else {
             while !shouldTerminate() && !runtime.shouldTerminate {
-                updateMeasures()
-                body()
+                executeBodyAndComputeMeasures()
             }
         }
     }
@@ -299,13 +313,13 @@ func optimize
                             varianceTableLine += "\n"
 
                             // Output profile entries as lines in measure table and variance table
-                            measureTableOutputStream.write(measureTableLine, maxLength: measureTableLine.characters.count)
-                            varianceTableOutputStream.write(varianceTableLine, maxLength: varianceTableLine.characters.count)
+                            measureTableOutputStream.write(measureTableLine, maxLength: measureTableLine.count)
+                            varianceTableOutputStream.write(varianceTableLine, maxLength: varianceTableLine.count)
 
                             // Output profile entry as line in knob table
                             let knobValues = knobNames.map{ knobSettings.settings[$0]! }
                             let knobTableLine = makeRow(id: i, rest: knobValues)
-                            knobTableOutputStream.write(knobTableLine, maxLength: knobTableLine.characters.count)
+                            knobTableOutputStream.write(knobTableLine, maxLength: knobTableLine.count)
                         }
                         else {
                             Log.error("Unable to extract profile entry for configuration \(i) from status message: \(statusAtEndOfExecution).")
@@ -446,9 +460,11 @@ func optimize
                 var lastTime = runtime.getMeasure("time")!
                 var lastEnergy = runtime.getMeasure("energy")!
                 var deltaTimeDeltaEnergyInsertion = ""
-                loop( iterations: profileSize) {
+                loop( iterations: profileSize
+                    , postBody: { measuringDevice.reportProgress() } ) 
+                {
                     inputNum += 1
-                    executeAndReportProgress(measuringDevice, routine)
+                    routine()
                     let time = runtime.getMeasure("time")!
                     let energy = runtime.getMeasure("energy")!
                     let deltaTime = time - lastTime
@@ -505,7 +521,7 @@ func optimize
                         // Compute initial schedule that meets the active intent, by using the measure values of
                         // the reference configuration as an estimate of the first measurements.
                         let currentConfiguration = controllerModel.getInitialConfiguration()!
-                        var currentKnobSettings = currentConfiguration.knobSettings
+                        let currentKnobSettings = currentConfiguration.knobSettings
                         let measureValuesOfReferenceConfiguration = Dictionary(Array(zip(currentConfiguration.measureNames, currentConfiguration.measureValues)))
                         // Initialize measures
                         for measure in intent.measures {
@@ -529,7 +545,7 @@ func optimize
                 case .NonAdaptive:
 
                     // Initialize the constant controller with the reference configuration from the intent
-                    var currentKnobSettings = intent.referenceKnobSettings()
+                    let currentKnobSettings = intent.referenceKnobSettings()
                     runtime.controller = ConstantController(knobSettings: currentKnobSettings) 
                     runtime.setIntent(intent)        
 
@@ -549,6 +565,7 @@ func optimize
         }
         
         var (schedule, currentKnobSettings) = setUpControllerAndComputeInitialScheduleAndConfiguration()
+        var lastKnobSettings = currentKnobSettings
 
         runtime.measure("currentConfiguration", Double(currentKnobSettings.kid)) // The id of the configuration given in the knobtable
 
@@ -558,32 +575,44 @@ func optimize
         let measuringDevice = MeasuringDevice(samplingPolicy, windowSize, intent.measures, runtime)
         runtime.measuringDevices[id] = measuringDevice
 
-       // Start the input processing loop
-        loop(iterations: missionLength) {
+        // Start the input processing loop
+        loop( iterations: missionLength
+            , preBody: {
+                if iteration > 0 && iteration % windowSize == 0 {
+                    Log.debug("Computing schedule from window averages: \(measuringDevice.windowAverages()).")
+                    schedule = runtime.controller.getSchedule(intent, measuringDevice.windowAverages())
+                }
+                if runtime.runtimeKnobs.applicationExecutionMode.get() == ApplicationExecutionMode.Adaptive {
+                    currentKnobSettings = schedule[iteration % windowSize]
+                    runtime.measure("currentConfiguration", Double(currentKnobSettings.kid)) // The id of the configuration given in the knobtable
+                    if currentKnobSettings != lastKnobSettings {
+                        Log.verbose("Scheduled configuration has changed since the last iteration, will apply knob settings.")
+                        currentKnobSettings.apply(runtime: runtime)
+                        lastKnobSettings = currentKnobSettings
+                    }
+                    else {
+                        Log.debug("Scheduled configuration has not changed since the last iteration, will skip applying knob settings.")
+                    }
+                }
+            }
+            , postBody: {
+                measuringDevice.reportProgress()
+                let statusDictionary = runtime.statusDictionary()
+                Log.debug("\nCurrent status: \(convertToJsonSR4783(from: statusDictionary ?? [:])).\n")
+                if runtime.executeWithTestHarness {
+                    // FIXME handle error from request
+                    let _ = RestClient.sendRequest(to: "status", withBody: statusDictionary)
+                }
+            }) 
+        {
             startTime = ProcessInfo.processInfo.systemUptime // reset, in case something paused execution between iterations
-            if iteration > 0 && iteration % windowSize == 0 {
-                Log.debug("Computing schedule from window averages: \(measuringDevice.windowAverages()).")
-                schedule = runtime.controller.getSchedule(intent, measuringDevice.windowAverages())
-            }
-            if runtime.runtimeKnobs.applicationExecutionMode.get() == ApplicationExecutionMode.Adaptive {
-                currentKnobSettings = schedule[iteration % windowSize]
-                runtime.measure("currentConfiguration", Double(currentKnobSettings.kid)) // The id of the configuration given in the knobtable
-                // FIXME This should only apply when the schedule actually needs to change knobs
-                currentKnobSettings.apply(runtime: runtime)
-            }
-
+            
             // execute the routine (body of the optimize constuct)
-            executeAndReportProgress(measuringDevice, routine)
+            routine()
 
             // FIXME maybe stalling in scripted mode should not be done inside of optimize but somewhere else in an independent and better way
             runtime.decrementScriptedCounterAndWaitForRestCall()
 
-            let statusDictionary = runtime.statusDictionary()
-            Log.debug("\nCurrent status: \(convertToJsonSR4783(from: statusDictionary ?? [:])).\n")
-            if runtime.executeWithTestHarness {
-                // FIXME handle error from request
-                let _ = RestClient.sendRequest(to: "status", withBody: statusDictionary)
-            }
             iteration += 1
         }
         
