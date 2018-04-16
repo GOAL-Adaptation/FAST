@@ -147,6 +147,8 @@ func optimize
             let timeBefore = runtime.getMeasure("time")! // begin measuring latency
             // Run the loop body
             body()
+            // Run wrap-up code for this iteration, e.g. to report progress to a measuring device
+            postBody()
             // Measure the iteration counter
             runtime.measure("iteration", Double(iteration))
             runtime.measure("windowSize", Double(windowSize))
@@ -171,8 +173,6 @@ func optimize
             else {
                 Log.debug("Zero time passed between two measurements of time. The performance and powerConsumption measures cannot be computed.")
             }
-            // Run wrap-up code for this iteration, e.g. to report progress to a measuring device
-            postBody()
             Log.debug("optimize.loop.updateMeasuresEnd")
         }
 
