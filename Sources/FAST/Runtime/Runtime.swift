@@ -308,15 +308,24 @@ public class Runtime {
     // shared var to sense quit command over communcation channel
     var shouldTerminate = false
 
-    // generic function to handle the event that an input has been processed in an optimize loop
-    func decrementScriptedCounterAndWaitForRestCall() {
+    // decrements the iteration counter when the application is executing in scripted mode
+    func decrementScriptedCounter() {
 
-        // keeps track of the counter and blocks the application in scripted mode
         if (runtimeKnobs.interactionMode.get() == .Scripted) {
 
             if scriptedCounter > 0 {
                 scriptedCounter -= 1
             }
+
+        }
+
+    }
+
+    // blocks until the counter is > 0 if the application is executing in scripted mode
+    func waitForRestCallToIncrementScriptedCounter() {
+
+        // keeps track of the counter and blocks the application in scripted mode
+        if (runtimeKnobs.interactionMode.get() == .Scripted) {
 
             while (runtimeKnobs.interactionMode.get() == .Scripted &&
                    scriptedCounter == 0 &&

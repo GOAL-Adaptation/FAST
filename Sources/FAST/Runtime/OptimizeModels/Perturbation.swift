@@ -6,6 +6,7 @@ struct Perturbation {
     let availableCores         : UInt16
     let availableCoreFrequency : UInt64
     let missionLength          : UInt64
+    let energyLimit            : UInt64
     let sceneObfuscation       : Double
 
     let scenarioChanged        : Bool
@@ -14,11 +15,13 @@ struct Perturbation {
         if let availableCores         = extract(type: UInt16.self, name: "availableCores"        , json: json)
          , let availableCoreFrequency = extract(type: UInt64.self, name: "availableCoreFrequency", json: json)
          , let missionLength          = extract(type: UInt64.self, name: "missionLength"         , json: json)
+         , let energyLimit            = extract(type: UInt64.self, name: "energyLimit"           , json: json)
          , let sceneObfuscation       = extract(type: Double.self, name: "sceneObfuscation"      , json: json) {
 
             self.availableCores         = availableCores
             self.availableCoreFrequency = availableCoreFrequency
             self.missionLength          = missionLength
+            self.energyLimit            = energyLimit
             self.sceneObfuscation       = sceneObfuscation
 
             if let missionIntentString = json["missionIntent"] as? String {
@@ -54,6 +57,18 @@ struct Perturbation {
             return nil
         }
     }
+
+    func asDict() -> [String : Any] {
+        return 
+            [ "missionIntent"          : missionIntent
+            , "availableCores"         : availableCores
+            , "availableCoreFrequency" : availableCoreFrequency
+            , "missionLength"          : missionLength
+            , "energyLimit"            : energyLimit
+            , "sceneObfuscation"       : sceneObfuscation
+            ]
+    }
+
 }
 
 fileprivate func handleTestParameters(

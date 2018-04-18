@@ -130,12 +130,16 @@ public class RestServer {
         }
     }
 
-    func stop() {
+    func stop(error: String? = nil) {
         for (_, response) in responses {
-            let jsonString = convertToJsonSR4783(from: ["Error": "Requested too many inputs; not enough left to process desired request. Server has processed all remaining inputs and is now shutting down."])
-            response.setBody(string: jsonString)
+            if let e = error {
+                response.setBody(string: convertToJsonSR4783(from: ["Error": e]))
+                response.status = .notAcceptable
+            }
+            else {
+                response.setBody(string: convertToJsonSR4783(from: []))
+            }
             response.setHeader(.contentType, value: contentTypeApplicationJson)
-            response.status = .notAcceptable
             Log.verbose("Send signal to active connections.")
             response.completed()
         }

@@ -140,6 +140,12 @@ func optimize
         /** Execute preBody, execute body, update measures provided by runtime, and update postBody. */
         func executeBodyAndComputeMeasures() {
             Log.debug("optimize.loop.updateMeasuresBegin")
+            // When in scripted mode, block until a post to the /process endpoint
+            runtime.waitForRestCallToIncrementScriptedCounter()
+            // Increment the iteration measure
+            iteration += 1
+            // Note that one less iteration is left to be processed when in scripted mode
+            runtime.decrementScriptedCounter()
             // Run preparatory code for this iteration, e.g. to reconfigure the system using a controller
             preBody()
             // Record values of time and energy before executing the loop body
@@ -177,15 +183,18 @@ func optimize
         }
 
         if let i = iterations {
-            var localIteration: UInt64 = 0
-            while localIteration < i && !shouldTerminate() && !runtime.shouldTerminate {
-                executeBodyAndComputeMeasures()
-                localIteration += 1
+            Log.verbose("Starting execution bounded by missionLength parameter to \(i) iterations.")
+            while !shouldTerminate() && !runtime.shouldTerminate && UInt64(runtime.getMeasure("iteration")!) < i {
+                executeBodyAndComputeMeasures()                
+            
             }
+            Log.verbose("Ending execution bounded by missionLength parameter to \(i) iterations.")
         } else {
+            Log.verbose("Starting execution unbounded by missionLength parameter.")
             while !shouldTerminate() && !runtime.shouldTerminate {
                 executeBodyAndComputeMeasures()
             }
+            Log.verbose("Ending execution unbounded by missionLength parameter.")
         }
     }
 
@@ -606,14 +615,7 @@ func optimize
             }) 
         {
             startTime = ProcessInfo.processInfo.systemUptime // reset, in case something paused execution between iterations
-            
-            // execute the routine (body of the optimize constuct)
-            routine()
-
-            // FIXME maybe stalling in scripted mode should not be done inside of optimize but somewhere else in an independent and better way
-            runtime.decrementScriptedCounterAndWaitForRestCall()
-
-            iteration += 1
+            routine() // execute the routine (body of the optimize constuct)
         }
         
     }
@@ -631,13 +633,13 @@ func optimize
             //       intent, and input stream.
             let model = runtime.readModelFromFile(id)!
 
-            // FIXME Use initialization parameters to initialize the Runtime
+            Log.debug("Using initialization parameters from test harness: \(ips.asDict()).")
 
             Log.info("Posting to TH/initialized.")
             // FIXME handle error from request
             let _ = RestClient.sendRequest(to: "initialized")
 
-            run(model: model, intent: ips.initialConditions.missionIntent, missionLength: ips.missionLength, energyLimit: ips.energyLimit)
+            run(model: model, intent: ips.initialConditions.missionIntent, missionLength: ips.initialConditions.missionLength, energyLimit: ips.initialConditions.energyLimit)
 
             // FIXME handle error from request
             let _ = RestClient.sendRequest(to: "done", withBody: runtime.statusDictionary())
@@ -698,6 +700,26 @@ func optimize
     }
 
     Log.info("FAST application terminating.")
-    restServer.stop()
+
+    // Stop the rest server and report the reason
+    if 
+        let ips = initializationParameters,
+        let iteration = runtime.getMeasure("iteration")
+    {
+        if iteration + 1 < Double(ips.initialConditions.missionLength) { // + 1 because "iteration" starts from 0
+            restServer.stop(error: "Execution terminated before processing the missionLength (\(ips.initialConditions.missionLength)) specified at initialization or the latest perturbation.")
+        }
+        else {
+            if runtime.scriptedCounter > 0 {
+                restServer.stop(error: "Execution terminated before processing the missionLength (\(ips.initialConditions.missionLength)) specified at initialization or the latest perturbation, but did not process \(runtime.scriptedCounter) iteration(s) requested by the latest post to the /process endpoint.")
+            }
+            else {
+                restServer.stop()
+            }
+        }
+    }
+    else {
+        restServer.stop()
+    }
 
 }

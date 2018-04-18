@@ -54,7 +54,7 @@ internal class Statistics {
     }
 
     /** Cumulative variance, computed over all observations. 
-     *  Note: Unlike Welford incremental variance, define average 
+     *  Note: Unlike Welford incremental variance, define variance 
      *        as 0.0 available observation when the number of
      *        of observations is == 1, and as Double.nan when
      *        there are no observations.

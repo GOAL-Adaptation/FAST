@@ -13,8 +13,6 @@ struct InitializationParameters {
     let architecture             : ArchitectureName
     let applicationName          : ApplicationName
     let applicationInputFileName : String
-    let missionLength            : UInt64?
-    let energyLimit              : UInt64?
     let adaptationEnabled        : Bool
     let statusInterval           : UInt64
     let randomSeed               : UInt64
@@ -31,8 +29,6 @@ struct InitializationParameters {
          , let initialConditionsJson    = json["initialConditions"] as? [String : Any]
          , let initialConditions        = Perturbation(json: initialConditionsJson)
         {
-            let missionLength = extract(type: UInt64.self                    , name: "missionLength"          , json: json)
-            let energyLimit   = extract(type: UInt64.self                    , name: "energyLimit"            , json: json)
 
             if String(describing: applicationName) != initialConditions.missionIntent.name {
                 Log.error("Intent name '\(initialConditions.missionIntent.name)' differs from application name: '\(applicationName)'.")
@@ -42,8 +38,6 @@ struct InitializationParameters {
             self.architecture             = architecture
             self.applicationName          = applicationName
             self.applicationInputFileName = applicationInputFileName
-            self.missionLength            = missionLength
-            self.energyLimit              = energyLimit
             self.adaptationEnabled        = adaptationEnabled
             self.statusInterval           = statusInterval
             self.randomSeed               = randomSeed
@@ -54,4 +48,17 @@ struct InitializationParameters {
             return nil
         }
     }
+
+    func asDict() -> [String : Any] {
+        return 
+            [ "architecture"             : self.architecture
+            , "applicationName"          : self.applicationName
+            , "applicationInputFileName" : self.applicationInputFileName
+            , "adaptationEnabled"        : self.adaptationEnabled
+            , "statusInterval"           : self.statusInterval
+            , "randomSeed"               : self.randomSeed
+            , "initialConditions"        : self.initialConditions.asDict()
+            ]
+    }
+
 }
