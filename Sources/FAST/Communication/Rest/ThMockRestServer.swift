@@ -48,6 +48,7 @@ class ThMockRestServer : RestServer {
         , "availableCores"         : 3
         , "availableCoreFrequency" : 2000000
         , "missionLength"          : 567
+        , "energyLimit"            : 1234567890
         , "sceneObfuscation"       : 0.0
         ]
 
@@ -57,7 +58,6 @@ class ThMockRestServer : RestServer {
             [ "applicationName" : "incrementer"
             , "InputFileName"   : ""
             ]
-        , "missionLength" : 567
         , "adaptationEnabled"       : "true"
         , "statusInterval"          : 1
         , "randomSeed"              : 0
