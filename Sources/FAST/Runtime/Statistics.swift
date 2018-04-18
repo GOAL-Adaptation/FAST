@@ -34,11 +34,18 @@ internal class Statistics {
     private var windowLock: NSLock = NSLock()
 
     /** Cumulative average, computed over all observations.
-     *  Note: Undefined (Double.nan) when the number of observations is less than 2. */
+     *  Note: Unlike Welford incremental variance, define average 
+     *        as the single available observation when the number 
+     *        of observations is == 1, and as Double.nan when
+     *        there are no observations.
+     */
     var totalAverage: Double {
-        get { 
-            if totalCount < 2 {
+        get {
+            if totalCount == 0 {
                 return Double.nan
+            } 
+            if totalCount == 1 {
+                return window[0]
             }
             else {
                 return _totalAverage
@@ -47,11 +54,18 @@ internal class Statistics {
     }
 
     /** Cumulative variance, computed over all observations. 
-     *  Note: Undefined (Double.nan) when the number of observations is less than 2. */
+     *  Note: Unlike Welford incremental variance, define average 
+     *        as 0.0 available observation when the number of
+     *        of observations is == 1, and as Double.nan when
+     *        there are no observations.
+     */
     var totalVariance: Double {
         get { 
-            if totalCount < 2 {
+            if totalCount == 0 {
                 return Double.nan
+            } 
+            if totalCount == 1 {
+                return 0.0
             }
             else {
                 return deviations / Double(totalCount - 1) 
