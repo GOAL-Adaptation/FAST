@@ -137,9 +137,14 @@ class FastRestServer : RestServer {
         routes.add(method: .post, uri: "/fixConfiguration", handler: {
             request, response in
                 if let json = self.readRequestBody(request: request, fromEndpoint: "/fixConfiguration") {
+                    
                     Log.debug("Received valid JSON on /fixConfiguration endpoint: \(json).")
+
+                    runtime.runtimeKnobs.applicationExecutionMode.set(ApplicationExecutionMode.NonAdaptive)
                     runtime.controller = ConstantController()
+                    
                     var logMessage = "Proceeding with constant configuration."
+                    
                     if let knobSettingsAny = json["knobSettings"],
                        let knobSettings = knobSettingsAny as? [Any] {
 
