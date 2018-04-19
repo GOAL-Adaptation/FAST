@@ -167,7 +167,7 @@ class FastRestServer : RestServer {
                         logMessage = "Knobs set through /fixConfiguration endpoint. " + logMessage
                     }
                     else {
-                        fatalError("No knob settings received in call to /fixConfiguation with message body: \(json).")
+                        Log.warning("No knob settings received in call to /fixConfiguation with message body: \(json).")
                     }
                     Log.info(logMessage)
                 }
