@@ -1,3 +1,5 @@
+import LoggerAPI
+
 ///////////////////
 // Runtime State //
 ///////////////////
@@ -26,7 +28,7 @@ public class Knob<T> : IKnob {
     public let name:  String
     var value: T
 
-    public init(_ name: String, _ value: T, _ preSetter: @escaping Action = {_,_ in }, _ postSetter: @escaping Action = {_,_ in }) {
+    public init(_ name: String, _ value: T, _ preSetter: @escaping Action = { _,_ in }, _ postSetter: @escaping Action = { _,_ in }) {
         self.name  = name
         self.value = value
         self.preSetter = preSetter
@@ -41,11 +43,12 @@ public class Knob<T> : IKnob {
         if setters {
             // for the postSetter
             let oldValue = self.value
-
             self.preSetter(oldValue, newValue)
             self.value = newValue
             self.postSetter(oldValue, newValue)
+            Log.debug("Set knob '\(self.name)' of old value '\(oldValue)' to value '\(newValue)' with setters. Value after preSetter and postSetter: '\(self.value)'.")
         } else {
+            Log.debug("Setting knob '\(self.name)' of old value '\(self.value)' to value '\(newValue)' without setters.")
             self.value = newValue
         }
     }
