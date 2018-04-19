@@ -142,19 +142,32 @@ class FastRestServer : RestServer {
                     var logMessage = "Proceeding with constant configuration."
                     if let knobSettingsAny = json["knobSettings"],
                        let knobSettings = knobSettingsAny as? [Any] {
+
+                        var parsedKnobSettings: [String : Any] = [:]
+                        
                         for nameValuePairDictAny in knobSettings {
                             if let nameValuePairDict = nameValuePairDictAny as? [String : Any],
                                let nameAny = nameValuePairDict["name"],
                                let name = nameAny as? String,
                                let value = nameValuePairDict["value"] {
-                                let parsedValue = parseKnobSetting(setting: value)
-                                runtime.setKnob(name, to: parsedValue)
+
+                                parsedKnobSettings[name] = parseKnobSetting(setting: value)
+
                             }
                             else {
                                 fatalError("Malformed knob setting: \(nameValuePairDictAny).")
                             }
+                            let fixedConfiguration = KnobSettings(kid: -1, parsedKnobSettings)
+                            // Overwrite any existing schedule to prevent it from overwriting the fixed 
+                            // configuration before the end of the current window
+                            runtime.schedule = Schedule({ _ in fixedConfiguration })
+                            // Apply the fixed configuration
+                            fixedConfiguration.apply(runtime: runtime)
                         }
                         logMessage = "Knobs set through /fixConfiguration endpoint. " + logMessage
+                    }
+                    else {
+                        fatalError("No knob settings received in call to /fixConfiguation with message body: \(json).")
                     }
                     Log.info(logMessage)
                 }
