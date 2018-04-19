@@ -47,48 +47,22 @@ class XilinxZcuSystemConfigurationKnobs: TextApiModule {
     var utilizedCoreFrequency : Knob<Int>
 
     init() {
-        utilizedCores = Knob(name: "utilizedCores", from: key, or: 4)
+        utilizedCores         = Knob(name: "utilizedCores",         from: key, or: 4)
         utilizedCoreFrequency = Knob(name: "utilizedCoreFrequency", from: key, or: 1200)
         #if os(Linux)
           utilizedCores.overridePostSetter(newPostSetter: { _, newValue in
-            let utilizedCoreFrequencyInHz = self.utilizedCoreFrequency.get() * 1000 // Convert from MHz (which is used in the intent specification and default value) to Hz
-            actuateLinuxSystemConfigurationKnobs(actuationPolicy: .Actuate, utilizedCores: newValue, utilizedCoreFrequency: utilizedCoreFrequencyInHz)
+            actuateLinuxUtilizedCoresSystemConfigurationKnob(actuationPolicy: .Actuate, utilizedCores: newValue)
           })
           utilizedCoreFrequency.overridePostSetter(newPostSetter: { _, newUtilizedCoreFrequency in
             let newUtilizedCoreFrequencyInHz = newUtilizedCoreFrequency * 1000 // Convert from MHz (which is used in the intent specification and default value) to Hz
-            actuateLinuxSystemConfigurationKnobs(actuationPolicy: .Actuate, utilizedCores: self.utilizedCores.get(), utilizedCoreFrequency: newUtilizedCoreFrequencyInHz)
+            actuateLinuxUtilizedCoreFrequencySystemConfigurationKnob(actuationPolicy: .Actuate, utilizedCoreFrequency: newUtilizedCoreFrequencyInHz)
           })
         #endif
 
         self.addSubModule(newModules: [utilizedCores, utilizedCoreFrequency])
     }
 
-    init(maintainedState: XilinxZcuSystemConfigurationKnobs) {
-        utilizedCores         = Knob(name: "utilizedCores",         from: key, or:     4, preSetter: {_, newValue in maintainedState.utilizedCores.set(newValue)})
-        utilizedCoreFrequency = Knob(name: "utilizedCoreFrequency", from: key, or:  1200, preSetter: {_, newValue in maintainedState.utilizedCoreFrequency.set(newValue)})
-
-        self.addSubModule(newModules: [utilizedCores, utilizedCoreFrequency])
-    }
 }
-
-/** Xilinx ZCU 102 Resource Usage Policy Module */
-class XilinxZcuResourceUsagePolicyModule: TextApiModule {
-
-    let name = "resourceUsagePolicyModule"
-    var subModules = [String : TextApiModule]()
-
-    // System Configuration Knobs
-    var maintainedState = XilinxZcuSystemConfigurationKnobs()
-    var policy          = Knob(name: "policy", from: key, or: ResourceUsagePolicy.Simple)
-
-    init() {
-        self.addSubModule(moduleName: "maintainedState", newModule: maintainedState)
-        self.addSubModule(newModule: policy)
-    }
-}
-
-//-------------------------------
-// TODO maintained state not implemented
 
 /** Xilinx ZCU 102 Architecture */
 class XilinxZcu: Architecture,
@@ -107,24 +81,15 @@ class XilinxZcu: Architecture,
 
     typealias ScenarioKnobsType             = XilinxZcuScenarioKnobs
     typealias SystemConfigurationKnobsType  = XilinxZcuSystemConfigurationKnobs
-    typealias ResourceUsagePolicyModuleType = XilinxZcuResourceUsagePolicyModule
 
     var scenarioKnobs             = ScenarioKnobsType()
     var systemConfigurationKnobs  : SystemConfigurationKnobsType
-    var resourceUsagePolicyModule = ResourceUsagePolicyModuleType()
 
     var executionMode: Knob<ExecutionMode>
 
     unowned var runtime: Runtime
 
     var actuationPolicy = Knob(name: "actuationPolicy", from: key, or: ActuationPolicy.NoActuation)
-
-    func actuate() -> Void {
-        actuateLinuxSystemConfigurationKnobs(
-            actuationPolicy       : actuationPolicy.get(),
-            utilizedCores         : systemConfigurationKnobs.utilizedCores.get(),
-            utilizedCoreFrequency : systemConfigurationKnobs.utilizedCoreFrequency.get() )
-    }
 
     /** Changing Execution Mode */
     public func changeExecutionMode(oldMode: ExecutionMode, newMode: ExecutionMode) -> Void {
@@ -160,16 +125,13 @@ class XilinxZcu: Architecture,
         self.runtime = runtime
         // FIXME initialize exectuionMode so that the callback function can be passed. This is very stupid
         self.executionMode = Knob(name: "executionMode", from: key, or: ExecutionMode.Default)
-        // FIXME this is ugly too for maintained state
         self.systemConfigurationKnobs  = SystemConfigurationKnobsType()
-        // This is the real init
-        self.systemConfigurationKnobs  = SystemConfigurationKnobsType(maintainedState: self.resourceUsagePolicyModule.maintainedState)
         self.executionMode = Knob(name: "executionMode", from: key, or: ExecutionMode.Default, preSetter: self.changeExecutionMode)
         // This is stupid too
         if executionMode.get() == ExecutionMode.Emulated {
             changeExecutionMode(oldMode: ExecutionMode.Default, newMode: ExecutionMode.Emulated)
         }
-        self.addSubModule(newModules: [scenarioKnobs, systemConfigurationKnobs, resourceUsagePolicyModule, executionMode, actuationPolicy])
+        self.addSubModule(newModules: [scenarioKnobs, systemConfigurationKnobs, executionMode, actuationPolicy])
         self.registerSystemMeasures(runtime: runtime)
     }
 
@@ -214,81 +176,6 @@ class XilinxZcu: Architecture,
         return ["energy" : self.energyMonitor.readEnergy(), "time" : self.clockMonitor.readClock()]
     }
 
-    /** Enforce the active Resource Usage Policy and ensure Consistency between Scenario and System Configuration Knobs */
-    func enforceResourceUsageAndConsistency() -> Void {
-
-        // Store the requested state
-        struct RequestedState {
-            let utilizedCores: Int
-            let utilizedCoreFrequency: Int
-        }
-
-        let requestedState = RequestedState(utilizedCores:         systemConfigurationKnobs.utilizedCores.get(),
-                                            utilizedCoreFrequency: systemConfigurationKnobs.utilizedCoreFrequency.get())
-
-        //-------------------------------
-        // Maximal Resource Usage Policy
-        //
-        // Maxes out system utilization on one type of cores, primarily on big
-        if resourceUsagePolicyModule.policy.get() == ResourceUsagePolicy.Maximal {
-
-            systemConfigurationKnobs.utilizedCores.set(                 scenarioKnobs.availableCores.get(), setters: false)
-            systemConfigurationKnobs.utilizedCoreFrequency.set(   scenarioKnobs.maximalCoreFrequency.get(), setters: false)
-
-            // Report if policy was applied
-            if ((systemConfigurationKnobs.utilizedCores.get()         !=         requestedState.utilizedCores) ||
-                (systemConfigurationKnobs.utilizedCoreFrequency.get() != requestedState.utilizedCoreFrequency) ){
-
-                    // TODO: add
-
-            }
-
-        //-------------------------------
-        // Maintained Resource Usage Policy
-        //
-        // Maintains a certain resource usage, able to recoup after multiple perturbations
-        } else if resourceUsagePolicyModule.policy.get() == ResourceUsagePolicy.Maintain {
-
-            // Enforce the `maintained state`
-            systemConfigurationKnobs.utilizedCores.set(                      resourceUsagePolicyModule.maintainedState.utilizedCores.get(), setters: false)
-            systemConfigurationKnobs.utilizedCoreFrequency.set(      resourceUsagePolicyModule.maintainedState.utilizedCoreFrequency.get(), setters: false)
-
-            // Report if policy was applied
-            if ((systemConfigurationKnobs.utilizedCores.get()         !=         requestedState.utilizedCores) ||
-                (systemConfigurationKnobs.utilizedCoreFrequency.get() != requestedState.utilizedCoreFrequency) ){
-
-                    // TODO: add
-
-            }
-
-        }
-
-        //--------------------------------------------------------------
-        // Policies
-        //
-        // NOTE: order matters!
-
-        //-------------------------------
-        // Consistency Policy (policy #1)
-        //
-        // Establish consistency if exists systemConfigurationKnob that violates its constraining scenarioKnob
-
-        if (systemConfigurationKnobs.utilizedCores.get() > scenarioKnobs.availableCores.get()) {
-            systemConfigurationKnobs.utilizedCores.set(   scenarioKnobs.availableCores.get(), setters: false)
-
-        }
-
-
-        if (systemConfigurationKnobs.utilizedCoreFrequency.get() > scenarioKnobs.maximalCoreFrequency.get()) {
-            systemConfigurationKnobs.utilizedCoreFrequency.set(   scenarioKnobs.maximalCoreFrequency.get(), setters: false)
-
-        }
-
-        //-------------------------------
-        //
-        // Some assertions that point to invalid configurations (won't happen during normal use)
-        assert( systemConfigurationKnobs.utilizedCores.get() > 0 );
-    }
 }
 
 //-------------------------------

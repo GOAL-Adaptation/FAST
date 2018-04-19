@@ -38,70 +38,6 @@ public protocol Architecture: TextApiModule {
 //---------------------------------------
 /** Scenario Knob-enriched Architecture */
 
-/** Resource Usage Policy for Scenario Knob-enriched Architectures */
-public enum ResourceUsagePolicy: String {
-  // No additional action from FAST
-  case Simple
-  // Continuously apply the current knob settings, in case they
-  // were modified elsewhere
-  case Maintain
-  // Continuously apply the maximal knob settings
-  case Maximal
-}
-
-// ResourceUsagePolicy is initializable from a String
-extension ResourceUsagePolicy: InitializableFromString {
-
-  public init?(from text: String) {
-
-    switch text {
-
-      case "Simple":
-        self = ResourceUsagePolicy.Simple
-
-      case "Maintain":
-        self = ResourceUsagePolicy.Maintain
-
-      case "Maximal":
-        self = ResourceUsagePolicy.Maximal
-
-      default:
-        return nil
-
-    }
-  }
-}
-
-// Converting ResourceUsagePolicy to String
-extension ResourceUsagePolicy: CustomStringConvertible {
-
-  public var description: String {
-
-    switch self {
-
-      case ResourceUsagePolicy.Simple:
-        return "Simple"
-
-      case ResourceUsagePolicy.Maintain:
-        return "Maintain"
-
-      case ResourceUsagePolicy.Maximal:
-        return "Maximal"
-
-    }
-  }
-}
-
-/** Generic Resource Usage Policy Module */
-public protocol ResourceUsagePolicyModule: TextApiModule {
-
-    // Maintained State (System Configuration Knobs)
-    var maintainedState: TextApiModule { get set }
-
-    // The active ResourceUsagePolicy
-    var policy: Knob<ResourceUsagePolicy> { get }
-}
-
 /** Generic Interface for a Scenario Knob-enriched Architecture */
 public protocol ScenarioKnobEnrichedArchitecture: Architecture {
 
@@ -113,12 +49,6 @@ public protocol ScenarioKnobEnrichedArchitecture: Architecture {
   associatedtype                SystemConfigurationKnobsType : TextApiModule;
   var systemConfigurationKnobs: SystemConfigurationKnobsType { get }
 
-  // Architecture has Resource Usage Policy Module
-  associatedtype                 ResourceUsagePolicyModuleType : TextApiModule;
-  var resourceUsagePolicyModule: ResourceUsagePolicyModuleType { get }
-
-  // Enforce the active Resource Usage Policy and ensure Consistency between Scenario and System Configuration Knobs
-  func enforceResourceUsageAndConsistency() -> Void
 }
 
 //---------------------------------------
@@ -216,8 +146,6 @@ public protocol RealArchitecture: Architecture {
   // Architecture has Actuation Policy
   var actuationPolicy: Knob<ActuationPolicy> { get }
 
-  // Actuate System Configuration on Real Hardware
-  func actuate() -> Void
 }
 
 //---------------------------------------
@@ -230,14 +158,17 @@ public enum LinuxDvfsGovernor: String {
 
 }
 
-/** Default actuation commands for a typical Linux system */
-internal func actuateLinuxSystemConfigurationKnobs(actuationPolicy: ActuationPolicy, utilizedCores: Int, utilizedCoreFrequency: Int) -> Void {
+/** Default actuation command for a typical Linux system */
+internal func actuateLinuxUtilizedCoresSystemConfigurationKnob(actuationPolicy: ActuationPolicy, utilizedCores: Int) -> Void {
 
     switch actuationPolicy {
       case .Actuate:
 
-        let dvfsFile = linuxDvfsGovernor == .Performance ? "scaling_max_freq" : "scaling_setspeed" // performance : userspace
-        let utilizedCoreRange = 0 ..< utilizedCores
+        let activeCores = ProcessInfo.processInfo.activeProcessorCount
+        if utilizedCores > activeCores  {
+          Log.warning("Knob utilizedCores was set to \(utilizedCores) which is higher than the number of active cores (\(activeCores)). Using the lower number.")
+        }
+        let utilizedCoreRange = 0 ..< min(activeCores, utilizedCores)
 
         // Configure the Hardware to use the number of cores dictated by the system configuration knobs
 
@@ -246,17 +177,33 @@ internal func actuateLinuxSystemConfigurationKnobs(actuationPolicy: ActuationPol
         let utilizedCoresCommand = "/bin/sh"
         let utilizedCoresCommandArguments = ["-c", "ps -eLf | awk '(/\(pid)/) && (!/awk/) {print $4}' | xargs -n1 taskset -c -p \(coreMask) > /dev/null"] 
 
-        Log.verbose("Applying core allocation '\(coreMask)'.")
-        Log.debug("Applying core allocation command: \(utilizedCoresCommand) \(utilizedCoresCommandArguments.joined(separator: " ")).")
+        Log.verbose("Applying utilizedCores as core allocation '\(coreMask)'.")
+        Log.debug("Applying utilizedCores using core allocation command: \(utilizedCoresCommand) \(utilizedCoresCommandArguments.joined(separator: " ")).")
 
         let (coreMaskReturnCode, coreMaskOutput) = executeInShell(utilizedCoresCommand, arguments: utilizedCoresCommandArguments)
         if coreMaskReturnCode != 0 {
             Log.error("Error running taskset: \(coreMaskReturnCode). Output was: \(String(describing: coreMaskOutput)).")
         }
 
+      case .NoActuation:
+        Log.info("Not applying system configuration knob (utilizedCores) due to active actuation policy.")
+    }
+
+}
+
+/** Default actuation command for a typical Linux system */
+internal func actuateLinuxUtilizedCoreFrequencySystemConfigurationKnob(actuationPolicy: ActuationPolicy, utilizedCoreFrequency: Int) -> Void {
+
+    switch actuationPolicy {
+      case .Actuate:
+
+        let dvfsFile = linuxDvfsGovernor == .Performance ? "scaling_max_freq" : "scaling_setspeed" // performance : userspace
+        let activeCores = ProcessInfo.processInfo.activeProcessorCount
+        let utilizedCoreRange = 0 ..< activeCores
+
         // Configure the Hardware to use the core frequencies dictated by the system configuration knobs
 
-        Log.verbose("Applying CPU frequency: \(utilizedCoreFrequency).")
+        Log.verbose("Applying CPU frequency: \(utilizedCoreFrequency) to all \(activeCores) active CPU cores.")
 
         for coreNumber in utilizedCoreRange {
           let utilizedCoreFrequencyCommand = "/usr/bin/sudo"
@@ -269,7 +216,7 @@ internal func actuateLinuxSystemConfigurationKnobs(actuationPolicy: ActuationPol
         }
 
       case .NoActuation:
-        Log.info("Not applying system configuration knobs (core allocation and CPU frequency) due to active actuation policy.")
+        Log.info("Not applying system configuration knobs (CPU frequency) due to active actuation policy.")
     }
 
   }
