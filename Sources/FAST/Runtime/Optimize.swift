@@ -232,12 +232,7 @@ func optimize
                     let varianceTableHeader = makeRow(id: "id", rest: measureNames)
                     varianceTableOutputStream.write(varianceTableHeader, maxLength: varianceTableHeader.count)
 
-                for i in 0 ..< knobSpace.count {
-
-                        resetMeasures()
-                        // Initialize measuring device, that will update measures at every input
-                        let measuringDevice = MeasuringDevice(ProgressSamplingPolicy(period: 1), windowSize, intent.measures, runtime)
-                        runtime.measuringDevices[id] = measuringDevice
+                    for i in 0 ..< knobSpace.count {
 
                         let knobSettings = knobSpace[i]
                         Log.info("Start profiling of configuration: \(knobSettings.settings).")
@@ -245,12 +240,13 @@ func optimize
 
                         let task = Process()
                         task.launchPath = "/usr/bin/make"
-                        task.arguments = ["run-scripted","proteus_runtime_applicationExecutionMode=NonAdaptive"]
-                        var environment = ProcessInfo.processInfo.environment 
-                        // Override the default REST server port to avoid clash with the current FAST application instance
-                        environment["proteus_runtime_port"] = "\(runtime.profilingRestServerPort)"
-                        environment["proteus_runtime_profileSize"] = "\(profileSize)"
-                        task.environment = environment
+                        task.arguments = [
+                            "run-scripted",
+                            "proteus_runtime_applicationExecutionMode=NonAdaptive",
+                            "proteus_runtime_missionLength=\(profileSize)",
+                            // Override the default REST server port to avoid clash with the current FAST application instance
+                            "proteus_runtime_port=\(runtime.profilingRestServerPort)"
+                        ]
                         task.launch()
 
                         let profilingFastInstanceAddress = "127.0.0.1"
