@@ -115,6 +115,7 @@ evaluate:          		emulate
 evaluate-scripted: 		export proteus_runtime_executeWithTestHarness           := true
 evaluate-scripted: 		emulate-scripted
 
+# Run this application and produce the ${APPNAME}.*table files that are used to control this application in adaptive mode.
 profile:           		export proteus_runtime_logLevel                         := Info
 profile:           		export proteus_runtime_applicationExecutionMode         := ExhaustiveProfiling
 profile:           		export proteus_runtime_missionLength                    := 200
@@ -125,16 +126,15 @@ profile-bounds:    		export proteus_runtime_applicationExecutionMode         := 
 profile-bounds:    		export proteus_runtime_missionLength                    := 200
 profile-bounds:    		copy-resources-build execute ## To select number of inputs to process when profiling: make size=<NUMBER_OF_RUNS> profile
 
+# Run this application and record the measured data in an SQL script named ${APPNAME}.trace.sql.
+# This script is to be used to populate an SQLite database for emulation purpose.
 trace:           		export proteus_runtime_logLevel                         := Info
 trace:           		export proteus_runtime_applicationExecutionMode         := EmulatorTracing
 trace:           		export proteus_runtime_missionLength                    := 200
 trace:           		copy-resources-build execute
 
+# Create the emulation database using the SQL script created in make trace and placed in $(RESOURCE_PATH).
 create-emulation-db:
-	make trace; \
-	make profile; \
-	mv ${APPNAME}.trace.sql $(RESOURCE_PATH); \
-	mv ${APPNAME}.*table $(RESOURCE_PATH); \
 	sqlite3 ${APPNAME}_emulation.db < ./Sources/FAST/Emulator/Database.sql; \
 	sqlite3 ${APPNAME}_emulation.db < $(RESOURCE_PATH)/${APPNAME}.trace.sql
 
