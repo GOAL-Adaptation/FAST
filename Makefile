@@ -88,8 +88,6 @@ all:                    rebuild run
 
 run:              		export proteus_runtime_missionLength                    := 2000
 run:               		export proteus_runtime_applicationExecutionMode         := Adaptive
-run:               		export proteus_armBigLittle_actuationPolicy             := Actuate
-run:               		export proteus_xilinxZcu_actuationPolicy                := Actuate
 run:               		execute
 
 run-scripted:      		export proteus_runtime_interactionMode                  := Scripted

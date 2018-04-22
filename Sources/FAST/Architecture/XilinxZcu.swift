@@ -89,7 +89,7 @@ class XilinxZcu: Architecture,
 
     unowned var runtime: Runtime
 
-    var actuationPolicy = Knob(name: "actuationPolicy", from: key, or: ActuationPolicy.NoActuation)
+    var actuationPolicy = Knob(name: "actuationPolicy", from: key, or: ActuationPolicy.Actuate)
 
     /** Changing Execution Mode */
     public func changeExecutionMode(oldMode: ExecutionMode, newMode: ExecutionMode) -> Void {
