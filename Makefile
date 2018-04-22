@@ -66,7 +66,6 @@ execute:              export proteus_emulator_database_db                     :=
 execute:              export proteus_emulator_database_readingMode            := Statistics
 
 execute:              export proteus_armBigLittle_policy                      := Simple
-execute:              export proteus_armBigLittle_actuationPolicy             := Actuate
 execute:              export proteus_armBigLittle_availableBigCores           := 4
 execute:              export proteus_armBigLittle_availableLittleCores        := 4
 execute:              export proteus_armBigLittle_maximalBigCoreFrequency     := 2000
@@ -75,7 +74,6 @@ execute:              export proteus_armBigLittle_utilizedBigCores            :=
 execute:              export proteus_armBigLittle_utilizedLittleCores         := 0
 
 execute:              export proteus_xilinxZcu_policy                         := Simple
-execute:              export proteus_xilinxZcu_actuationPolicy                := NoActuation
 execute:              export proteus_xilinxZcu_availableCores                 := 4
 execute:              export proteus_xilinxZcu_maximalCoreFrequency           := 1200
 execute:              export proteus_xilinxZcu_utilizedCores                  := 4
@@ -90,6 +88,8 @@ all:                    rebuild run
 
 run:              		export proteus_runtime_missionLength                    := 2000
 run:               		export proteus_runtime_applicationExecutionMode         := Adaptive
+run:               		export proteus_armBigLittle_actuationPolicy             := Actuate
+run:               		export proteus_xilinxZcu_actuationPolicy                := Actuate
 run:               		execute
 
 run-scripted:      		export proteus_runtime_interactionMode                  := Scripted
@@ -102,11 +102,15 @@ run-harness-scripted:   export proteus_runtime_executeWithTestHarness           
 run-harness-scripted:   run-scripted
 
 emulate:           		export proteus_armBigLittle_executionMode               := Emulated
+emulate:              	export proteus_armBigLittle_actuationPolicy             := NoActuation
 emulate:           		export proteus_xilinxZcu_executionMode                  := Emulated
+emulate:              	export proteus_xilinxZcu_actuationPolicy                := NoActuation
 emulate:           		run
 
-emulate-scripted:  		export proteus_armBigLittle_executionMode               := Emulated
-emulate-scripted:     export proteus_xilinxZcu_executionMode                  := Emulated
+emulate-scripted:		export proteus_armBigLittle_executionMode               := Emulated
+emulate-scripted:		export proteus_armBigLittle_actuationPolicy             := NoActuation
+emulate-scripted:		export proteus_xilinxZcu_executionMode                  := Emulated
+emulate-scripted:		export proteus_xilinxZcu_actuationPolicy                := NoActuation
 emulate-scripted:  		run-scripted
 
 evaluate:          		export proteus_runtime_executeWithTestHarness           := true

@@ -46,16 +46,16 @@ class XilinxZcuSystemConfigurationKnobs: TextApiModule {
     var utilizedCores         : Knob<Int>
     var utilizedCoreFrequency : Knob<Int>
 
-    init() {
+    init(actuationPolicyKnob: Knob<ActuationPolicy>) {
         utilizedCores         = Knob(name: "utilizedCores",         from: key, or: 4)
         utilizedCoreFrequency = Knob(name: "utilizedCoreFrequency", from: key, or: 1200)
         #if os(Linux)
           utilizedCores.overridePostSetter(newPostSetter: { _, newValue in
-            actuateLinuxUtilizedCoresSystemConfigurationKnob(actuationPolicy: .Actuate, utilizedCores: newValue)
+            actuateLinuxUtilizedCoresSystemConfigurationKnob(actuationPolicy: actuationPolicyKnob.get(), utilizedCores: newValue)
           })
           utilizedCoreFrequency.overridePostSetter(newPostSetter: { _, newUtilizedCoreFrequency in
             let newUtilizedCoreFrequencyInHz = newUtilizedCoreFrequency * 1000 // Convert from MHz (which is used in the intent specification and default value) to Hz
-            actuateLinuxUtilizedCoreFrequencySystemConfigurationKnob(actuationPolicy: .Actuate, utilizedCoreFrequency: newUtilizedCoreFrequencyInHz)
+            actuateLinuxUtilizedCoreFrequencySystemConfigurationKnob(actuationPolicy: actuationPolicyKnob.get(), utilizedCoreFrequency: newUtilizedCoreFrequencyInHz)
           })
         #endif
 
@@ -83,7 +83,7 @@ class XilinxZcu: Architecture,
     typealias SystemConfigurationKnobsType  = XilinxZcuSystemConfigurationKnobs
 
     var scenarioKnobs             = ScenarioKnobsType()
-    var systemConfigurationKnobs  : SystemConfigurationKnobsType
+    var systemConfigurationKnobs  : XilinxZcuSystemConfigurationKnobs
 
     var executionMode: Knob<ExecutionMode>
 
@@ -125,7 +125,7 @@ class XilinxZcu: Architecture,
         self.runtime = runtime
         // FIXME initialize exectuionMode so that the callback function can be passed. This is very stupid
         self.executionMode = Knob(name: "executionMode", from: key, or: ExecutionMode.Default)
-        self.systemConfigurationKnobs  = SystemConfigurationKnobsType()
+        self.systemConfigurationKnobs  = XilinxZcuSystemConfigurationKnobs(actuationPolicyKnob: actuationPolicy)
         self.executionMode = Knob(name: "executionMode", from: key, or: ExecutionMode.Default, preSetter: self.changeExecutionMode)
         // This is stupid too
         if executionMode.get() == ExecutionMode.Emulated {
