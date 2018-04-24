@@ -40,7 +40,7 @@ test: export proteus_runtime_missionLength   := 1000
 test: export proteus_runtime_address         := 0.0.0.0
 test: export proteus_client_rest_serverPath  := 127.0.0.1
 test: export proteus_client_rest_serverPort  := 8080
-test: copy-resources-test
+test: build copy-resources-test
 	swift test $(SPM_FLAGS)
 
 copy-resources-build:
