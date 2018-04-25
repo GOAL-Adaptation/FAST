@@ -69,24 +69,20 @@ class FastRestServer : RestServer {
               let perturbation = Perturbation(json: json)
             {
                 Log.debug("Received valid JSON on /perturb endpoint: \(json)")
-                runtime.changeIntent(perturbation.missionIntent)
 
-                // TODO 1) Set scenario knobs missionLength and sceneObfuscation
-                let ml = perturbation.missionLength
-                let so = perturbation.sceneObfuscation
-                runtime.scenarioKnobs.setStatus(newSettings: ["missionLength": ["missionLength": ml], "sceneObfuscation": ["sceneObfuscation": so]])
-
-                // TODO 2) Add scenario knobs availableCore*: 
-                // DONE: ombine runtime.scenarioKnobs with architecrture.scenarioKnobs.
-
-                // TODO 3) Set scenario knobs availableCore*
-                let ac = perturbation.availableCores
-                let acf = perturbation.availableCoreFrequency
-                runtime.setKnob("availableCores", to: ac)
-                runtime.setKnob("availableCoreFrequency", to: acf)
+                // Set scenario knobs
+                runtime.scenarioKnobs.setStatus(newSettings: [
+                    "missionLength":    ["missionLength":     perturbation.missionLength], 
+                    "sceneObfuscation": ["sceneObfuscation":  perturbation.sceneObfuscation]
+                ])
+                runtime.setKnob("availableCores",         to: perturbation.availableCores)
+                runtime.setKnob("availableCoreFrequency", to: perturbation.availableCoreFrequency)
 
                 if perturbation.scenarioChanged {
-                    Log.debug("Perturbation changed intent in a way that produced valid knob ranges. Invalidating current schedule.")
+                    Log.debug("Perturbation changed intent in a way that produced valid knob ranges. Reinitializing controller and invalidating current schedule.")
+                    // Reinitialize the controller with the new intent
+                    // NOTE: This intent has been filtered with respect to the scenario knobs!
+                    runtime.reinitializeController(perturbation.missionIntent, (perturbation.missionLength, perturbation.energyLimit))
                     runtime.schedule = nil // invalidate current schedule
                 }
                 else {
