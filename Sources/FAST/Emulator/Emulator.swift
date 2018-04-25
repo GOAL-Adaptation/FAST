@@ -136,8 +136,19 @@ class Emulator: TextApiModule, ClockMonitor, EnergyMonitor {
 
       Log.debug("Emulator readDelta1: get deltas for referenceApplicationConfigurationID = \(referenceApplicationConfigurationID) referenceSystemConfigurationID = \(referenceSystemConfigurationID) readDeltaTime = \(readDeltaTime) readDeltaEnergy = \(readDeltaEnergy)")
 
-      cumulativeDeltaTime   = cumulativeDeltaTime   / readDeltaTime
-      cumulativeDeltaEnergy = cumulativeDeltaEnergy / readDeltaEnergy
+      if cumulativeDeltaTime != 0.0 || readDeltaTime != 0.0 {
+        cumulativeDeltaTime   = cumulativeDeltaTime   / readDeltaTime
+      }
+      else {
+        Log.warning("Cannot compute Time(appCfg0, sysCfg) / Time(appCfg0, sysCfg0) since both numerator and denominator are 0. Defining that as 0.")
+      }
+
+      if cumulativeDeltaEnergy != 0.0 || readDeltaEnergy != 0.0 {
+        cumulativeDeltaEnergy = cumulativeDeltaEnergy / readDeltaEnergy
+      }
+      else {
+        Log.warning("Cannot compute Energy(appCfg0, sysCfg) / Energy(appCfg0, sysCfg0) since both numerator and denominator are 0. Defining that as 0.")
+      }
 
       // [ Value(appCfg0, sysCfg) / Value(appCfg0, sysCfg0) ] * Value(appCfg, sysCfg0)
       (readDeltaTime, readDeltaEnergy) = self.database.readDelta(application: application.name, architecture: architecture.name, appCfg: applicationConfigurationID, appInp: applicationInputID, sysCfg: referenceSystemConfigurationID, processing: progressCounter)
