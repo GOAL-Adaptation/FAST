@@ -93,13 +93,70 @@ open class Model {
         for configId in 0 ..< sortedConfigurations.count {
             sortedConfigurationsWithUpdatedIds.append(sortedConfigurations[configId].with(newId: configId))
         }
-        if let i = initialConfigurationIndex {
-            let updatedInitialConfigurationIndex = sortedConfigurations.index(where: { $0.id == i })
+        if let ici = initialConfigurationIndex {
+            let updatedInitialConfigurationIndex = sortedConfigurations.index(where: { $0.id == ici })
             return Model(sortedConfigurations, updatedInitialConfigurationIndex, measureNames)
         }
         else {
             return Model(sortedConfigurations, nil, measureNames)
         }
+    }
+
+    /** Make a model basd on this one, but only containing configurations matching those in the intent. */
+    func trim(to spec: IntentSpec) -> Model {
+
+        func isInIntent(_ c: Configuration) -> Bool {
+            return c.knobSettings.settings.map{ (knobName: String, knobValue: Any) in  
+                if let (knobRange,_) = spec.knobs[knobName] {
+                    if 
+                        let v = knobValue as? Int,
+                        let r = knobRange as? [Int] 
+                    {
+                        return r.contains(v)
+                    } 
+                    else {
+                        Log.error("Knob \(knobName) in model has value '\(knobValue)' of unsupported type: '\(type(of: knobValue))'.")
+                        fatalError()
+                    }
+                }
+                else {
+                    return true
+                }
+            }.reduce(true, { $0 && $1 })
+        }
+        
+        let filteredConfigurations = self.configurations.filter{ isInIntent($0) }
+        var filteredConfigurationsWithUpdatedIds: [Configuration] = []
+        for configId in 0 ..< filteredConfigurations.count {
+            filteredConfigurationsWithUpdatedIds.append(filteredConfigurations[configId].with(newId: configId))
+        }
+        if filteredConfigurationsWithUpdatedIds.count < self.configurations.count {
+            Log.verbose("Trimmed controller model from \(self.configurations.count) to \(filteredConfigurationsWithUpdatedIds.count) configurations.")
+        }
+        
+        if let ici = self.initialConfigurationIndex {
+            if !isInIntent(self.configurations[ici]) {
+                Log.warning("Initial configuration lost by shrinking to intent spec with knobs: \(spec.knobs). Using \(filteredConfigurations[0].knobSettings) instead.")
+                return Model(filteredConfigurationsWithUpdatedIds, 0, measureNames)
+            }
+            else {
+                let updatedInitialConfigurationIndex = self.configurations.index(where: { $0.id == ici })
+                return Model(filteredConfigurationsWithUpdatedIds, updatedInitialConfigurationIndex, measureNames)
+            }
+        }
+        else {
+            return Model(filteredConfigurationsWithUpdatedIds, nil, measureNames)
+        }
+
+    }
+    
+    func toKnobTableCSV() -> String {
+        let knobNames = Array(self.configurations[0].knobSettings.settings.keys).sorted()
+        let header = knobNames.joined(separator: ",") + "\n"
+        return header + self.configurations.map{ 
+            $0.toKnobTableLine(knobNames: knobNames) 
+        }.joined(separator: "\n")
+            
     }
 
 }

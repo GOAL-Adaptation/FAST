@@ -209,10 +209,19 @@ public class Runtime {
 
         if let appName               = application?.name {
 
-            let applicationKnobs         = extractStatus(of: "applicationKnobs",         from: application  )
-            let archName                 = architecture?.name ?? "NOT CONFIGURED"
-            let systemConfigurationKnobs = extractStatus(of: "systemConfigurationKnobs", from: architecture )
-            let scenarioKnobsStatus      = extractStatus(                                from: scenarioKnobs)
+            let applicationKnobs               = extractStatus(of: "applicationKnobs",         from: application  )
+            let archName                       = architecture?.name ?? "NOT CONFIGURED"
+            let systemConfigurationKnobs       = extractStatus(of: "systemConfigurationKnobs", from: architecture )
+            let architecureScenarioKnobsStatus = extractStatus(of: "scenarioKnobs",            from: architecture)
+            let scenarioKnobsStatus            = extractStatus(                                from: scenarioKnobs)
+
+            var combinedScenarioKnobsStatus: [String: Any] = [:]
+            for k in scenarioKnobsStatus.keys {
+                combinedScenarioKnobsStatus[k] = scenarioKnobsStatus[k]
+            }
+            for k in architecureScenarioKnobsStatus.keys {
+                combinedScenarioKnobsStatus[k] = architecureScenarioKnobsStatus[k]
+            }
 
             let verdictComponents: [String : Any] =
                 Dictionary(measuringDevices.map{
@@ -244,7 +253,7 @@ public class Runtime {
                 , "applicationKnobs"         : toArrayOfPairDicts(applicationKnobs)
                 , "architecture"             : archName
                 , "systemConfigurationKnobs" : toArrayOfPairDicts(systemConfigurationKnobs)
-                , "scenarioKnobs"            : toArrayOfPairDicts(scenarioKnobsStatus)
+                , "scenarioKnobs"            : toArrayOfPairDicts(combinedScenarioKnobsStatus)
                 , "measures"                 : toArrayOfPairDicts(getMeasures()) // Current measure values
                 , "measureStatistics"        : measureStatistics                 // Current measure statistics
                 , "verdictComponents"        : toArrayOfPairDicts(verdictComponents)
@@ -398,11 +407,13 @@ public class Runtime {
 
     /** Intialize intent preserving controller with the given model, intent, missionLength and window. */
     func initializeController(_ model: Model, _ intent: IntentSpec, _ window: UInt32 = 20, _ missionLengthAndEnergyLimit: (UInt64, UInt64)? = nil) {
+        // Trim model with respect to the intent, to force the controller to choose only those
+        // configurations that the user has specified there.
+        let trimmedModel = model.trim(to: intent)
         synchronized(controllerLock) {
-            if let c = IntentPreservingController(model, intent, window, missionLengthAndEnergyLimit) {
+            if let c = IntentPreservingController(trimmedModel, intent, window, missionLengthAndEnergyLimit) {
                 setIntent(intent)
-                setModel(name: intent.name, model)
-                // controller_ = c
+                setModel(name: intent.name, trimmedModel)
                 controller = c
                 Log.info("Controller initialized.")
             }

@@ -243,10 +243,10 @@ public class RestServer {
         let intentObjectiveFunction  = intent["objectiveFunction"]!  as! [String: Any]
         let intentConstraintVariable = intent["constraintVariable"]! as! String
         let intentConstraintValue    = intent["constraintValue"]!    as! Double
-
         let measuresString: String = measures.map {
             "\($0["name"]! as! String): Double"
         }.joined(separator:"\n\t")
+        
 
         let knobsString: String = knobs.map {
             knob in
@@ -255,7 +255,6 @@ public class RestServer {
             let referenceValue = knob["referenceValue"]!
             return "\(name) = [\(range)] reference \(referenceValue)"
         }.joined(separator:"\n\t")
-
         let intentObjectiveFunctionString = mkExpressionString(from: intentObjectiveFunction)
 
         return

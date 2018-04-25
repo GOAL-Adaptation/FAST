@@ -23,4 +23,10 @@ struct Configuration {
     func with(newId: Int) -> Configuration {
         return Configuration(newId, knobSettings, measureValues, measureNames)
     }
+
+    func toKnobTableLine(knobNames: [String]) -> String {
+        let knobValueStringsInOrder = knobNames.map{ "\(self.knobSettings.settings[$0]!)" }
+        return knobValueStringsInOrder.joined(separator: ",")
+    }
+
 }
