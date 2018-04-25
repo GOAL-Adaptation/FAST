@@ -75,7 +75,7 @@ execute:              export proteus_armBigLittle_utilizedLittleCores         :=
 
 execute:              export proteus_xilinxZcu_policy                         := Simple
 execute:              export proteus_xilinxZcu_availableCores                 := 4
-execute:              export proteus_xilinxZcu_maximalCoreFrequency           := 1200
+execute:              export proteus_xilinxZcu_availableCoreFrequency         := 1200
 execute:              export proteus_xilinxZcu_utilizedCores                  := 4
 execute:              export proteus_xilinxZcu_utilizedCoreFrequency          := 1200
 
