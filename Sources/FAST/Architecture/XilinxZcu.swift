@@ -28,11 +28,11 @@ class XilinxZcuScenarioKnobs: TextApiModule {
     var subModules = [String : TextApiModule]()
 
     // Scenario Knobs
-    var availableCores       = Knob(name: "availableCores",       from: key, or: 4)
-    var maximalCoreFrequency = Knob(name: "maximalCoreFrequency", from: key, or: 1200)
+    var availableCores: Knob<UInt16> = Knob(name: "availableCores",       from: key, or: 4)
+    var availableCoreFrequency: Knob<UInt64> = Knob(name: "availableCoreFrequency", from: key, or: 1200)
 
     init() {
-        self.addSubModule(newModules: [availableCores, maximalCoreFrequency])
+        self.addSubModule(newModules: [availableCores, availableCoreFrequency])
     }
 }
 

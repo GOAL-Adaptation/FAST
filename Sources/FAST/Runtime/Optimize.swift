@@ -616,6 +616,7 @@ func optimize
         }
         
         var (schedule, currentKnobSettings) = setUpControllerAndComputeInitialScheduleAndConfiguration()
+        runtime.schedule = schedule // Initialize the runtime's schedule
         var lastKnobSettings = currentKnobSettings
 
         runtime.measure("currentConfiguration", Double(currentKnobSettings.kid)) // The id of the configuration given in the knobtable
@@ -629,12 +630,14 @@ func optimize
         // Start the input processing loop
         loop( iterations: missionLength
             , preBody: {
-                if iteration > 0 && iteration % windowSize == 0 {
+                // Request a new schedule if this is the first iteration of a window, 
+                // or if the schedule has been invalidated (e.g. by the /perturb endpoint)
+                if (iteration > 0 && iteration % windowSize == 0) || runtime.schedule == nil {
                     Log.debug("Computing schedule from window averages: \(measuringDevice.windowAverages()).")
-                    schedule = runtime.controller.getSchedule(intent, measuringDevice.windowAverages())
+                    runtime.schedule = runtime.controller.getSchedule(runtime.intents[id]!, measuringDevice.windowAverages())
                 }
                 if runtime.runtimeKnobs.applicationExecutionMode.get() == ApplicationExecutionMode.Adaptive {
-                    currentKnobSettings = schedule[iteration % windowSize]
+                    currentKnobSettings = runtime.schedule![iteration % windowSize]
                     runtime.measure("currentConfiguration", Double(currentKnobSettings.kid)) // The id of the configuration given in the knobtable
                     if currentKnobSettings != lastKnobSettings {
                         Log.verbose("Scheduled configuration has changed since the last iteration, will apply knob settings.")

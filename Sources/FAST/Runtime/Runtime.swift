@@ -209,10 +209,19 @@ public class Runtime {
 
         if let appName               = application?.name {
 
-            let applicationKnobs         = extractStatus(of: "applicationKnobs",         from: application  )
-            let archName                 = architecture?.name ?? "NOT CONFIGURED"
-            let systemConfigurationKnobs = extractStatus(of: "systemConfigurationKnobs", from: architecture )
-            let scenarioKnobsStatus      = extractStatus(                                from: scenarioKnobs)
+            let applicationKnobs               = extractStatus(of: "applicationKnobs",         from: application  )
+            let archName                       = architecture?.name ?? "NOT CONFIGURED"
+            let systemConfigurationKnobs       = extractStatus(of: "systemConfigurationKnobs", from: architecture )
+            let architecureScenarioKnobsStatus = extractStatus(of: "scenarioKnobs",            from: architecture)
+            let scenarioKnobsStatus            = extractStatus(                                from: scenarioKnobs)
+
+            var combinedScenarioKnobsStatus: [String: Any] = [:]
+            for k in scenarioKnobsStatus.keys {
+                combinedScenarioKnobsStatus[k] = scenarioKnobsStatus[k]
+            }
+            for k in architecureScenarioKnobsStatus.keys {
+                combinedScenarioKnobsStatus[k] = architecureScenarioKnobsStatus[k]
+            }
 
             let verdictComponents: [String : Any] =
                 Dictionary(measuringDevices.map{
@@ -244,7 +253,7 @@ public class Runtime {
                 , "applicationKnobs"         : toArrayOfPairDicts(applicationKnobs)
                 , "architecture"             : archName
                 , "systemConfigurationKnobs" : toArrayOfPairDicts(systemConfigurationKnobs)
-                , "scenarioKnobs"            : toArrayOfPairDicts(scenarioKnobsStatus)
+                , "scenarioKnobs"            : toArrayOfPairDicts(combinedScenarioKnobsStatus)
                 , "measures"                 : toArrayOfPairDicts(getMeasures()) // Current measure values
                 , "measureStatistics"        : measureStatistics                 // Current measure statistics
                 , "verdictComponents"        : toArrayOfPairDicts(verdictComponents)

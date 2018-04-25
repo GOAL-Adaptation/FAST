@@ -71,11 +71,29 @@ class FastRestServer : RestServer {
                 Log.debug("Received valid JSON on /perturb endpoint: \(json)")
                 runtime.changeIntent(perturbation.missionIntent)
 
+                // TODO 1) Set scenario knobs missionLength and sceneObfuscation
+                let ml = perturbation.missionLength
+                let so = perturbation.sceneObfuscation
+                runtime.scenarioKnobs.setStatus(newSettings: ["missionLength": ["missionLength": ml], "sceneObfuscation": ["sceneObfuscation": so]])
+
+                // TODO 2) Add scenario knobs availableCore*: 
+                // DONE: ombine runtime.scenarioKnobs with architecrture.scenarioKnobs.
+
+                // TODO 3) Set scenario knobs availableCore*
+                let ac = perturbation.availableCores
+                let acf = perturbation.availableCoreFrequency
+                runtime.setKnob("availableCores", to: ac)
+                runtime.setKnob("availableCoreFrequency", to: acf)
+
                 if perturbation.scenarioChanged {
-                  runtime.schedule = nil // invalidate current schedule
+                    Log.debug("Perturbation changed intent in a way that produced valid knob ranges. Invalidating current schedule.")
+                    runtime.schedule = nil // invalidate current schedule
+                }
+                else {
+                    Log.verbose("Perturbation did not change the intent, or did so in a way that did not produce valid knob ranges. Did not invalidate current schedule.")
                 }
 
-                Log.info("Successfully received request on /changeIntent REST endpoint.")
+                Log.info("Successfully received request on /perturb REST endpoint.")
             }
             else {
                 logAndPostErrorToTh("Message sent to /perturb endpoint is not valid JSON: \(request.postBodyString ?? "<nil-post-body-string>").")

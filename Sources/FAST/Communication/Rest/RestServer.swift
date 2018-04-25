@@ -242,11 +242,13 @@ public class RestServer {
         let intentOptimizationType   = intent["optimizationType"]!   as! String
         let intentObjectiveFunction  = intent["objectiveFunction"]!  as! [String: Any]
         let intentConstraintVariable = intent["constraintVariable"]! as! String
+        print(">>> 1 \(intent["constraintValue"]!) : \(type( of: intent["constraintValue"]! ))")
         let intentConstraintValue    = intent["constraintValue"]!    as! Double
-
+        print(">>> 2")
         let measuresString: String = measures.map {
             "\($0["name"]! as! String): Double"
         }.joined(separator:"\n\t")
+        
 
         let knobsString: String = knobs.map {
             knob in
@@ -255,7 +257,6 @@ public class RestServer {
             let referenceValue = knob["referenceValue"]!
             return "\(name) = [\(range)] reference \(referenceValue)"
         }.joined(separator:"\n\t")
-
         let intentObjectiveFunctionString = mkExpressionString(from: intentObjectiveFunction)
 
         return
