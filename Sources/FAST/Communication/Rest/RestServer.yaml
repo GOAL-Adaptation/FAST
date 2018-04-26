@@ -171,17 +171,21 @@ components:
             - 1200
         missionLength:
           description: >-
-            Mission length in minutes. Affects the maximum permitted energy usage.
+            Mission length in iterations. Affects the maximum permitted energy usage.
           type: integer
           minimum: 0
           maximum: 1000
-        sceneObfuscation:
+        sceneImportance:
           description: >-
-            Amount of additive noise applied to input. Used to model conditions
-            such as fog that affect how informative the input signal is.
+            Importance of the current processing. Determines the degree to which
+            low-quality, low-resource configurations should be avoided, in favor
+            of high-quality, high-resource configurations. When sceneImportance
+            is 0.0, all configurations are considered by the system. 
+            When sceneImportance is 1.0, only the highest-quality configurations 
+            are considered.
           type: number
-          minimum: 0
-          maximum: 1
+          minimum: 0.0
+          maximum: 1.0
 
     ApplicationExecutionMode:
       type: object

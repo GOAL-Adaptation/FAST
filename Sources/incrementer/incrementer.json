@@ -45,5 +45,6 @@
 	"availableCores" : 4,
 	"availableCoreFrequency" : 1200,
 	"missionLength" : 100,
-	"sceneObfuscation" : 0.0
+	"energyLimit" : 1000000000,
+	"sceneImportance" : 0.0
 }

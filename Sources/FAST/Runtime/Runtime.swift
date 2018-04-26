@@ -406,12 +406,12 @@ public class Runtime {
 //------------------- end of very new stuff
 
     /** Intialize intent preserving controller with the given model, intent, missionLength and window. */
-    func initializeController(_ model: Model, _ intent: IntentSpec, _ window: UInt32 = 20, _ missionLengthAndEnergyLimit: (UInt64, UInt64)? = nil) {
+    func initializeController(_ model: Model, _ intent: IntentSpec, _ window: UInt32 = 20, _ missionLengthAndEnergyLimit: (UInt64, UInt64)? = nil, _ sceneImportance: Double? = nil) {
         // Trim model with respect to the intent, to force the controller to choose only those
         // configurations that the user has specified there.
         let trimmedModel = model.trim(to: intent)
         synchronized(controllerLock) {
-            if let c = IntentPreservingController(trimmedModel, intent, window, missionLengthAndEnergyLimit) {
+            if let c = IntentPreservingController(trimmedModel, intent, window, missionLengthAndEnergyLimit, sceneImportance) {
                 setIntent(intent)
                 setModel(name: intent.name, trimmedModel)
                 controller = c
@@ -425,7 +425,7 @@ public class Runtime {
     }
 
     /** Intialize intent preserving controller with the intent, keeping the previous model and window */
-    public func reinitializeController(_ spec: IntentSpec, _ missionLengthAndEnergyLimit: (UInt64, UInt64)? = nil) {
+    public func reinitializeController(_ spec: IntentSpec, _ missionLengthAndEnergyLimit: (UInt64, UInt64)? = nil, _ sceneImportance: Double? = nil) {
         // If the current controller is an IntentPreservingController and:
         //  - The constraint measure has not changed
         //  - The knob space has not changed (FIXME: implement this)
@@ -433,20 +433,20 @@ public class Runtime {
                spec.constraintName == intentPreservingController.intent.constraintName {
             
             // FIXME Thoroughly check that the model and updated intent are consistent (that measure and knob sets coincide)
-            initializeController(intentPreservingController.model!, spec, controller.window, missionLengthAndEnergyLimit)
+            initializeController(intentPreservingController.model!, spec, controller.window, missionLengthAndEnergyLimit, sceneImportance)
         } else if let model = readModelFromFile(spec.name) {
             Log.debug("Current controller doesn't contain a model, so we read the model from file again!")
-            initializeController(model, spec, controller.window, missionLengthAndEnergyLimit)
+            initializeController(model, spec, controller.window, missionLengthAndEnergyLimit, sceneImportance)
         } else {
             Log.error("Attempt to reinitialize controller based on a controller with an undefined model.")
             fatalError()
         }
     }
 
-    public func changeIntent(_ spec: IntentSpec, _ missionLengthAndEnergyLimit: (UInt64, UInt64)? = nil) {
+    public func changeIntent(_ spec: IntentSpec, _ missionLengthAndEnergyLimit: (UInt64, UInt64)? = nil, _ sceneImportance: Double? = nil) {
       guard let fastController = controller as? IntentPreservingController else {
         Log.error("Active controller type '\(type(of: controller))' does not support setting of constraint, reinitializing the entire controller.")
-        reinitializeController(spec, missionLengthAndEnergyLimit)
+        reinitializeController(spec, missionLengthAndEnergyLimit, sceneImportance)
         return
       }
 
@@ -458,7 +458,7 @@ public class Runtime {
       }
       else {
         Log.verbose("Reinitializing the controller for `\(spec.name)`.")
-        reinitializeController(spec, missionLengthAndEnergyLimit)
+        reinitializeController(spec, missionLengthAndEnergyLimit, sceneImportance)
       }
     }
 
