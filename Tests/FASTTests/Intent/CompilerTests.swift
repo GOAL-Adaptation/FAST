@@ -64,13 +64,13 @@ class CompilerTests: XCTestCase {
 
         /* Measures */
 
-        XCTAssertEqual(["latency", "operations"], spec.measures)
+        XCTAssertEqual(["operations", "performance", "quality"], spec.measures.sorted())
 
         /* Intent */
 
         XCTAssertEqual("incrementer", spec.name)
-        XCTAssertEqual(0.1          , spec.constraint)
-        XCTAssertEqual("latency"    , spec.constraintName)
+        XCTAssertEqual(50.0         , spec.constraint)
+        XCTAssertEqual("performance", spec.constraintName)
         XCTAssertEqual(4.5          , spec.costOrValue([0.0,3.0])) // 4.5 == (3.0*3.0)/2.0
         XCTAssertEqual(.minimize    , spec.optimizationType)
 

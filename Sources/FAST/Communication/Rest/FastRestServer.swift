@@ -71,8 +71,9 @@ class FastRestServer : RestServer {
                 Log.debug("Received valid JSON on /perturb endpoint: \(json)")
 
                 // Set scenario knobs
-                var newSettings: [String : Any] = [
-                    "missionLength": ["missionLength": perturbation.missionLength], 
+                var newSettings: [String : [String : Any]] = [
+                    "missionLength":      ["missionLength":      perturbation.missionLength],
+                    "enforceEnergyLimit": ["enforceEnergyLimit": perturbation.enforceEnergyLimit], 
                 ]
                 if let sceneImportance = perturbation.sceneImportance {
                     newSettings["sceneImportance"] = ["sceneImportance": sceneImportance]
@@ -84,11 +85,8 @@ class FastRestServer : RestServer {
                 if perturbation.scenarioChanged {
                     Log.debug("Perturbation changed intent in a way that produced valid knob ranges. Reinitializing controller and invalidating current schedule.")
                     // Reinitialize the controller with the new intent
-                    // NOTE: This intent has been filtered with respect to the scenario knobs!
-                    let maybeMissionLengthAndEnergyLimit: (UInt64,UInt64)? = 
-                        perturbation.energyLimit != nil ? (perturbation.missionLength, perturbation.energyLimit!) : nil
-
-                    runtime.reinitializeController(perturbation.missionIntent, maybeMissionLengthAndEnergyLimit, perturbation.sceneImportance)
+                    // NOTE: During the initialization of perturbation, perturbation.missionIntent has been filtered with respect to the scenario knobs!
+                    runtime.reinitializeController(perturbation.missionIntent, perturbation.missionLength, perturbation.enforceEnergyLimit, perturbation.sceneImportance)
                     runtime.schedule = nil // invalidate current schedule
                 }
                 else {

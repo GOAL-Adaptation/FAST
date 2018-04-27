@@ -14,10 +14,13 @@
 		],
 		"measures": [
 			{
-				"name": "latency"
+				"name": "performance"
 			},
 			{
 				"name": "operations"
+			},
+			{
+				"name": "quality"
 			}
 		],
 		"intent": {
@@ -38,13 +41,13 @@
                     "literal": 2.0
                 }
 			},
-			"constraintVariable": "latency",
-			"constraintValue": 0.1
+			"constraintVariable": "performance",
+			"constraintValue": 50.0
 		}
 	},
 	"availableCores" : 4,
 	"availableCoreFrequency" : 1200,
 	"missionLength" : 100,
-	"energyLimit" : 1000000000,
+	"enforceEnergyLimit" : false,
 	"sceneImportance" : 0.0
 }

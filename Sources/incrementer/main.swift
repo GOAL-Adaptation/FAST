@@ -23,4 +23,5 @@ optimize("incrementer", [threshold, step]) {
     }
     x = 0
     measure("operations", operations)
+    measure("quality", Double(threshold.get()) / Double(step.get()))
 }

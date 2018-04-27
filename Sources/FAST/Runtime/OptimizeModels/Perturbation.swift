@@ -6,7 +6,7 @@ struct Perturbation {
     let availableCores         : UInt16
     let availableCoreFrequency : UInt64
     let missionLength          : UInt64
-    let energyLimit            : UInt64?
+    let enforceEnergyLimit     : Bool
     let sceneImportance        : Double?
 
     let scenarioChanged        : Bool
@@ -15,19 +15,19 @@ struct Perturbation {
         if 
             let availableCores         = extract(type: UInt16.self, name: "availableCores"        , json: json),
             let availableCoreFrequency = extract(type: UInt64.self, name: "availableCoreFrequency", json: json),
-            let missionLength          = extract(type: UInt64.self, name: "missionLength"         , json: json)
+            let missionLength          = extract(type: UInt64.self, name: "missionLength"         , json: json),
+            let enforceEnergyLimit     = extract(type: Bool.self  , name: "enforceEnergyLimit"    , json: json)
         {
             self.availableCores         = availableCores
             self.availableCoreFrequency = availableCoreFrequency
             self.missionLength          = missionLength
+            self.enforceEnergyLimit     = enforceEnergyLimit
 
-            if let energyLimit = extract(type: UInt64.self, name: "energyLimit", json: json) {
-                self.energyLimit = energyLimit
-                Log.verbose("An energyLimit of \(energyLimit) was specified, proceeding with interpretation of missionLength as a constraint to be met.")
+            if enforceEnergyLimit {
+                Log.verbose("The energy limit will be enforced, proceeding with interpretation of missionLength as a constraint to be met.")
             }
             else {
-                self.energyLimit = nil
-                Log.verbose("No energyLimit specified, proceeding with interpretation of missionLength as a simple upper bound on the number of iterations.")
+                Log.verbose("The energy limit will not be enforced, proceeding with interpretation of missionLength as a simple upper bound on the number of iterations.")
             }
 
             if let sceneImportance = extract(type: Double.self, name: "sceneImportance", json: json) {
@@ -79,7 +79,7 @@ struct Perturbation {
             , "availableCores"         : availableCores
             , "availableCoreFrequency" : availableCoreFrequency
             , "missionLength"          : missionLength
-            , "energyLimit"            : energyLimit ?? "None"
+            , "enforceEnergyLimit"     : enforceEnergyLimit
             , "sceneImportance"        : sceneImportance ?? "None"
             ]
     }

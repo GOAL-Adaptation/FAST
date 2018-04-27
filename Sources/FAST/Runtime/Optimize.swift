@@ -552,12 +552,56 @@ func optimize
     }
 
 
-    func run(model: Model?, intent: IntentSpec, missionLength: UInt64? = nil, energyLimit: UInt64? = nil) {
+    func run(model: Model?, intent: IntentSpec, missionLength: UInt64, enforceEnergyLimit: Bool) {
 
         Log.info("Running optimize scope \(id).")
 
-        let maybeMissionLengthAndEnergyLimit: (UInt64,UInt64)? = 
-            missionLength != nil && energyLimit != nil ? (missionLength!,energyLimit!) : nil
+        /** 
+         * Compute the energyLimit as the amount of energy that must be available 
+         * to the system when it starts, to complete the missionLength assuming that 
+         * it is always executing in the most energy-inefficient configuration, that 
+         * is, the one with the highest energyDelta.
+         */
+        func computeEnergyLimit() -> UInt64? {
+
+            switch runtime.runtimeKnobs.applicationExecutionMode.get() {
+                
+                case .Adaptive:
+
+                    if let controllerModel = model {
+                        let modelSortedByEnergyDeltaMeasure = controllerModel.sorted(by: "energyDelta")
+                        if 
+                            let energyDeltaMeasureIdx            = modelSortedByEnergyDeltaMeasure.measureNames.index(of: "energyDelta"),
+                            let modelEnergyDeltaMaxConfiguration = modelSortedByEnergyDeltaMeasure.configurations.last
+                        {
+                            let modelEnergyDeltaMax = UInt64(modelEnergyDeltaMaxConfiguration.measureValues[energyDeltaMeasureIdx])
+
+                            let energyLimit = modelEnergyDeltaMax * missionLength
+                            Log.verbose("An energyLimit of \(energyLimit) was computed based on a missionLength of \(missionLength) and least energy-efficient model configuration with energyDelta \(modelEnergyDeltaMax).")
+
+                            return energyLimit
+                        }
+                        else {
+                            Log.error("Model is missing the energyDelta measure. Can not compute energyLimit.")
+                            fatalError("")
+                        }
+                    }
+                    else {
+                        Log.error("No model loaded. Can not compute energyLimit.")
+                        fatalError("")
+                    }
+
+                case .NonAdaptive:
+
+                    Log.verbose("Executing in NonAdaptive mode, no energyLimit computed.")
+                    return nil
+
+                default:
+                    
+                    fatalError("Attempt to execute in unsupported execution mode: \(runtime.runtimeKnobs.applicationExecutionMode.get()).")
+            }
+
+        }
 
         func setUpControllerAndComputeInitialScheduleAndConfiguration() -> (Schedule,KnobSettings) {
             switch runtime.runtimeKnobs.applicationExecutionMode.get() {
@@ -567,7 +611,7 @@ func optimize
                     if let controllerModel = model {
 
                         // Initialize the controller with the knob-to-mesure model, intent and window size
-                        runtime.initializeController(controllerModel, intent, windowSize, maybeMissionLengthAndEnergyLimit)
+                        runtime.initializeController(controllerModel, intent, windowSize, missionLength, enforceEnergyLimit)
 
                         // Compute initial schedule that meets the active intent, by using the measure values of
                         // the reference configuration as an estimate of the first measurements.
@@ -584,9 +628,11 @@ func optimize
                                 fatalError()
                             }
                         }
-                        Log.debug("Computing schedule from model window averages: \(measureValuesOfReferenceConfiguration).")
-                        return ( runtime.controller.getSchedule(intent, measureValuesOfReferenceConfiguration)
-                               , currentKnobSettings ) 
+
+                        let initialSchedule = runtime.controller.getSchedule(intent, measureValuesOfReferenceConfiguration)
+                        Log.verbose("Computed initial schedule from model referece configuration window averages: \(measureValuesOfReferenceConfiguration).")
+
+                        return (initialSchedule, currentKnobSettings) 
                     }
                     else {
                         Log.error("Attempt to execute in adaptive mode using controller with undefined model.")
@@ -604,9 +650,11 @@ func optimize
                     for measure in intent.measures {
                         runtime.measure(measure, 0.0)
                     }
+
+                    Log.verbose("Using constant schedule computed by the controller based on using 0.0 as the value for all measures.")
+                    let schedule = runtime.controller.getSchedule(intent, runtime.getMeasures())
                    
-                    return ( runtime.controller.getSchedule(intent, runtime.getMeasures())
-                           , currentKnobSettings ) 
+                    return (schedule, currentKnobSettings)
                 
                 default:
                     
@@ -615,6 +663,8 @@ func optimize
             }
         }
         
+        runtime.energyLimit = computeEnergyLimit() // Initialize the runtime's energyLimit based on the model
+
         var (schedule, currentKnobSettings) = setUpControllerAndComputeInitialScheduleAndConfiguration()
         runtime.schedule = schedule // Initialize the runtime's schedule
         var lastKnobSettings = currentKnobSettings
@@ -684,7 +734,7 @@ func optimize
             // FIXME handle error from request
             let _ = RestClient.sendRequest(to: "initialized")
 
-            run(model: model, intent: ips.initialConditions.missionIntent, missionLength: ips.initialConditions.missionLength, energyLimit: ips.initialConditions.energyLimit)
+            run(model: model, intent: ips.initialConditions.missionIntent, missionLength: ips.initialConditions.missionLength, enforceEnergyLimit: ips.initialConditions.enforceEnergyLimit)
 
             // FIXME handle error from request
             let _ = RestClient.sendRequest(to: "done", withBody: runtime.statusDictionary())
@@ -718,10 +768,16 @@ func optimize
                     if let model = runtime.readModelFromFile(id) {
                         Log.info("Model loaded for optimize scope \(id).")
 
-                        let missionLength = initialize(type: UInt64.self, name: "missionLength", from: key)
-                        let energyLimit   = initialize(type: UInt64.self, name: "energyLimit",   from: key)
-
-                        run(model: model, intent: intent, missionLength: missionLength, energyLimit: energyLimit)
+                        if 
+                            let missionLength      = initialize(type: UInt64.self, name: "missionLength"     , from: key),
+                            let enforceEnergyLimit = initialize(type: Bool.self  , name: "enforceEnergyLimit", from: key)
+                        {
+                            run(model: model, intent: intent, missionLength: missionLength, enforceEnergyLimit: enforceEnergyLimit)
+                        }
+                        else {
+                            Log.error("The  missionLength and enforceEnergyLimit parameters (mandatory for Adaptive execution) could not be initialized.")
+                            fatalError()
+                        }
 
                     } else {
                         Log.error("No model loaded for optimize scope '\(id)'. Cannot execute application in application execution mode \(runtime.runtimeKnobs.applicationExecutionMode.get()).")
@@ -730,8 +786,16 @@ func optimize
 
                 case .NonAdaptive:
 
-                    let missionLength = initialize(type: UInt64.self, name: "missionLength", from: key)
-                    run(model: nil, intent: intent, missionLength: missionLength) // No model for ConstantController
+                    if 
+                        let missionLength = initialize(type: UInt64.self, name: "missionLength", from: key)
+                    {
+                        // No model for ConstantController, energyLimit not defined or enforced
+                        run(model: nil, intent: intent, missionLength: missionLength, enforceEnergyLimit: false)
+                    }
+                    else {
+                        Log.error("The missionLength parameter (mandatory for NonAdaptive execution) could not be initialized.")
+                        fatalError()
+                    }
             
                 default:
 

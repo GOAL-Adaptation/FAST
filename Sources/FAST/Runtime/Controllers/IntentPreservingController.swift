@@ -3,39 +3,60 @@ import LoggerAPI
 import FASTController
 
 class IntentPreservingController : Controller {
-    let model: Model? // Always defined for this Controller
-    let window: UInt32
-    let fastController: FASTController
-    let intent: IntentSpec
+    
+    let model              : Model? // Always defined for this Controller
+    let window             : UInt32
+    let fastController     : FASTController
+    let intent             : IntentSpec
+
+    let missionLength      : UInt64
+    let energyLimit        : UInt64?
+    let enforceEnergyLimit : Bool
+    let sceneImportance    : Double?
 
     init?( _ model: Model
          , _ intent: IntentSpec
          , _ window: UInt32
-         , _ missionLengthAndEnergyLimit: (UInt64, UInt64)? = nil
-         , _ sceneImportance: Double? ) {
+         , _ missionLength: UInt64
+         , _ energyLimit: UInt64?
+         , _ enforceEnergyLimit: Bool
+         , _ sceneImportance: Double? 
+         ) 
+    {
+
         let modelSortedByConstraintMeasure = model.sorted(by: intent.constraintName)
-        self.model = modelSortedByConstraintMeasure
-        self.window = window
-        self.intent = intent
+
+        self.model              = modelSortedByConstraintMeasure
+        self.window             = window
+        self.intent             = intent
+        self.missionLength      = missionLength
+        self.energyLimit        = energyLimit
+        self.enforceEnergyLimit = enforceEnergyLimit
+        self.sceneImportance    = sceneImportance
+
         if let constraintMeasureIdx = modelSortedByConstraintMeasure.measureNames.index(of: intent.constraintName) {
             
             // TODO Gather statistics about how many configurations are filtered by each test parameter
+
             ////
-            // missionLength test parameter
+            // missionLength parameter
             ////
-            // If missionLength and energyLimit are defined, then wrap the user-defined
-            // objective function from the intent so that it assigns sub-optimal objective
-            // function value to schedules that use too much energy to meet missionLength 
-            // on average. Otherwise use the unmodified user-defined objective function.
-            
+
             var objectiveFunctionAfterMissionLength: ([Double]) -> Double
             
+            // If enforceEnergyLimit is true, then wrap the user-specified intent.costOrValue
+            // so that it assigns sub-optimal objective function value to schedules that use
+            // too much energy to meet missionLength on average. 
+            // Otherwise use the unmodified currentObjectiveFunction.
+
             if 
-                let (missionLength, energyLimit) = missionLengthAndEnergyLimit,
-                let energyMeasureIdx      = modelSortedByConstraintMeasure.measureNames.index(of: "energy"),
-                let energyDeltaMeasureIdx = modelSortedByConstraintMeasure.measureNames.index(of: "energyDelta"),
-                let iterationMeasureIdx   = modelSortedByConstraintMeasure.measureNames.index(of: "iteration") 
+                enforceEnergyLimit,
+                let theEnergyLimit        = energyLimit,
+                let energyMeasureIdx      = model.measureNames.index(of: "energy"),
+                let energyDeltaMeasureIdx = model.measureNames.index(of: "energyDelta"),
+                let iterationMeasureIdx   = model.measureNames.index(of: "iteration")
             {
+
                 func missionLengthRespectingObjectiveFunction(_ scheduleMeasureAverages: [Double]) -> Double {
                     
                     let energySinceStart   = UInt64(scheduleMeasureAverages[energyMeasureIdx])
@@ -45,7 +66,7 @@ class IntentPreservingController : Controller {
                     let remainingIterations = missionLength - iteration
 
                     // If schedule consumes too much energy per input, make it sub-optimal
-                    if energySinceStart + energyPerIteration * remainingIterations > energyLimit {
+                    if energySinceStart + energyPerIteration * remainingIterations > theEnergyLimit {
                         switch intent.optimizationType {
                             case .minimize: return  Double.infinity
                             case .maximize: return -Double.infinity
@@ -56,8 +77,10 @@ class IntentPreservingController : Controller {
                     }
 
                 }
+
                 Log.debug("Using missionLength-respecting objective function.")
                 objectiveFunctionAfterMissionLength = missionLengthRespectingObjectiveFunction
+
             }
             else {
                 Log.debug("Using missionLength-oblivious objective function.")
@@ -65,15 +88,17 @@ class IntentPreservingController : Controller {
             }
 
             ////
-            // sceneImportance test parameter
+            // sceneImportance parameter
             ////
-            let modelSortedByQualityMeasure = model.sorted(by: "quality")
 
-            // If sceneImportance is defined, then wrap the user-defined objective function from 
-            // the intent so that it assigns sub-optimal objective function value to schedules
+            let objectiveFunctionAfterMissionLengthAndSceneImportance : ([Double]) -> Double
+
+            // If sceneImportance is defined, then wrap the currentObjectiveFunction from 
+            // so that it assigns sub-optimal objective function value to schedules
             // that are estimated to produce a quality lower than minimumQuality.
-            // Otherwise use the objectiveFunctionAfterMissionLength.
-            var objectiveFunctionAfterMissionLengthAndSceneImportance: ([Double]) -> Double
+            // Otherwise use the unmodified currentObjectiveFunction.
+
+            let modelSortedByQualityMeasure = model.sorted(by: "quality")
 
             if 
                 let importance = sceneImportance,
@@ -112,16 +137,18 @@ class IntentPreservingController : Controller {
                         }
                     }
                     else {
-                        return intent.costOrValue(scheduleMeasureAverages)
+                        return objectiveFunctionAfterMissionLength(scheduleMeasureAverages)
                     }
 
                 }
+
                 Log.debug("Using sceneImportance-respecting objective function.")
                 objectiveFunctionAfterMissionLengthAndSceneImportance = importanceRespectingObjectiveFunction
+
             }
             else {
                 Log.debug("Using sceneImportance-oblivious objective function.")
-                objectiveFunctionAfterMissionLengthAndSceneImportance = intent.costOrValue
+                objectiveFunctionAfterMissionLengthAndSceneImportance = objectiveFunctionAfterMissionLength
             }
 
             self.fastController =

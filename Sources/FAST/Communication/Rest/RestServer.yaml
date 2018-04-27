@@ -175,6 +175,12 @@ components:
           type: integer
           minimum: 0
           maximum: 1000
+        enforceEnergyLimit:
+          description: >-
+            When true, the mission length will be treated as a constraint to be met. 
+            When false, the mission length will be treated as a simple upper bound 
+            on the number of iterations to execute.
+          type: boolean
         sceneImportance:
           description: >-
             Importance of the current processing. Determines the degree to which
@@ -183,6 +189,7 @@ components:
             is 0.0, all configurations are considered by the system. 
             When sceneImportance is 1.0, only the highest-quality configurations 
             are considered.
+          required: false
           type: number
           minimum: 0.0
           maximum: 1.0

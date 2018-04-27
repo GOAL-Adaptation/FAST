@@ -48,7 +48,7 @@ class ThMockRestServer : RestServer {
         , "availableCores"         : 3
         , "availableCoreFrequency" : 2000000
         , "missionLength"          : 567
-        , "energyLimit"            : 1234567890
+        , "enforceEnergyLimit"     : false
         , "sceneImportance"        : 0.0
         ]
 
