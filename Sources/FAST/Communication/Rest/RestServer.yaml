@@ -477,22 +477,6 @@ components:
                 operation frequency.
               items:
                 $ref: '#/components/schemas/NameValuePair'
-            runningTime:
-              type: number
-              description: Application running time.
-            energy:
-              type: number
-              minimum: 0
-              description: Energy consumed (in microjoules).
-            powerConsumption:
-              type: number
-              minimum: 0
-              description: Power consumption (in microjoules per second).
-            numberOfProcessedInputs:
-              type: integer
-              minimum: 0
-              description: >-
-                Number of inputs (from the current input stream) that have been processed.
             measures:
               type: array
               description: Values of measures specified in the intent specification.
