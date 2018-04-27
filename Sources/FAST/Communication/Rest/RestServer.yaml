@@ -441,10 +441,6 @@ components:
             - architecture
             - systemConfigurationKnobs
             - scenarioKnobs
-            - runningTime
-            - energy
-            - powerConsumption
-            - numberOfProcessedInputs
             - measures
           properties:
             application:
