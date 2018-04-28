@@ -455,7 +455,7 @@ public class Runtime {
     public func changeIntent(_ spec: IntentSpec, _ missionLength: UInt64? = nil, _ enforceEnergyLimit: Bool? = nil, _ sceneImportance: Double? = nil) {
       guard let intentPreservingController = controller as? IntentPreservingController else {
         Log.error("Active controller type '\(type(of: controller))' does not support change of intent.")
-        fatalError()
+        return
       }
       if spec.isEverythingExceptConstraitValueIdentical(to: intents[spec.name]) {
         // FIXME Also check that missionLength didnt change
