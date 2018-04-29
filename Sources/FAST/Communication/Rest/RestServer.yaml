@@ -157,16 +157,12 @@ components:
           description: Number of CPU cores on which the application is running.
           type: integer
           enum:
-            - 1
             - 2
-            - 3
             - 4
         availableCoreFrequency:
           description: Operating frequency of the CPU on which the application is running.
           type: integer
           enum:
-            - 300
-            - 400
             - 600
             - 1200
         missionLength:
@@ -174,7 +170,6 @@ components:
             Mission length in iterations. Affects the maximum permitted energy usage.
           type: integer
           minimum: 0
-          maximum: 1000
         enforceEnergyLimit:
           description: >-
             When true, the mission length will be treated as a constraint to be met. 
