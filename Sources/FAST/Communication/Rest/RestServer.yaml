@@ -442,7 +442,7 @@ components:
               enum:
                 - radar
                 - x264
-                - CaPSuLe
+                - capsule
               description: Name of challenge problem application.
             applicationKnobs:
               type: array
