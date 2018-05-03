@@ -77,8 +77,8 @@ public class DictDatabase: TextApiModule, Database {
     let applicationName                     : ApplicationName
     let architectureName                    : ArchitectureName
     let inputStreamName                     : ApplicationInputStreamName
-    let getCurrentAppConfigurationIdDict    : [ KnobSettings   : ApplicationConfigurationId  ]
-    let getCurrentSysConfigurationIdDict    : [ KnobSettings   : SystemConfigurationId       ]
+    let getCurrentAppConfigurationIdDict    : [ KnobSettings : ApplicationConfigurationId ]
+    let getCurrentSysConfigurationIdDict    : [ KnobSettings : SystemConfigurationId ]
     let referenceApplicationConfigurationId : ApplicationConfigurationId 
     let referenceSystemConfigurationId      : SystemConfigurationId
     let warmupInputs                        : Int
@@ -94,6 +94,9 @@ public class DictDatabase: TextApiModule, Database {
 
   // Database dictionaries
   private let database: Dicts
+
+  private let appConfigurationIdToKnobSettings: [ ApplicationConfigurationId : KnobSettings ]
+  private let sysConfigurationIdToKnobSettings: [ SystemConfigurationId      : KnobSettings ]
 
   public init?(databaseFile: String) {
 
@@ -118,6 +121,9 @@ public class DictDatabase: TextApiModule, Database {
     self.database = decodedDatabase
 
     Log.info("Initialized emulation database from file '\(databaseFile)'.")
+
+    self.appConfigurationIdToKnobSettings = Dictionary(decodedDatabase.getCurrentAppConfigurationIdDict.map{ ($1,$0) })
+    self.sysConfigurationIdToKnobSettings = Dictionary(decodedDatabase.getCurrentSysConfigurationIdDict.map{ ($1,$0) })
 
     self.addSubModule(newModule: databaseKnobs)
 
@@ -300,29 +306,27 @@ public class DictDatabase: TextApiModule, Database {
                     , systemConfigurationId      : systemConfigurationID
                     ) 
 
+    Log.debug("Database.readDelta. Reading deltas for configuration with application knob settings: \(appConfigurationIdToKnobSettings[applicationConfigurationID]) and system knob settings: \(sysConfigurationIdToKnobSettings[systemConfigurationID]).")
+
     // This is the iteration, but modified to simulate iterations beyond the number that was actually traced
-    let entryID = getInputNumberToRead(inputID: progressCounter, maximalInputID: maximalInputId, warmupInputs: warmupInputs)
+    let remappedIteration = getInputNumberToRead(inputID: progressCounter, maximalInputID: maximalInputId, warmupInputs: warmupInputs)
 
-    let profileEntryIterationId = ProfileEntryIterationId(profileEntryId : profileEntryId, iteration: entryID) 
-
-    Log.debug("Read (time,energy) deltas from emulation database for \(profileEntryIterationId).")        
-    
     // Differentiate between reading modes
     switch databaseKnobs.readingMode.get() {
 
       case ReadingMode.Tape:
         // Read the tape
 
-        //----
+        let profileEntryIterationId = ProfileEntryIterationId(profileEntryId : profileEntryId, iteration: remappedIteration) 
+        
+        let readDeltas = database.readDeltaDict[profileEntryIterationId]!
 
         let tapeNoise = getTapeNoise(application: application)
-
-        let readDeltas = database.readDeltaDict[profileEntryIterationId]!
 
         // Adding noise
         let deltas =  ( readDeltas.timeDelta   + randomizerWhiteGaussianNoise(deviation: readDeltas.timeDelta   * tapeNoise)
                       , readDeltas.energyDelta + randomizerWhiteGaussianNoise(deviation: readDeltas.energyDelta * tapeNoise) )
-        Log.debug("Read (time,energy) deltas from emulation database: \((readDeltas.timeDelta,readDeltas.energyDelta)). With (Tape) noise: \(deltas).")        
+        Log.debug("Database.readDelta with (Tape) for \(profileEntryIterationId) from emulation database: \((readDeltas.timeDelta,readDeltas.energyDelta)). With (Tape) noise included they are: \(deltas).")        
 
         return deltas
 
@@ -335,6 +339,7 @@ public class DictDatabase: TextApiModule, Database {
         // FIXME: Move statistics computation to tracing or initialization
         let allDeltasForThisProfileEntry: [TimeAndEnergyDelta] = 
           Array((0 ..< maximalInputId).map{ (iteration: Int) in
+            let profileEntryIterationId = ProfileEntryIterationId(profileEntryId : profileEntryId, iteration: iteration) 
             return database.readDeltaDict[profileEntryIterationId]!
           })
         let timeDeltasForThisProfileEntry   = allDeltasForThisProfileEntry.map{ $0.timeDelta   }
@@ -366,16 +371,16 @@ public class DictDatabase: TextApiModule, Database {
         }
 
         // Adding noise
-        Log.debug("Database.readDelta with (Statistics) meanDeltaTime(\(meanDeltaTime)) deviationDeltaTime(\(deviationDeltaTime)) meanDeltaEnergy(\(meanDeltaEnergy)) deviationDeltaEnergy(\(deviationDeltaEnergy)) rescaleFactorMean(\(rescaleFactorMean)) rescaleFactorVariance(\(rescaleFactorVariance)) maximalInputId(\(maximalInputId)).")
+        Log.debug("Database.readDelta with (Statistics) for \(profileEntryId) and iteration \(progressCounter): meanDeltaTime(\(meanDeltaTime)) deviationDeltaTime(\(deviationDeltaTime)) meanDeltaEnergy(\(meanDeltaEnergy)) deviationDeltaEnergy(\(deviationDeltaEnergy)) rescaleFactorMean(\(rescaleFactorMean)) rescaleFactorVariance(\(rescaleFactorVariance)) maximalInputId(\(maximalInputId)).")
 
         let n = 3.0
-        let deltaTimeNoise = rand(min: -meanDeltaTime, max: meanDeltaTime) / n
+        let deltaTimeNoise   = rand(min: -meanDeltaTime,   max: meanDeltaTime  ) / n
         let deltaEnergyNoise = rand(min: -meanDeltaEnergy, max: meanDeltaEnergy) / n
         
         Log.debug("Database.readDelta n = \(n) deltaTimeNoise = \(deltaTimeNoise) deltaEnergyNoise = \(deltaEnergyNoise) ")
     
-        let deltas = (meanDeltaTime * rescaleFactorMean + deltaTimeNoise
-                    , meanDeltaEnergy * rescaleFactorMean + deltaEnergyNoise)   
+        let deltas = ( meanDeltaTime   * rescaleFactorMean + deltaTimeNoise
+                     , meanDeltaEnergy * rescaleFactorMean + deltaEnergyNoise )
         
         Log.debug("Database.readDelta get deltas with noises from emulation database: \(deltas).")        
 

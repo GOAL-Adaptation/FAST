@@ -62,7 +62,7 @@ class Emulator: TextApiModule, ClockMonitor, EnergyMonitor {
   // Initialization
   required init(application: EmulateableApplication, applicationInput: Int, architecture: EmulateableArchitecture, runtime: Runtime) {
       self.runtime = runtime
-      if let database = SQLiteDatabase() {
+      if let database = DictDatabase() {
         self.database = database
       } else {
         Log.error("Could not initialize the Database.")

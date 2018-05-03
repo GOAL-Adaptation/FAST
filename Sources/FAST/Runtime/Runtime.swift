@@ -104,6 +104,9 @@ public class Runtime {
         }
     }
 
+    // FIXME: set to 0 for now, Emulator should detect app input stream 
+    let applicationInputId = 0
+
     var isSystemMeasuresRegistered = false
 
     private var measures: [String : Double] = [:]

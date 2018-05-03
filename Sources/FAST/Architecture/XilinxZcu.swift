@@ -108,7 +108,7 @@ class XilinxZcu: Architecture,
                     // Create an emulator
                     // TODO check application exictence and conformance
                     let emulator = Emulator(application: runtime.application! as! EmulateableApplication, 
-                                            applicationInput: 1, // FIXME: set to 1 for now, Emulator should detect app input stream 
+                                            applicationInput: runtime.applicationInputId,
                                             architecture: self, 
                                             runtime: runtime)
 
