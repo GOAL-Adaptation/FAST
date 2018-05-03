@@ -1,13 +1,28 @@
 import LoggerAPI
 
 /* A collection of knob values that can be applied to control the system. */
-class KnobSettings {
+class KnobSettings: Hashable, Codable, CustomStringConvertible {
     let kid: Int // The id of the configuration given in the knobtable
     let settings: [String : Any]
+
+    let hashValue: Int
+    
     init(kid: Int, _ settings: [String : Any]) {
         self.kid = kid
         self.settings = settings
+
+        var hash = 0
+        for knobName in Array(settings.keys).sorted() {
+            if let knobValue = settings[knobName] as? Int {
+                hash = hash ^ knobValue &* 16777619
+            }
+            else {
+                fatalError("Can not compute hash for knob value '\(settings[knobName])' of type '\(type(of: settings[knobName]))'.")            
+            }
+        }
+        self.hashValue = hash
     }
+
     func apply(runtime: Runtime) {
         for (name, value) in settings {
             runtime.setKnob(name, to: value)
@@ -37,6 +52,37 @@ class KnobSettings {
         }
         return true
     }
+
+    /* CustomStringConvertible protocol */
+
+    public var description: String { return "KnobSettings(kid: \(kid), hashValue: \(hashValue), settings: \(settings))" }
+
+    /* Codable protocol */
+
+    enum CodingKeys: String, CodingKey {
+        case kid
+        case settings
+        case hashValue
+    }
+
+    required init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        kid = try values.decode(Int.self, forKey: .kid)
+        // TODO Generalize to handle other knob values than Int:s
+        settings = try values.decode([String: Int].self, forKey: .settings)
+        hashValue = try values.decode(Int.self, forKey: .hashValue)
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(kid, forKey: .kid)
+        guard let intSettings = settings as? [String : Int] else {
+            fatalError("Serializing non-integer knob values is not implemented.")
+        }
+        try container.encode(intSettings, forKey: .settings)
+        try container.encode(hashValue, forKey: .hashValue)
+    }
+
 }
 
 /**
