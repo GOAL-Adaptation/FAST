@@ -73,7 +73,7 @@ class TracingTests: FASTTestCase {
         }
 
         if let loadSchemaQuery = readFile(withName: "Database", ofType: "sql", fromBundle: Bundle(for: type(of: self))),
-           let db = Database(databaseFile: dbFile) {
+           let db = SQLiteDatabase(databaseFile: dbFile) {
             do {
                 try db.execute(script: loadSchemaQuery)
                 db.database.close()
@@ -171,7 +171,7 @@ class TracingTests: FASTTestCase {
             + "COMMIT;"
 
 
-        if let db = Database(databaseFile: dbFile) {
+        if let db = SQLiteDatabase(databaseFile: dbFile) {
             do {
                 try db.execute(script: tracingScript)
                 db.database.close()

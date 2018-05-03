@@ -19,7 +19,7 @@ import LoggerAPI
 //---------------------------------------
 
 
-class DatabaseTests: FASTTestCase {
+class SQLiteDatabaseTests: FASTTestCase {
 
     override func setUp() {
         super.setUp()
@@ -73,7 +73,7 @@ class DatabaseTests: FASTTestCase {
 
         if let loadSchemaQuery = readFile(withName: "Database", ofType: "sql", fromBundle: Bundle(for: type(of: self))),
            let insertDataQuery = readFile(withName: "DatabaseTests", ofType: "sql", fromBundle: Bundle(for: type(of: self))),
-           let db = Database(databaseFile: dbFile) {
+           let db = SQLiteDatabase(databaseFile: dbFile) {
             do {
                 try db.execute(script: loadSchemaQuery)
                 try db.execute(script: insertDataQuery)
@@ -97,7 +97,7 @@ class DatabaseTests: FASTTestCase {
     }
 
     func testGetReferenceApplicationConfigurationID() {
-        if let database = Database(databaseFile: dbFile) {
+        if let database = SQLiteDatabase(databaseFile: dbFile) {
             var referenceApplicationConfigurationId = database.getReferenceApplicationConfigurationID(application: "RADAR")
             XCTAssertEqual(6, referenceApplicationConfigurationId)
             referenceApplicationConfigurationId = database.getReferenceApplicationConfigurationID(application: "x264")
@@ -106,7 +106,7 @@ class DatabaseTests: FASTTestCase {
     }
 
     func testGetReferenceSystemConfigurationID() {
-        if let database = Database(databaseFile: dbFile) {
+        if let database = SQLiteDatabase(databaseFile: dbFile) {
             var referenceSystemConfigurationId = database.getReferenceSystemConfigurationID(architecture: "ARM-big.LITTLE")
             XCTAssertEqual(1, referenceSystemConfigurationId)
             referenceSystemConfigurationId = database.getReferenceSystemConfigurationID(architecture: "XilinxZcu")
@@ -116,7 +116,7 @@ class DatabaseTests: FASTTestCase {
 
 
     func testGetOutliers() {
-        if let database = Database(databaseFile: dbFile) {
+        if let database = SQLiteDatabase(databaseFile: dbFile) {
             var outliers = database.obtainOutliers(application: "RADAR")
             XCTAssertEqual(16, outliers.0)
             XCTAssertEqual(64, outliers.1)
@@ -127,7 +127,7 @@ class DatabaseTests: FASTTestCase {
     }
 
     func testGetTapeNoise() {
-        if let database = Database(databaseFile: dbFile) {
+        if let database = SQLiteDatabase(databaseFile: dbFile) {
             var tapeNoise = database.getTapeNoise(application: "RADAR")
             XCTAssertEqual(0.001953125, tapeNoise)
             tapeNoise = database.getTapeNoise(application: "x264")
@@ -136,7 +136,7 @@ class DatabaseTests: FASTTestCase {
     }
 
     func testGetWarmupInputs() {
-        if let database = Database(databaseFile: dbFile) {
+        if let database = SQLiteDatabase(databaseFile: dbFile) {
             var numberOfInputs = database.getWarmupInputs(application: "RADAR")
             XCTAssertEqual(2, numberOfInputs)
             numberOfInputs = database.getWarmupInputs(application: "x264")
@@ -145,7 +145,7 @@ class DatabaseTests: FASTTestCase {
     }
 
     func testGetNumberOfInputsProfiled() {
-        if let database = Database(databaseFile: dbFile) {
+        if let database = SQLiteDatabase(databaseFile: dbFile) {
             var numberOfInputs = database.getNumberOfInputsProfiled(application: "RADAR", architecture: "ARM-big.LITTLE", appCfg: 6, appInp: 1, sysCfg: 1)
             XCTAssertEqual(3, numberOfInputs)
             numberOfInputs = database.getNumberOfInputsProfiled(application: "x264", architecture: "ARM-big.LITTLE", appCfg: 7, appInp: 3, sysCfg: 1)
@@ -154,7 +154,7 @@ class DatabaseTests: FASTTestCase {
     }
 
     func testGetDelta() {
-        if let database = Database(databaseFile: dbFile) {
+        if let database = SQLiteDatabase(databaseFile: dbFile) {
             var time_energy = database.readDelta(application: "RADAR", architecture: "ARM-big.LITTLE", appCfg: 6, appInp: 1, sysCfg: 1, processing: 3)
             XCTAssertEqual(1550, Int(time_energy.0))  
             XCTAssertEqual(1253, Int(time_energy.1))
@@ -166,7 +166,7 @@ class DatabaseTests: FASTTestCase {
 
     func testGetCurrentApplicationConfigurationId() {
         let incrementerApplication = Incrementer(runtime: runtime)
-        if let database = Database(databaseFile: dbFile) {
+        if let database = SQLiteDatabase(databaseFile: dbFile) {
             let currentApplicationConfigurationId = database.getCurrentConfigurationId(application: incrementerApplication)
             XCTAssertEqual(13, currentApplicationConfigurationId)
         }
@@ -174,14 +174,14 @@ class DatabaseTests: FASTTestCase {
 
     func testGetCurrentSystemConfigurationId() {
         let xilinx = XilinxZcu(runtime: runtime)
-        if let database = Database(databaseFile: dbFile) {
+        if let database = SQLiteDatabase(databaseFile: dbFile) {
             let currentSystemConfigurationId = database.getCurrentConfigurationId(architecture: xilinx)
             XCTAssertEqual(2, currentSystemConfigurationId)
         }
     }
 
     func testGetApplicationInputStreamApplicationConfigurationId() {
-        if let database = Database(databaseFile: dbFile) {
+        if let database = SQLiteDatabase(databaseFile: dbFile) {
             var applicationInputStreamId =
             database.getApplicationInputStreamApplicationConfigurationId(application: "RADAR", inputStream: "radar cmd1", applicationConfigurationId: 8)
             XCTAssertEqual(1, applicationInputStreamId)
@@ -193,7 +193,7 @@ class DatabaseTests: FASTTestCase {
     }
 
     func testGetApplicatioInputStreamId() {
-        if let database = Database(databaseFile: dbFile) {
+        if let database = SQLiteDatabase(databaseFile: dbFile) {
             var applicationInputStreamId = database.getApplicatioInputStreamId(application: "RADAR", inputStream: "radar cmd1")
             XCTAssertEqual(1, applicationInputStreamId)
             applicationInputStreamId = database.getApplicatioInputStreamId(application: "RADAR", inputStream: "radar cmd2")
@@ -205,7 +205,7 @@ class DatabaseTests: FASTTestCase {
 
 
     func testGetApplicationId() {
-        if let database = Database(databaseFile: dbFile) {
+        if let database = SQLiteDatabase(databaseFile: dbFile) {
                 var applicationId = database.getApplicationId(application: "RADAR")
                 XCTAssertEqual(0, applicationId)
                 applicationId = database.getApplicationId(application: "CaPSuLe")
