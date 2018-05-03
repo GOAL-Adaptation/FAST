@@ -33,31 +33,44 @@ public protocol Database : TextApiModule {
 
 //-------------------------------
 
-// /** Select which input to read in Tape mode */
-// func getInputNumberToRead(inputID: Int, maximalInputID: Int, warmupInputs: Int) -> Int {
-      
-//   // FIXME Add support for warmup iterations
-//   assert(warmupInputs == 0)
+/** Select which input to read in Tape mode */
+func getInputNumberToRead(inputID: Int, maximalInputID: Int, warmupInputs: Int) -> Int {
+    
+    // FIXME Add support for warmup iterations
+    assert(warmupInputs == 0)
 
-//   // Assume the trace is [0,1,2]. To simulate an execution of length 8,
-//   // we repeat the trace, reversing it at every repetition to ensure that
-//   // consecutive readings are close, as follows:
-//   // [0,1,2, 3,4,5, 6,7] // Emulated execution indices
-//   // [0,1,2][2,1,0][0,1] // Traced execution indices
-//   let traceSize = maximalInputID + 1
-//   // Shift the inputID to the range 0 ..< traceSize
-//   let inputIdShifted = inputID % traceSize
-//   // How many times has the traced data been repeated so far?
-//   let repetitionNumber = inputID / traceSize
-//   // Is the current repetition reversed or not
-//   let isRepetitionReversed = repetitionNumber % 2 == 1
-//   // If we are in a reversed repetition, return (maximalInputID - inputIdShifted), otherwise return inputIdShifted.
-//   let remappedInputNumber = isRepetitionReversed ? maximalInputID - inputIdShifted : inputIdShifted
-//   assert(remappedInputNumber <= maximalInputID)
+    // A recorded input is directly read
+    if inputID <= maximalInputID {
+        return inputID
 
-//   return remappedInputNumber
+    // A "non-taped" input is randomly emulated from the "non-warmup" segment
+    // TODO check if range is non-empty warmupInputs + 1 < maximalInputID
+    } else {
+        let extraInputs = inputID - maximalInputID
+        let offsetRange = maximalInputID - (warmupInputs + 1)
 
-// }
+        // offset \in 1 .. offsetRange
+        let offset = (extraInputs % offsetRange == 0) ? offsetRange : (extraInputs % offsetRange)
+
+        // Backward / Forward
+        enum ReadingDirection {
+        case Backward
+        case Forward
+        // NOTE extraInputs >= 1 is guaranteed
+        }
+
+        let readDirection: ReadingDirection
+        
+        readDirection = ( ((extraInputs - 1) / offsetRange) % 2 == 0 ) ? ReadingDirection.Backward : ReadingDirection.Forward
+
+        // Read the tape back and forth
+
+        // Backward reading from [maximalInputID]   - 1   to [warmupInputs + 1]
+        // Forward  reading from [warmupInputs + 1] + 1   to [maximalInputID]
+        return (readDirection == ReadingDirection.Backward) ? (maximalInputID - offset) : ((warmupInputs + 1) + offset)
+    }
+
+}
 
 //-------------------------------
 

@@ -530,42 +530,6 @@ public func getCurrentConfigurationId(architecture: Architecture) -> Int {
     // TODO
   }
 
-  /** Select which input to read in Tape mode */
-  func getInputNumberToRead(inputID: Int, maximalInputID: Int, warmupInputs: Int) -> Int {
-        
-        // A recorded input is directly read
-        if inputID <= maximalInputID {
-          return inputID
-
-        // A "non-taped" input is randomly emulated from the "non-warmup" segment
-        // TODO check if range is non-empty warmupInputs + 1 < maximalInputID
-        } else {
-          let extraInputs = inputID - maximalInputID
-          let offsetRange = maximalInputID - (warmupInputs + 1)
-
-          // offset \in 1 .. offsetRange
-          let offset = (extraInputs % offsetRange == 0) ? offsetRange : (extraInputs % offsetRange)
-
-          // Backward / Forward
-          enum ReadingDirection {
-            case Backward
-            case Forward
-            // NOTE extraInputs >= 1 is guaranteed
-          }
-
-          let readDirection: ReadingDirection
-          
-          readDirection = ( ((extraInputs - 1) / offsetRange) % 2 == 0 ) ? ReadingDirection.Backward : ReadingDirection.Forward
-
-          // Read the tape back and forth
-
-          // Backward reading from [maximalInputID]   - 1   to [warmupInputs + 1]
-          // Forward  reading from [warmupInputs + 1] + 1   to [maximalInputID]
-          return (readDirection == ReadingDirection.Backward) ? (maximalInputID - offset) : ((warmupInputs + 1) + offset)
-        }
-
-  }
-
   /** Obtain outliers for the application */
   func obtainOutliers(application: String) -> (Double, Double) {
 
