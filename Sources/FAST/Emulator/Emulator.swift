@@ -24,6 +24,10 @@ fileprivate let key = ["proteus", "emulator"]
 
 //-------------------------------
 
+enum EmulationDatabaseType {
+  case Dict, SQLite
+}
+
 /** Emulator */
 class Emulator: TextApiModule, ClockMonitor, EnergyMonitor {
 
@@ -62,7 +66,15 @@ class Emulator: TextApiModule, ClockMonitor, EnergyMonitor {
   // Initialization
   required init(application: EmulateableApplication, applicationInput: Int, architecture: EmulateableArchitecture, runtime: Runtime) {
       self.runtime = runtime
-      if let database = DictDatabase() {
+
+      let emulationDatabaseType = initialize(type: EmulationDatabaseType.self, name: "emulationDatabaseType", from: key, or: .Dict)
+
+      if emulationDatabaseType == .Dict,
+         let database = DictDatabase() {
+        self.database = database
+      }
+      else if emulationDatabaseType == .SQLite,
+         let database = SQLiteDatabase() {
         self.database = database
       } else {
         Log.error("Could not initialize the Database.")

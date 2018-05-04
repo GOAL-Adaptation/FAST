@@ -486,10 +486,9 @@ func optimize
         }
 
         let pureReferenceConfiguration          = Set(knobAppRefSpace).intersection(knobSysRefSpace).first! // Extract the element of the singleton 
-        // NOTE: We define:
-        //  - the id of an application configuration KnobSettings as its position in the knobSysRefSpace
-        //  - the id of a system configuration KnobSettings as its position in the knobAppRefSpace
+        // The id of an application configuration KnobSettings as its position in the knobSysRefSpace
         let referenceApplicationConfigurationId = knobSysRefSpace.index(of: pureReferenceConfiguration)!
+        // The id of a system configuration KnobSettings as its position in the knobAppRefSpace
         let referenceSystemConfigurationId      = knobAppRefSpace.index(of: pureReferenceConfiguration)!
 
         Log.debug("Tracing based on reference configuration space of size \(knobRefSpace.count) with pure-refernce configuration '\(pureReferenceConfiguration)': \(knobRefSpace).")
@@ -511,10 +510,9 @@ func optimize
             }
 
             /// --- Begin DictDatabase code
-            // NOTE: WE define:
-            //  - the id of an application configuration KnobSettings as its position in the knobSysRefSpace
-            //  - the id of a system configuration KnobSettings as its position in the knobAppRefSpace
+            // The id of an application configuration KnobSettings as its position in the knobSysRefSpace
             let applicationConfigurationId = knobSysRefSpace.index(of: knobSettings) ?? referenceApplicationConfigurationId
+            // The id of a system configuration KnobSettings as its position in the knobAppRefSpace
             let systemConfigurationId      = knobAppRefSpace.index(of: knobSettings) ?? referenceSystemConfigurationId
             // Register the profileEntryId of the current knobSettings in tracedConfigurations
             let profileEntryId = 
@@ -526,20 +524,16 @@ func optimize
             tracedConfigurations.append(profileEntryId)
             // Assign an ID to the current application configuration and insert that into getCurrentAppConfigurationIdDict
             let appKnobs = myApp.getStatus()!["applicationKnobs"] as! [String : Any]
-            let appKnobsUnwrapped = DictDatabase.unwrapKnobStatus(knobStatus: appKnobs)
-            let appKnobSettings = KnobSettings(kid: -1, appKnobsUnwrapped)
+            let appKnobSettings = KnobSettings(kid: -1, DictDatabase.unwrapKnobStatus(knobStatus: appKnobs))
             if getCurrentAppConfigurationIdDict[appKnobSettings] == nil {
-                // NOTE: WE define:
-                //  - the id of an application configuration KnobSettings as its position in the knobSysRefSpace
+                // The id of an application configuration KnobSettings as its position in the knobSysRefSpace
                 getCurrentAppConfigurationIdDict[appKnobSettings] = knobSysRefSpace.index(where: { $0.contains(appKnobSettings.settings) })
             }
             // Assign an ID to the current system configuration and insert that into getCurrentSysConfigurationIdDict
             let sysKnobs = myArch.getStatus()!["systemConfigurationKnobs"] as! [String : Any]
-            let sysKnobsUnwrapped = DictDatabase.unwrapKnobStatus(knobStatus: sysKnobs)
-            let sysKnobSettings = KnobSettings(kid: -1, sysKnobsUnwrapped)
+            let sysKnobSettings = KnobSettings(kid: -1, DictDatabase.unwrapKnobStatus(knobStatus: sysKnobs))
             if getCurrentSysConfigurationIdDict[sysKnobSettings] == nil {
-                // NOTE: WE define:
-                //  - the id of a system configuration KnobSettings as its position in the knobAppRefSpace
+                // The id of a system configuration KnobSettings as its position in the knobAppRefSpace
                 getCurrentSysConfigurationIdDict[sysKnobSettings] = knobAppRefSpace.index(where: { $0.contains(sysKnobSettings.settings) })
             }
             /// --- End DictDatabase code

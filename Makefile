@@ -63,6 +63,7 @@ execute:              export proteus_runtime_sceneImportance                  :=
 execute:              export proteus_runtime_address                          := 0.0.0.0
 execute:              export proteus_client_rest_serverAddress                := brass-th
 execute:              export proteus_client_rest_serverPort                   := 8080
+execute:              export proteus_emulator_emulationDatabaseType           := Dict
 execute:              export proteus_emulator_database_db                     := ./${APPNAME}.trace.json
 execute:              export proteus_emulator_database_readingMode            := Statistics
 

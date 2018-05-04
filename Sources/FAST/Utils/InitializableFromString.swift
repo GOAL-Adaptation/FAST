@@ -199,6 +199,23 @@ extension LoggerMessageType: InitializableFromString {
 
 }
 
+/** EmulationDatabaseType */
+extension EmulationDatabaseType: InitializableFromString {
+
+    public init?(from text: String) {
+        switch text {
+            case "Dict":
+                self = .Dict
+            case "SQLite":
+                self = .SQLite
+            default:
+                failedToInitialize("EmulationDatabaseType", from: text)
+                return nil
+        }
+    }
+
+}
+
 //---------------------------------------
 
 fileprivate func failedToInitialize(_ typeString: String, from text: String) {

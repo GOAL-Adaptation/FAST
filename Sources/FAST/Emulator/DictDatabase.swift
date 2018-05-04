@@ -333,10 +333,8 @@ public class DictDatabase: TextApiModule, Database {
       case ReadingMode.Statistics:
         // Obtain the means and deviations of deltaEnergy and deltaTime
 
-        // FIXME : Re-implement warmup stuff
+        // FIXME : Re-implement support for warmup iterations > 0 (supported by the SQLiteDatabase, but fixed to 0 in Database.getInputNumberToRead)
         // FIXME : Double-check if we should use maximalInputId or maximalInputId-1 when computing variance
-
-        // FIXME: Move statistics computation to tracing or initialization
         let allDeltasForThisProfileEntry: [TimeAndEnergyDelta] = 
           Array((0 ..< maximalInputId).map{ (iteration: Int) in
             let profileEntryIterationId = ProfileEntryIterationId(profileEntryId : profileEntryId, iteration: iteration) 
