@@ -193,9 +193,9 @@ class Emulator: TextApiModule, ClockMonitor, EnergyMonitor {
       // Emulate system measures for each unemulated input
       if self.numberOfProcessedInputs < UInt64(recentNumberOfProcessedInpts) {
 
-        let unemulatedInputs = (self.numberOfProcessedInputs + 1) ... UInt64(recentNumberOfProcessedInpts)
-
-        for i in unemulatedInputs {
+        // The number of unemulated inputs is |(self.numberOfProcessedInputs + 1) ... recentNumberOfProcessedInpts|. Now emulate them.
+        var i = self.numberOfProcessedInputs + 1
+        while i <= UInt64(recentNumberOfProcessedInpts) {
 
           // Read Deltas based on Interpolation from profiled data in the Database
           Log.debug("Emulator updateGlobalCounters: call internal func readDelta() to get deltaTime and deltaEnegy.")
@@ -205,6 +205,8 @@ class Emulator: TextApiModule, ClockMonitor, EnergyMonitor {
           // Increase the Global Counters
           self.globalTime   += deltaTime
           self.globalEnergy += UInt64(deltaEnergy)
+          
+          i += 1
         }
 
         // Update the Counter of Processed Inputs
