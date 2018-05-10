@@ -16,6 +16,9 @@ class KnobSettings: Hashable, Codable, CustomStringConvertible {
             if let knobValue = settings[knobName] as? Int {
                 hash = hash ^ knobValue &* 16777619
             }
+            else if let knobValue = settings[knobName] as? Double {
+                hash = hash ^ knobValue.hashValue &* 16777619
+            }
             else {
                 fatalError("Can not compute hash for knob value '\(settings[knobName])' of type '\(type(of: settings[knobName]))'.")            
             }
