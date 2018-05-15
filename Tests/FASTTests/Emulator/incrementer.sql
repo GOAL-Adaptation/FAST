@@ -141,7 +141,7 @@ CREATE TABLE [main].[System_Knob](
 
 /* Table data [Application] Record count: 4 */
 INSERT INTO [Application]([rowid], [id], [name], [warmupInputNum]) VALUES(0, 0, 'RADAR', 2);
-INSERT INTO [Application]([rowid], [id], [name], [warmupInputNum]) VALUES(1, 1, 'CaPSuLe', 2);
+INSERT INTO [Application]([rowid], [id], [name], [warmupInputNum]) VALUES(1, 1, 'capsule', 2);
 INSERT INTO [Application]([rowid], [id], [name], [warmupInputNum]) VALUES(2, 2, 'x264', 1);
 INSERT INTO [Application]([rowid], [id], [name], [warmupInputNum]) VALUES(3, 3, 'incrementer', 2);
 
