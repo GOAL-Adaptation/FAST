@@ -208,7 +208,7 @@ class SQLiteDatabaseTests: FASTTestCase {
         if let database = SQLiteDatabase(databaseFile: dbFile) {
                 var applicationId = database.getApplicationId(application: "RADAR")
                 XCTAssertEqual(0, applicationId)
-                applicationId = database.getApplicationId(application: "CaPSuLe")
+                applicationId = database.getApplicationId(application: "capsule")
                 XCTAssertEqual(1, applicationId)
                 applicationId = database.getApplicationId(application: "x264")
                 XCTAssertEqual(2, applicationId)
