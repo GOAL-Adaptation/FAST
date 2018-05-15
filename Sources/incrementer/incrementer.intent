@@ -6,6 +6,7 @@ knobs       threshold             = [2000000,4000000,6000000,8000000,10000000] r
 measures    performance: Double
             operations: Double
             quality: Double
+            energyDelta: Double
 
 intent      incrementer min(((operations * operations) / 2.0)) such that performance == 50.0
 
