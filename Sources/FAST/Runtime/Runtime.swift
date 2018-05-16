@@ -449,6 +449,9 @@ public class Runtime {
                 missionLength      ?? intentPreservingController.missionLength,
                 enforceEnergyLimit ?? intentPreservingController.enforceEnergyLimit, 
                 sceneImportance    ?? intentPreservingController.sceneImportance)
+        } 
+        else if let constantController = self.controller as? ConstantController {
+            setIntent(spec)
         } else {
             Log.error("Attempt to reinitialize controller based on a controller with an undefined model.")
             fatalError()
