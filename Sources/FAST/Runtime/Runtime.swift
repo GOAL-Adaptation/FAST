@@ -437,14 +437,7 @@ public class Runtime {
 
     /** Intialize intent preserving controller with the intent, keeping the previous model and window */
     public func reinitializeController(_ spec: IntentSpec, _ missionLength: UInt64?, _ enforceEnergyLimit: Bool?, _ sceneImportance: Double? = nil) {
-        // If the current controller is an IntentPreservingController and:
-        //  - The constraint measure has not changed
-        //  - The knob space has not changed (FIXME: implement this)
-        if 
-            let intentPreservingController = self.controller as? IntentPreservingController,               
-            spec.constraintName == intentPreservingController.intent.constraintName 
-        {    
-            // FIXME Thoroughly check that the model and updated intent are consistent (that measure and knob sets coincide)
+        if let intentPreservingController = self.controller as? IntentPreservingController {
             initializeController(intentPreservingController.model!, spec, controller.window, 
                 missionLength      ?? intentPreservingController.missionLength,
                 enforceEnergyLimit ?? intentPreservingController.enforceEnergyLimit, 
