@@ -64,7 +64,7 @@ class CompilerTests: XCTestCase {
 
         /* Measures */
 
-        XCTAssertEqual(["operations", "performance", "quality"], spec.measures.sorted())
+        XCTAssertEqual(["energyDelta", "operations", "performance", "quality"], spec.measures.sorted())
 
         /* Intent */
 

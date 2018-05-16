@@ -21,6 +21,9 @@
 			},
 			{
 				"name": "quality"
+			},
+			{
+				"name": "energyDelta"
 			}
 		],
 		"intent": {
