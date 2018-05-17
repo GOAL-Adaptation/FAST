@@ -249,7 +249,7 @@ public class Runtime {
                         components["objectiveFunction"] = (objectiveFunction, objectiveFunctionExpression)
                     }
                     components["constraintGoal"] = (intentSpec.constraint, intentSpec.constraintName)
-                    components["optimizationType"] = (intentSpec.optimizationType == .minimize ? "min" : "max", intentSpec.optimizationType == .minimize ? "min" : "max")
+                    components["optimizationType"] = (0.0, intentSpec.optimizationType == .minimize ? "min" : "max")
                     return ( intentName, components.map { (s,ve) in ["name" : s, "value" : ve.0, "expression": ve.1] } )
                 })
 
