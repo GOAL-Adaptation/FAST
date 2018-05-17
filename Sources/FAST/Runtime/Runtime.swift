@@ -241,16 +241,18 @@ public class Runtime {
                     let windowAverages = measuringDevice.windowAverages()
                     let constraintVariableValue = windowAverages[intentSpec.constraintName]!
                     var components =
-                        [ "constraintVariableValue" : (constraintVariableValue, "\(constraintVariableValue)") ]
+                        [ "constraintVariableValue" : constraintVariableValue as Any ]
                     if 
                         let objectiveFunction           = intentSpec.currentCostOrValue(runtime: self),
                         let objectiveFunctionExpression = intentSpec.objectiveFunctionRawString
                     {
-                        components["objectiveFunction"] = (objectiveFunction, objectiveFunctionExpression)
+                        components["objectiveFunction"]           = objectiveFunction
+                        components["objectiveFunctionExpression"] = objectiveFunctionExpression
                     }
-                    components["constraintGoal"] = (intentSpec.constraint, intentSpec.constraintName)
-                    components["optimizationType"] = (0.0, intentSpec.optimizationType == .minimize ? "min" : "max")
-                    return ( intentName, components.map { (s,ve) in ["name" : s, "value" : ve.0, "expression": ve.1] } )
+                    components["constraintGoal"]   = intentSpec.constraint
+                    components["constraintName"]   = intentSpec.constraintName
+                    components["optimizationType"] = intentSpec.optimizationType == .minimize ? "min" : "max"
+                    return ( intentName, components.map { (s,v) in ["name" : s, "value" : v] } )
                 })
 
             /** measure name -> (statistic name -> statistic)
