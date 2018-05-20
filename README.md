@@ -2,6 +2,10 @@
 
 A library for implicit programming.
 
+## Dependencies
+
+* The [energymon](https://github.mit.edu/proteus/energymon) library. To work with Swift 4.1, it must be compiled using `cmake -DBUILD_SHARED_LIBS=ON`.
+
 ## Environment
 
 Typical environment setting for emulation:
