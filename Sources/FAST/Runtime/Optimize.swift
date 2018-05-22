@@ -174,7 +174,10 @@ func optimize
                 runtime.measure("runningTime", runningTime) // running time in seconds
                 runtime.measure("performance", 1.0 / latency) // seconds per iteration
                 runtime.measure("powerConsumption", energyDelta / latency) // rate of energy
-                
+                // If running in Adaptive mode, the energyLimit is defined
+                if let theEnergyLimit = runtime.energyLimit {
+                    runtime.measure("energyRemaining", Double(theEnergyLimit) - energy)
+                }                
             }
             else {
                 Log.debug("Zero time passed between two measurements of time. The performance and powerConsumption measures cannot be computed.")
