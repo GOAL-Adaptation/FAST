@@ -11,6 +11,7 @@
 import Foundation
 import Dispatch
 import LoggerAPI
+import CSwiftV
 import FASTController
 
 //---------------------------------------
@@ -240,9 +241,25 @@ func optimize
         let profileOutputPrefix = initialize(type: String.self, name: "profileOutputPrefix", from: key, or: defaultProfileOutputPrefix)
         let inProcessProfiling  = initialize(type: Bool.self,   name: "inProcessProfiling",  from: key, or: true)
 
-        withOpenFile(atPath: profileOutputPrefix + ".knobtable") { (knobTableOutputStream: Foundation.OutputStream) in
-            withOpenFile(atPath: profileOutputPrefix + ".measuretable") { (measureTableOutputStream: Foundation.OutputStream) in
-                withOpenFile(atPath: profileOutputPrefix + ".variancetable") { (varianceTableOutputStream: Foundation.OutputStream) in
+        let knobTablePath = profileOutputPrefix + ".knobtable"
+
+        // Returns the highest id present in the knob table, 
+        // used to continue interrupted profiling runs.
+        var lastComputedProfileEntry: Int = -1
+        do {
+            let knobFileString = try String(contentsOf: URL(fileURLWithPath: knobTablePath), encoding: .utf8)
+            let knobCSV = CSwiftV(with: knobFileString)
+            let indexOfIdColumn = knobCSV.headers.index(where: { $0 == "id" })!
+            let ids = knobCSV.rows.map{ Int($0[indexOfIdColumn])! }
+            lastComputedProfileEntry = ids.max() ?? -1
+        }
+        catch {
+            Log.info("No knob table found, profiling from scratch.")
+        }
+
+        withOpenFile(atPath: knobTablePath, append: true) { (knobTableOutputStream: Foundation.OutputStream) in
+            withOpenFile(atPath: profileOutputPrefix + ".measuretable", append: true) { (measureTableOutputStream: Foundation.OutputStream) in
+                withOpenFile(atPath: profileOutputPrefix + ".variancetable", append: true) { (varianceTableOutputStream: Foundation.OutputStream) in
 
                     let knobSpace = intent.knobSpace(exhaustive: exhaustive)
                     let knobNames = Array(knobSpace[0].settings.keys).sorted()
@@ -253,14 +270,21 @@ func optimize
                     }
 
                     // Output headers for tables
-                    let knobTableHeader = makeRow(id: "id", rest: knobNames)
-                    knobTableOutputStream.write(knobTableHeader, maxLength: knobTableHeader.count)
-                    let measureTableHeader = makeRow(id: "id", rest: measureNames)
-                    measureTableOutputStream.write(measureTableHeader, maxLength: measureTableHeader.count)
-                    let varianceTableHeader = makeRow(id: "id", rest: measureNames)
-                    varianceTableOutputStream.write(varianceTableHeader, maxLength: varianceTableHeader.count)
+                    if lastComputedProfileEntry < 0 {
+                        let knobTableHeader = makeRow(id: "id", rest: knobNames)
+                        knobTableOutputStream.write(knobTableHeader, maxLength: knobTableHeader.count)
+                        let measureTableHeader = makeRow(id: "id", rest: measureNames)
+                        measureTableOutputStream.write(measureTableHeader, maxLength: measureTableHeader.count)
+                        let varianceTableHeader = makeRow(id: "id", rest: measureNames)
+                        varianceTableOutputStream.write(varianceTableHeader, maxLength: varianceTableHeader.count)
+                    }                    
 
                     for i in 0 ..< knobSpace.count {
+
+                        if i <= lastComputedProfileEntry {
+                            Log.verbose("Skip profiling of configuration with id \(i), which is already present in the knob table: \(knobTablePath).")
+                            continue
+                        }
 
                         let knobSettings = knobSpace[i]
                         Log.info("Start profiling of configuration: \(knobSettings.settings).")
