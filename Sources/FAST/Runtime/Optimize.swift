@@ -239,7 +239,6 @@ func optimize
 
         let profileSize         = initialize(type: UInt64.self, name: "missionLength",       from: key, or: defaultProfileSize)
         let profileOutputPrefix = initialize(type: String.self, name: "profileOutputPrefix", from: key, or: defaultProfileOutputPrefix)
-        let inProcessProfiling  = initialize(type: Bool.self,   name: "inProcessProfiling",  from: key, or: true)
 
         let knobTablePath = profileOutputPrefix + ".knobtable"
 
@@ -290,144 +289,42 @@ func optimize
                         Log.info("Start profiling of configuration: \(knobSettings.settings).")
                         knobSettings.apply(runtime: runtime)
 
-                        // Profile configuration by running the loop in the same process
-                        if inProcessProfiling {
-                            // Ensure that successive runs do not affect one-another's measures
-                            resetMeasures()
-                            // Initialize measuring device, that will update measures at every input
-                            let measuringDevice = MeasuringDevice(ProgressSamplingPolicy(period: 1), windowSize, intent.measures, runtime)
-                            runtime.measuringDevices[id] = measuringDevice
-                            // If the application processes an input stream, re-initialize it
-                            if let streamingApplication = runtime.application as? StreamApplication {
-                                streamingApplication.initializeStream()
-                            }
-                            loop( iterations: profileSize
-                                , postBody: {
-                                    measuringDevice.reportProgress()
-                                    let statusDictionary = runtime.statusDictionary()
-                                    Log.debug("\nCurrent status: \(convertToJsonSR4783(from: statusDictionary ?? [:])).\n")
-                                }) 
-                            {
-                                startTime = ProcessInfo.processInfo.systemUptime // reset, in case something paused execution between iterations
-                                routine() // execute the routine (body of the optimize constuct)
-                            }
-
-                            // Output profile entry as line in knob table
-                            let knobValues = knobNames.map{ knobSettings.settings[$0]! }
-                            let knobTableLine = makeRow(id: i, rest: knobValues)
-                            knobTableOutputStream.write(knobTableLine, maxLength: knobTableLine.characters.count)
-
-                            // Output profile entry as line in measure table
-                            let measureValues = measureNames.map{ (measureName: String) -> Double in 
-                                computeDerivedMeasure(measureName, { measuringDevice.stats[$0]!.totalAverage })
-                            }
-                            let measureTableLine = makeRow(id: i, rest: measureValues)
-                            measureTableOutputStream.write(measureTableLine, maxLength: measureTableLine.characters.count)
-
-                            // Output profile entry as line in variance table
-                            let varianceValues = measureNames.map{ measuringDevice.stats[$0]!.totalVariance }
-                            let varianceTableLine = makeRow(id: i, rest: varianceValues)
-                            varianceTableOutputStream.write(varianceTableLine, maxLength: varianceTableLine.characters.count)
-
+                        // Ensure that successive runs do not affect one-another's measures
+                        resetMeasures()
+                        // Initialize measuring device, that will update measures at every input
+                        let measuringDevice = MeasuringDevice(ProgressSamplingPolicy(period: 1), windowSize, intent.measures, runtime)
+                        runtime.measuringDevices[id] = measuringDevice
+                        // If the application processes an input stream, re-initialize it
+                        if let streamingApplication = runtime.application as? StreamApplication {
+                            streamingApplication.initializeStream()
                         }
-                        // Profile configuration by starting a new application process
-                        else {
-
-                            let task = Process()
-                            task.launchPath = "/usr/bin/make"
-                            task.arguments = [
-                                "run-scripted",
-                                "proteus_runtime_applicationExecutionMode=NonAdaptive",
-                                "proteus_runtime_missionLength=\(profileSize)",
-                                // Override the default REST server port to avoid clash with the current FAST application instance
-                                "proteus_runtime_port=\(runtime.profilingRestServerPort)"
-                            ]
-                            task.launch()
-
-                            let profilingFastInstanceAddress = "127.0.0.1"
-                            waitUntilUp(endpoint: "alive", host: profilingFastInstanceAddress, port: runtime.profilingRestServerPort, method: .get, description: "Profling REST")
-
-                            /** From knobSettings.settings, which is a dictionary of (name:value) pairs,
-                            *   for example, ["threshold": 200000, "utilizedCoreFrequency": 300, "step": 1, "utilizedCores": 1]
-                            *   Create an array of dictionaries, for example:
-                            * [
-                            *  ["name": "threshold", "value": 20000000], 
-                            *  ["name": "utilizedCoreFrequency", "value":300],
-                            *  ["name": "step", "value" 1].
-                            *  ["name": "utilizedCores", "value": 1]
-                            * ]
-                            */ 
-                            var appSysConfig = [Any]()
-                            for (knobName, knobVal) in knobSettings.settings {
-                                var knobNameKnobValDict = [String:Any]()
-                                knobNameKnobValDict["name"]  = knobName
-                                knobNameKnobValDict["value"] = knobVal
-                                appSysConfig.append(knobNameKnobValDict)
-                            }
-
-                            RestClient.sendRequest( to: "fixConfiguration"
-                                , at         : profilingFastInstanceAddress
-                                , onPort     : runtime.profilingRestServerPort
-                                , withBody   : ["knobSettings": appSysConfig]
-                                , logErrors  : true
-                            )
-
-                            RestClient.sendRequest( to: "process"
-                                , at         : profilingFastInstanceAddress
-                                , onPort     : runtime.profilingRestServerPort
-                                , withBody   : ["inputs": profileSize-1]
-                                , logErrors  : true
-                            )
-
-                            let statusAtEndOfExecution = 
-                                RestClient.sendRequest( to: "query"
-                                    , at         : profilingFastInstanceAddress
-                                    , onPort     : runtime.profilingRestServerPort
-                                    , withMethod : .get
-                                    , logErrors  : true
-                                )
-
-                            RestClient.sendRequest( to: "terminate"
-                                , at         : profilingFastInstanceAddress
-                                , onPort     : runtime.profilingRestServerPort
-                                , logErrors  : true
-                            )
-
-                            task.waitUntilExit() // waits for call to complete
-
-                            if 
-                                let maybeStatusArgumentsDict = statusAtEndOfExecution,
-                                let statusArgumentsDictAny = maybeStatusArgumentsDict["arguments"],
-                                let statusArgumentsDict = statusArgumentsDictAny as? [String: Any],
-                                let measureStatistics = statusArgumentsDict["measureStatistics"] as? [String: Any] 
-                            {
-                                var measureTableLine = "\(i)"
-                                var varianceTableLine = "\(i)"
-                                for measureName in measureNames {
-                                    let measureNameStats = measureStatistics[measureName] as! [String: Double]
-                                    let measureTotalAverage = measureNameStats["totalAverage"]!
-                                    let measureTotalVariance = measureNameStats["totalVariance"]!
-                                    measureTableLine += ",\(measureTotalAverage)"
-                                    varianceTableLine += ",\(measureTotalVariance)"
-                                }
-                                measureTableLine += "\n"
-                                varianceTableLine += "\n"
-
-                                // Output profile entries as lines in measure table and variance table
-                                measureTableOutputStream.write(measureTableLine, maxLength: measureTableLine.count)
-                                varianceTableOutputStream.write(varianceTableLine, maxLength: varianceTableLine.count)
-
-                                // Output profile entry as line in knob table
-                                let knobValues = knobNames.map{ knobSettings.settings[$0]! }
-                                let knobTableLine = makeRow(id: i, rest: knobValues)
-                                knobTableOutputStream.write(knobTableLine, maxLength: knobTableLine.count)
-                            }
-                            else {
-                                Log.error("Unable to extract profile entry for configuration \(i) from status message: \(statusAtEndOfExecution).")
-                                fatalError()
-                            }
-
+                        loop( iterations: profileSize
+                            , postBody: {
+                                measuringDevice.reportProgress()
+                                let statusDictionary = runtime.statusDictionary()
+                                Log.debug("\nCurrent status: \(convertToJsonSR4783(from: statusDictionary ?? [:])).\n")
+                            }) 
+                        {
+                            startTime = ProcessInfo.processInfo.systemUptime // reset, in case something paused execution between iterations
+                            routine() // execute the routine (body of the optimize constuct)
                         }
+
+                        // Output profile entry as line in knob table
+                        let knobValues = knobNames.map{ knobSettings.settings[$0]! }
+                        let knobTableLine = makeRow(id: i, rest: knobValues)
+                        knobTableOutputStream.write(knobTableLine, maxLength: knobTableLine.characters.count)
+
+                        // Output profile entry as line in measure table
+                        let measureValues = measureNames.map{ (measureName: String) -> Double in 
+                            computeDerivedMeasure(measureName, { measuringDevice.stats[$0]!.totalAverage })
+                        }
+                        let measureTableLine = makeRow(id: i, rest: measureValues)
+                        measureTableOutputStream.write(measureTableLine, maxLength: measureTableLine.characters.count)
+
+                        // Output profile entry as line in variance table
+                        let varianceValues = measureNames.map{ measuringDevice.stats[$0]!.totalVariance }
+                        let varianceTableLine = makeRow(id: i, rest: varianceValues)
+                        varianceTableOutputStream.write(varianceTableLine, maxLength: varianceTableLine.characters.count)
 
                     }
                 }
