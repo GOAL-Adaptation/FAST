@@ -81,7 +81,7 @@ public class Runtime {
     // Names of measures registered by the runtime. 
     // Along with the systemMeasures registered by the architecture, these are reserved measure names.
     let runtimeMeasures = 
-        ["iteration", "runningTime", "energy", "energyLimit", "energyRemaining", "energyDelta", "latency", "performance", "powerConsumption", "windowSize", "currentConfiguration"]
+        ["iteration", "runningTime", "energy", "energyRemaining", "energyDelta", "latency", "performance", "powerConsumption", "windowSize", "currentConfiguration"]
 
     func resetRuntimeMeasures(windowSize: UInt32) {
         self.measure("windowSize", Double(windowSize))
@@ -89,7 +89,6 @@ public class Runtime {
         self.measure("latency", 0.0) // latency in seconds
         self.measure("energyDelta", 0.0) // energy per iteration
         self.measure("energy", 0.0) // energy since application started or was last reset
-        self.measure("energyLimit", Double(self.energyLimit ?? 0))
         self.measure("energyRemaining", Double(self.energyLimit ?? 0)) // runtime.energyLimit - energy 
         self.measure("runningTime", 0.0) // running time in seconds
         self.measure("performance", 0.0) // seconds per iteration

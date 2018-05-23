@@ -135,16 +135,16 @@ func optimize
      * terms of this function. For example, if latencies are "1,2,3", then the average latency
      * is (1+2+3)/3, and the average performance is 1/((1+2+3)/3), rather than (1/1+1/2+1/3)/3.
      */
-    func computeDerivedMeasure(_ measureName: String, _ function: (String) -> Double) -> Double {
+    func computeDerivedMeasure(_ measureName: String, _ measureGetter: (String) -> Double) -> Double {
         switch measureName {
             case "performance": 
-                return 1.0 / function("latency")
+                return 1.0 / measureGetter("latency")
             case "powerConsumption": 
-                return function("energyDelta") / function("latency")
+                return measureGetter("energyDelta") / measureGetter("latency")
             case "energyRemaining":
-                return function("energyLimit") - function("energy")
+                return measureGetter("energyLimit") - measureGetter("energy")
             default:
-                return function(measureName)
+                fatalError("Measure \(measureName) is not a derived measure.")
         }
     }
 
@@ -199,10 +199,8 @@ func optimize
                     computeDerivedMeasure("powerConsumption", { runtime.getMeasure($0)! })) // rate of energy
                 // If running in Adaptive mode, the energyLimit is defined
                 if let theEnergyLimit = runtime.energyLimit {
-                    runtime.measure("energyLimit", Double(theEnergyLimit))
-                    runtime.measure("energyRemaining", 
-                        computeDerivedMeasure("energyRemaining", { runtime.getMeasure($0)! }))
-                }  
+                    runtime.measure("energyRemaining", Double(theEnergyLimit) - energy)
+                }
             }
             else {
                 Log.debug("Zero time passed between two measurements of time. The performance and powerConsumption measures cannot be computed.")
