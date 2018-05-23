@@ -127,6 +127,26 @@ func optimize
         Log.debug("optimize.resetMeasuresEnd")
     }
 
+    /**
+     * Derived measures are computed from the original measures using this function. This is used
+     * to ensure correct calculation of profiling entries where, rathen than from the standard total 
+     * average of the individual derived measure values, the profiling entries must be computed in
+     * terms of this function. For example, if latencies are "1,2,3", then the average latency
+     * is (1+2+3)/3, and the average performance is 1/((1+2+3)/3), rather than (1/1+1/2+1/3)/3.
+     */
+    func computeDerivedMeasure(_ measureName: String, _ function: (String) -> Double) -> Double {
+        switch measureName {
+            case "performance": 
+                return 1.0 / function("latency")
+            case "powerConsumption": 
+                return function("energyDelta") / function("latency")
+            case "energyRemaining":
+                return function("energyLimit") - function("energy")
+            default:
+                return function(measureName)
+        }
+    }
+
     /** 
      * Loop body for a given number of iterations (or infinitely, if iterations == nil) 
      * Note: The overhead of preBody and postBody are excluded measures.
@@ -172,12 +192,16 @@ func optimize
                 runtime.measure("energyDelta", energyDelta) // energy per iteration
                 runtime.measure("energy", energy) // energy since application started or was last reset
                 runtime.measure("runningTime", runningTime) // running time in seconds
-                runtime.measure("performance", 1.0 / latency) // seconds per iteration
-                runtime.measure("powerConsumption", energyDelta / latency) // rate of energy
+                runtime.measure("performance", 
+                    computeDerivedMeasure("performance",      { runtime.getMeasure($0)! })) // seconds per iteration
+                runtime.measure("powerConsumption", 
+                    computeDerivedMeasure("powerConsumption", { runtime.getMeasure($0)! })) // rate of energy
                 // If running in Adaptive mode, the energyLimit is defined
                 if let theEnergyLimit = runtime.energyLimit {
-                    runtime.measure("energyRemaining", Double(theEnergyLimit) - energy)
-                }                
+                    runtime.measure("energyLimit", Double(theEnergyLimit))
+                    runtime.measure("energyRemaining", 
+                        computeDerivedMeasure("energyRemaining", { runtime.getMeasure($0)! }))
+                }  
             }
             else {
                 Log.debug("Zero time passed between two measurements of time. The performance and powerConsumption measures cannot be computed.")
@@ -270,7 +294,9 @@ func optimize
                             knobTableOutputStream.write(knobTableLine, maxLength: knobTableLine.characters.count)
 
                             // Output profile entry as line in measure table
-                            let measureValues = measureNames.map{ measuringDevice.stats[$0]!.totalAverage }
+                            let measureValues = measureNames.map{ (measureName: String) -> Double in 
+                                computeDerivedMeasure(measureName, { measuringDevice.stats[$0]!.totalAverage })
+                            }
                             let measureTableLine = makeRow(id: i, rest: measureValues)
                             measureTableOutputStream.write(measureTableLine, maxLength: measureTableLine.characters.count)
 
