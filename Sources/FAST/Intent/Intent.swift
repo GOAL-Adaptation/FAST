@@ -149,7 +149,7 @@ extension IntentSpec {
         // FIXME Replace global measure store with custom ordered collection that avoids this conversion
         // FIXME This code duplicates code in Controller.swift. Generalize both when doing the above.
         var measureValueArray = [Double]()
-        for measureName in model.measureNames {
+        for measureName in self.measures {
             if let v = measureValuesDict[measureName] {
                 measureValueArray.append(v)
             }
