@@ -54,7 +54,7 @@ public class Compiler {
         DiagnosticPool.shared.report(withConsumer: diagnosticConsumer)
                 
         if let intentExpr = firstStatement as? IntentExpression {
-            let measures = compileMeasures(intentExpr)
+            let measures = compileMeasures(intentExpr).sorted()
             var measuresStore: [String : Int] = [:]
             for i in 0 ..< measures.count {
                 measuresStore[measures[i]] = i
@@ -62,7 +62,7 @@ public class Compiler {
             return CompiledIntentSpec(
                     name             : intentExpr.intentSection.intentDecl.name
                 , knobs            : compileKnobs(intentExpr)
-                , measures         : compileMeasures(intentExpr)
+                , measures         : measures
                 , constraint       : compileConstraintValue(intentExpr)
                 , constraintName   : intentExpr.intentSection.intentDecl.constraintName
                 , costOrValue      : compileCostOrValue(intentExpr, measuresStore)
