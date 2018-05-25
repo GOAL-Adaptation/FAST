@@ -151,10 +151,16 @@ extension IntentSpec {
         var measureValueArray = [Double]()
         for measureName in self.measures {
             if let v = measureValuesDict[measureName] {
-                measureValueArray.append(v)
+                if model.measureNames.contains(measureName) {
+                  measureValueArray.append(v)
+                }
+                else {
+                  Log.error("Measure '\(measureName)', present in intent, but not in model.")
+                  fatalError()  
+                }
             }
             else {
-                Log.error("Measure '\(measureName)', present in model, has not been registered in the application.")
+                Log.error("Measure '\(measureName)', present in intent, has not been registered in the application.")
                 fatalError()
             }
         }
