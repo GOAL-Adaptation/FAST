@@ -225,12 +225,12 @@ func optimize
             let knobFileString = try String(contentsOf: URL(fileURLWithPath: knobTablePath), encoding: .utf8)
             let knobCSV = CSwiftV(with: knobFileString)
             if let indexOfIdColumn = knobCSV.headers.index(where: { $0 == "id" }) {
-                Log.info("Invalid knob table found at '\(knobTablePath)'.")
-                fatalError()
-            }
-            else {
                 let ids = knobCSV.rows.map{ Int($0[indexOfIdColumn])! }
                 lastComputedProfileEntry = ids.max() ?? -1
+            }
+            else {
+                Log.info("Invalid knob table found at '\(knobTablePath)'.")
+                fatalError()
             }
         }
         catch {
