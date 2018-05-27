@@ -54,6 +54,7 @@ open class Model {
     }
 
     internal init(_ configurations: [Configuration], _ initialConfigurationIndex: Int) {
+        Log.debug("Initializing Model with initialConfigurationIndex \(initialConfigurationIndex), and configurations \(configurations).")
         assert(!configurations.isEmpty || (configurations.isEmpty && initialConfigurationIndex == -1))
         measureNames = configurations.first!.measureNames
         self.configurations = configurations
@@ -63,6 +64,7 @@ open class Model {
     }
 
     private init(_ configurations: [Configuration], _ initialConfigurationIndex: Int?, _ measureNames: [String]) {
+        Log.debug("Initializing Model with initialConfigurationIndex \(String(describing: initialConfigurationIndex)), measureNames \(measureNames), and configurations \(configurations).")
         self.configurations = configurations
         self.initialConfigurationIndex = initialConfigurationIndex
         self.measureNames = measureNames
@@ -95,10 +97,13 @@ open class Model {
         }
         if let ici = initialConfigurationIndex {
             let updatedInitialConfigurationIndex = sortedConfigurations.index(where: { $0.id == ici })
-            return Model(sortedConfigurations, updatedInitialConfigurationIndex, measureNames)
+            // Whenever the model is trimmed, the initial configuration may be lost, then just use the one with index 0
+            let alwaysDefinedUpdatedInitialConfigurationIndex = updatedInitialConfigurationIndex ?? 0
+            return Model(sortedConfigurations, alwaysDefinedUpdatedInitialConfigurationIndex, measureNames)
         }
         else {
-            return Model(sortedConfigurations, nil, measureNames)
+            // Whenever the model is trimmed, the initial configuration may be lost, then just use the one with index 0
+            return Model(sortedConfigurations, 0, measureNames)
         }
     }
 
@@ -145,7 +150,8 @@ open class Model {
             }
         }
         else {
-            return Model(filteredConfigurationsWithUpdatedIds, nil, measureNames)
+            // Whenever the model is trimmed, the initial configuration may be lost, then just use the one with index 0
+            return Model(filteredConfigurationsWithUpdatedIds, 0, measureNames)
         }
 
     }
