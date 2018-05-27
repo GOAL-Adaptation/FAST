@@ -157,11 +157,13 @@ public class Compiler {
                 case .floatingPoint(let r, _):
                     return r
                 default: 
-                    fatalError("Unsupported literal: \(le).")
+                    Log.error("Unsupported literal: \(le).")
+                    fatalError()
             }
         }
         else {
-            fatalError("Expected literal. Found: \(e).")
+            Log.error("Expected literal in compileLiteral. Found: \(e).")
+            fatalError()
         }
     }
 
@@ -187,7 +189,8 @@ public class Compiler {
                         return { (measures: [Double]) in measures[i] }
                     }
                     else {
-                        fatalError("Unknown measure: \(identifier).")
+                        Log.error("Unknown measure: \(identifier).")
+                        fatalError()
                     }
                 }
                 else {
@@ -196,7 +199,8 @@ public class Compiler {
                     } else if let eAsPrefixOpExpr = e as? PrefixOperatorExpression {
                             return compilePrefixOperatorExpression(eAsPrefixOpExpr, store)
                     } else {
-                        fatalError("Unsupported expression: \(e) of type \(type(of: e)).")
+                        Log.error("Unsupported expression found in compileExpression: \(e) of type \(type(of: e)).")
+                        fatalError()
                     }
                 }
             }
@@ -210,7 +214,8 @@ public class Compiler {
             case .array(let elements):
                 return elements.map{ compileLiteral($0) }
             default: 
-                fatalError("Could not compile knob range: \(range).")
+                Log.error("Could not compile knob range in compileRange: \(range).")
+                fatalError()
         }
     }
 
@@ -248,7 +253,7 @@ public class Compiler {
             case "*": return { (measures: [Double]) in l(measures) * r(measures) }
             case "/": return { (measures: [Double]) in l(measures) / r(measures) }
             default:
-                fatalError("Unknown operator: \(e.binaryOperator).")
+                fatalError("Unknown operator found in compileBinaryOperatorExpression: \(e.binaryOperator).")
         }
     }
 
@@ -258,7 +263,8 @@ public class Compiler {
         switch e.prefixOperator {
             case "-": return { (measures: [Double]) in 0 - compiled(measures) }
             default:
-                fatalError("Unknown operator: \(e.prefixOperator).")
+                Log.error("Unknown operator found in compilePrefixOperatorExpression: \(e.prefixOperator).")
+                fatalError()
         }
     }
 
@@ -279,15 +285,18 @@ public class Compiler {
                             return s
                         }
                         else {
-                            fatalError("Expected training set element string. Found: \($0).")
+                            Log.error("Expected training set element string in compileTrainingSet. Found: \($0).")
+                            fatalError()
                         }
                     }
                 default: 
-                    fatalError("Unsupported training set descriptor: \(commands.kind).")
+                    Log.error("Unsupported training set descriptor found in compileTrainingSet: \(commands.kind).")
+                    fatalError()
             }
         }
         else {
-            fatalError("Could not compile training set descriptor: \(commandsExpr).")
+            Log.error("Could not compile training set descriptor found in compileTrainingSet: \(commandsExpr).")
+            fatalError()
         }
     }
 
