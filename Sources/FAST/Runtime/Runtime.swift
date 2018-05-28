@@ -509,4 +509,18 @@ public class Runtime {
         }
     }
 
+    /** Set scenario knobs according to perturbation */
+    func setScenarioKnobs(accordingTo perturbation: Perturbation) {
+        var newSettings: [String : [String : Any]] = [
+            "missionLength":      ["missionLength":      perturbation.missionLength],
+            "enforceEnergyLimit": ["enforceEnergyLimit": perturbation.enforceEnergyLimit], 
+        ]
+        if let sceneImportance = perturbation.sceneImportance {
+            newSettings["sceneImportance"] = ["sceneImportance": sceneImportance]
+        }
+        self.scenarioKnobs.setStatus(newSettings: newSettings)
+        self.setKnob("availableCores",         to: perturbation.availableCores)
+        self.setKnob("availableCoreFrequency", to: perturbation.availableCoreFrequency)
+    }
+
 }

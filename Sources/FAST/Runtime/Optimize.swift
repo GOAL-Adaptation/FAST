@@ -773,6 +773,8 @@ func optimize
             // FIXME handle error from request
             let _ = RestClient.sendRequest(to: "initialized")
 
+            runtime.setScenarioKnobs(accordingTo: ips.initialConditions)
+
             run(model: model, intent: ips.initialConditions.missionIntent, missionLength: ips.initialConditions.missionLength, enforceEnergyLimit: ips.initialConditions.enforceEnergyLimit)
 
             // FIXME handle error from request
