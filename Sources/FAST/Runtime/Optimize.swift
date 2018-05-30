@@ -777,9 +777,6 @@ func optimize
 
             run(model: model, intent: ips.initialConditions.missionIntent, missionLength: ips.initialConditions.missionLength, enforceEnergyLimit: ips.initialConditions.enforceEnergyLimit)
 
-            // FIXME handle error from request
-            let _ = RestClient.sendRequest(to: "done", withBody: runtime.statusDictionary())
-
         }
         else {
             logAndPostErrorToTh("Invalid initalization parameters received from /ready endpoint.")
