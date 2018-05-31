@@ -255,7 +255,7 @@ public class Runtime {
                     components["constraintGoal"]   = intentSpec.constraint
                     components["constraintName"]   = intentSpec.constraintName
                     components["optimizationType"] = intentSpec.optimizationType == .minimize ? "min" : "max"
-                    return ( intentName, components.map { (s,v) in ["name" : s, "value" : v] } )
+                    return ( intentName, components )
                 })
 
             /** measure name -> (statistic name -> statistic)
