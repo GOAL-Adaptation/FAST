@@ -186,13 +186,12 @@ func optimize
             Log.debug("optimize.loop.updateMeasuresEnd")
         }
 
-        if let i = iterations {
-            Log.verbose("Starting execution bounded by missionLength parameter to \(i) iterations.")
-            while !shouldTerminate() && !runtime.shouldTerminate && UInt64(runtime.getMeasure("iteration")!) < i {
-                executeBodyAndComputeMeasures()                
-            
+        if let initialMissionLength = iterations {
+            Log.verbose("Starting execution bounded by missionLength parameter to \(initialMissionLength) iterations.")
+            while !shouldTerminate() && !runtime.shouldTerminate && UInt64(runtime.getMeasure("iteration")!) < runtime.scenarioKnobs.missionLength.get() {
+                executeBodyAndComputeMeasures()
             }
-            Log.verbose("Ending execution bounded by missionLength parameter to \(i) iterations.")
+            Log.verbose("Ending execution bounded by missionLength parameter to \(runtime.scenarioKnobs.missionLength.get()) iterations.")
         } else {
             Log.verbose("Starting execution unbounded by missionLength parameter.")
             while !shouldTerminate() && !runtime.shouldTerminate {
