@@ -128,6 +128,37 @@ func optimize
         Log.debug("optimize.resetMeasuresEnd")
     }
 
+    /**
+     * Derived measures are computed from the original measures using this function. This is used
+     * to ensure correct calculation of profiling entries where, rathen than from the standard total 
+     * average of the individual derived measure values, the profiling entries must be computed in
+     * terms of this function. For example, if latencies are "1,2,3", then the average latency
+     * is (1+2+3)/3, and the average performance is 1/((1+2+3)/3), rather than (1/1+1/2+1/3)/3.
+     */
+    func computeDerivedMeasure(_ measureName: String, _ measureGetter: (String) -> Double) -> Double {
+        switch measureName {
+            case "performance": 
+                return 1.0 / measureGetter("latency")
+            case "powerConsumption": 
+                return measureGetter("energyDelta") / measureGetter("latency")
+            case "energyRemaining":
+                return measureGetter("energyLimit") - measureGetter("energy")
+            default:
+                return measureGetter(measureName)
+        }
+    }
+
+    /** Obtains a measure's value from the runtime */
+    func runtimeMeasureValueGetter(_ measureName: String) -> Double {
+        if let measureValue = runtime.getMeasure(measureName) {
+            return measureValue
+        }
+        else {
+            Log.error("No value for measure '\(measureName)' available in runtime. Valid measures are: \(runtime.getMeasures().keys).")
+            fatalError()
+        }
+    }
+
     /** 
      * Loop body for a given number of iterations (or infinitely, if iterations == nil) 
      * Note: The overhead of preBody and postBody are excluded measures.
@@ -173,12 +204,16 @@ func optimize
                 runtime.measure("energyDelta", energyDelta) // energy per iteration
                 runtime.measure("energy", energy) // energy since application started or was last reset
                 runtime.measure("runningTime", runningTime) // running time in seconds
-                runtime.measure("performance", 1.0 / latency) // seconds per iteration
-                runtime.measure("powerConsumption", energyDelta / latency) // rate of energy
+                runtime.measure("performance", 
+                    computeDerivedMeasure("performance", runtimeMeasureValueGetter)) // seconds per iteration
+                runtime.measure("powerConsumption", 
+                    computeDerivedMeasure("powerConsumption", runtimeMeasureValueGetter)) // rate of energy
                 // If running in Adaptive mode, the energyLimit is defined
                 if let theEnergyLimit = runtime.energyLimit {
-                    runtime.measure("energyRemaining", Double(theEnergyLimit) - energy)
-                }                
+                    runtime.measure("energyLimit", Double(theEnergyLimit))
+                    runtime.measure("energyRemaining", 
+                        computeDerivedMeasure("energyRemaining", runtimeMeasureValueGetter))
+                } 
             }
             else {
                 Log.debug("Zero time passed between two measurements of time. The performance and powerConsumption measures cannot be computed.")
@@ -294,8 +329,19 @@ func optimize
                         let knobTableLine = makeRow(id: i, rest: knobValues)
                         knobTableOutputStream.write(knobTableLine, maxLength: knobTableLine.characters.count)
 
+                        /** Obtains a measure's total average from the measuringDevice */
+                        func runtimeMeasureTotalAverageGetter(_ measureName: String) -> Double {
+                            if let measureStats = measuringDevice.stats[measureName] {
+                                return measureStats.totalAverage
+                            }
+                            else {
+                                Log.error("No statistics for measure '\(measureName)' available in measuring device. Valid measures are: \(measuringDevice.stats.keys).")
+                                fatalError()
+                            }
+                        }
+
                         // Output profile entry as line in measure table
-                        let measureValues = measureNames.map{ measuringDevice.stats[$0]!.totalAverage }
+                        let measureValues = measureNames.map{ computeDerivedMeasure($0, runtimeMeasureTotalAverageGetter) }
                         let measureTableLine = makeRow(id: i, rest: measureValues)
                         measureTableOutputStream.write(measureTableLine, maxLength: measureTableLine.characters.count)
 
