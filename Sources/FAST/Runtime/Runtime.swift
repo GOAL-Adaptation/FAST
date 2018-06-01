@@ -492,12 +492,16 @@ public class Runtime {
 
     /** Get the current value of a measure */
     func getMeasure(_ name: String) -> Double? {
-        return measures[name]
+        return synchronized(measuresLock) {
+            return measures[name]
+        }
     }
 
     /** Get the current values of all measures */
     func getMeasures() -> [String : Double] {
-        return measures
+        return synchronized(measuresLock) {
+            return measures
+        }
     }
 
     /** Update the value of name in the global measure store and return that value */

@@ -2,10 +2,12 @@ import Foundation
 import LoggerAPI
 import PerfectHTTP
 
-func synchronized<L: NSLocking>(_ lock: L, routine: () -> ()) {
+@discardableResult func synchronized<L: NSLocking, T>(_ lock: L, routine: () -> T) -> T {
+    var res: T
     lock.lock()
-    routine()
+    res = routine()
     lock.unlock()
+    return res
 }
 
 func readFile( withName name: String, ofType type: String
