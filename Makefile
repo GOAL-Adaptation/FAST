@@ -26,8 +26,6 @@ SPM_FLAGS := $(SPM_FLAGS_ALL) \
 	-Xlinker -L/usr/local/lib \
   -Xlinker -L/usr/local/opt/lapack/lib \
   -Xlinker -L/usr/local/opt/openblas/lib \
-  -Xlinker -L/usr/local/opt/sqlite/lib \
-  -Xlinker -L/usr/local/opt/sqlite3/lib \
   -Xlinker -F/Library/Frameworks -Xlinker -framework -Xlinker IntelPowerGadget
 TEST_RESOURCE_TARGET_PATH := $(RESOURCE_TARGET_PATH)/FASTPackageTests.xctest/Contents/Resources
 endif
@@ -49,8 +47,6 @@ copy-resources-build:
 
 copy-resources-test:
 	mkdir -p $(TEST_RESOURCE_TARGET_PATH)
-	cp Sources/FAST/Emulator/Database.sql $(TEST_RESOURCE_TARGET_PATH)/
-	cp Tests/FASTTests/Emulator/DatabaseTests.sql $(TEST_RESOURCE_TARGET_PATH)/
 	cp $(RESOURCE_PATH)/incrementer.* $(TEST_RESOURCE_TARGET_PATH)/
 
 clean:
@@ -130,16 +126,9 @@ profile-bounds:    		export proteus_runtime_applicationExecutionMode         := 
 profile-bounds:    		export proteus_runtime_missionLength                    := 200
 profile-bounds:    		copy-resources-build execute ## To select number of inputs to process when profiling: make size=<NUMBER_OF_RUNS> profile
 
-# Run this application and record the measured data in an SQL script named ${APPNAME}.trace.sql.
-# This script is to be used to populate an SQLite database for emulation purpose.
+# Run this application and record the measured data in a JSON file named ${APPNAME}.trace.json.
+# This file is to be used for emulation.
 trace:           		export proteus_runtime_logLevel                         := Info
 trace:           		export proteus_runtime_applicationExecutionMode         := EmulatorTracing
 trace:           		export proteus_runtime_missionLength                    := 200
 trace:           		copy-resources-build execute
-
-# Create the emulation database using the SQL script created in make trace and placed in $(RESOURCE_PATH).
-create-emulation-db:
-	sqlite3 ${APPNAME}_emulation.db < ./Sources/FAST/Emulator/Database.sql; \
-	sqlite3 ${APPNAME}_emulation.db < $(RESOURCE_PATH)/${APPNAME}.trace.sql
-
-

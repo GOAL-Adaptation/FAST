@@ -206,8 +206,6 @@ extension EmulationDatabaseType: InitializableFromString {
         switch text {
             case "Dict":
                 self = .Dict
-            case "SQLite":
-                self = .SQLite
             default:
                 failedToInitialize("EmulationDatabaseType", from: text)
                 return nil

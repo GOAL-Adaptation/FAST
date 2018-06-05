@@ -16,10 +16,6 @@ public protocol Database : TextApiModule {
 
     func getCurrentConfigurationId(architecture: Architecture) -> Int
 
-    func getReferenceApplicationConfigurationID(application: String) -> Int
-
-    func getReferenceSystemConfigurationID(architecture: String) -> Int
-
     func readDelta(
         application: String, 
         architecture: String, 

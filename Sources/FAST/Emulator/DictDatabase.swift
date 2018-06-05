@@ -79,8 +79,6 @@ public class DictDatabase: TextApiModule, Database {
     let inputStreamName                     : ApplicationInputStreamName
     let getCurrentAppConfigurationIdDict    : [ KnobSettings : ApplicationConfigurationId ]
     let getCurrentSysConfigurationIdDict    : [ KnobSettings : SystemConfigurationId ]
-    let referenceApplicationConfigurationId : ApplicationConfigurationId 
-    let referenceSystemConfigurationId      : SystemConfigurationId
     let warmupInputs                        : Int
     let numberOfInputsTraced                : Int
     let tracedConfigurations                : [ ProfileEntryId ]
@@ -180,30 +178,6 @@ public class DictDatabase: TextApiModule, Database {
 
   }
 
-  /** Read the appropriate reference application configuration 
-  * If there's a more dense profile grid, it makes sense to make different interpolation, 
-  * e.g. basing on the closest intersection of profiled axes.
-  * This is emphasized by keeping these IDs dynamically queried.
-  */
-  public func getReferenceApplicationConfigurationID(application: String) -> Int {
-    assert(application == database.applicationName)
-
-    return database.referenceApplicationConfigurationId
-          
-  }
-
-  /** Read the appropriate reference system configuration 
-  * If there's a more dense profile grid, it makes sense to make different interpolation, 
-  * e.g. basing on the closest intersection of profiled axes.
-  * This is emphasized by keeping these IDs dynamically queried.
-  */
-  public func getReferenceSystemConfigurationID(architecture: String) -> Int {
-    assert(architecture == database.architectureName)
-
-    return database.referenceSystemConfigurationId
-
-  }
-
   /** Read the number of warmupInputs */
   func getWarmupInputs(application: String) -> Int {
     assert(application == database.applicationName)
@@ -282,7 +256,7 @@ public class DictDatabase: TextApiModule, Database {
 
   }
 
-  /** Read Delta from the SQL Database */
+  /** Read Delta from the JSON Database */
   public func readDelta(application: String, 
                 architecture: String, 
                 appCfg applicationConfigurationID: Int, 
@@ -333,7 +307,7 @@ public class DictDatabase: TextApiModule, Database {
       case ReadingMode.Statistics:
         // Obtain the means and deviations of deltaEnergy and deltaTime
 
-        // FIXME : Re-implement support for warmup iterations > 0 (supported by the SQLiteDatabase, but fixed to 0 in Database.getInputNumberToRead)
+        // FIXME : Re-implement support for warmup iterations > 0 (fixed to 0 in Database.getInputNumberToRead)
         // FIXME : Double-check if we should use maximalInputId or maximalInputId-1 when computing variance
         let allDeltasForThisProfileEntry: [TimeAndEnergyDelta] = 
           Array((0 ..< maximalInputId).map{ (iteration: Int) in

@@ -374,11 +374,13 @@ func optimize
         let tapeNoise      = 0.001953125
         let timeOutlier = 16.1
         
-        guard let myApp = runtime.application as? EmulateableApplication, let myArch = runtime.architecture as? EmulateableArchitecture else {
+        guard 
+            let myApp  = runtime.application as? EmulateableApplication, 
+            let myArch = runtime.architecture as? EmulateableArchitecture 
+        else {
             fatalError("Cannot trace since either the application or the architecture are not emulatable.")
         }
 
-        /// --- Begin DictDatabase code
         // Initialize dictionaries for JSON database
         let applicationId                    = 0 // JSON database only supports a single application
         let applicationInputID               = runtime.applicationInputId // JSON database only supports a single input stream
@@ -386,98 +388,16 @@ func optimize
         var getCurrentSysConfigurationIdDict = [ KnobSettings                         : Int                             ]()
         var tracedConfigurations             = [ DictDatabase.ProfileEntryId                                            ]()
         var readDeltaDict                    = [ DictDatabase.ProfileEntryIterationId : DictDatabase.TimeAndEnergyDelta ]()
-        /// --- End DictDatabase code
 
-        // step 1: Emit SQL to insert application and architecture properties based on an intent specification.
-        let applicationAndArchictectureInsertion
-        = emitScriptForApplicationAndArchitectureInsertion(
-              application    : myApp
-            , warmupInputNum : warmupInputNum
-            , architecture   : myArch
-            , intent         : intent)
-
-        // step 2.1: Emit SQL to insert application input stream
         let inputStreamName = myApp.name + "_inputStream" // TODO: must pass in input stream name
-        let appInputStreamInsertion
-        = emitScriptForApplicationInputStreamInsertion(applicationName: myApp.name, inputStreamName: inputStreamName)
-
-        // step 2.2: Emit SQL to insert job log parameters (if any).
-        let jobLogParamInsertion
-        = emitScriptForJobLogParameterInsertion(  // TODO: must pass in energyOutlier, tapeNoise and timeOutlier
-            applicationName: myApp.name,
-            energyOutlier  : energyOutlier,
-            tapeNoise      : tapeNoise,
-            timeOutlier    : timeOutlier)
-
-        var insertionScript =
-        "PRAGMA foreign_keys = 'off'; BEGIN;"
-        + "\n" + applicationAndArchictectureInsertion  // step 1
-        + "\n" + appInputStreamInsertion               // step 2.1
-        + "\n" + jobLogParamInsertion                  // step 2.2
 
         // Number of inputs to process when profiling a configuration
-        let defaultProfileSize: UInt64 = UInt64(1000)
-        let profileSize = initialize(type: UInt64.self, name: "missionLength", from: key, or: defaultProfileSize)
+        let traceSize = initialize(type: UInt64.self, name: "missionLength", from: key, or: UInt64(1000))
         let knobSpace = intent.knobSpace()
+        
+        Log.info("Tracing configuration space of size \(knobSpace.count) over \(traceSize) iterations: \(knobSpace).")
 
-        // For application knobs that appear in the intent knob list,
-        // build the corresponding application reference configuration settings.
-        // For example, for incrementer, appRefConfig = ["threshold": 10000000, "step": 1]
-        var appRefConfig = [String: Any]()
-        let appKnobs = myApp.getStatus()!["applicationKnobs"] as! [String : Any]
-        for (appKnobName, _) in appKnobs {
-            for (knobName, rangeReferencePair) in intent.knobs {
-                if (appKnobName == knobName) {
-                    appRefConfig[knobName] = rangeReferencePair.1
-                }
-            }
-        }
-
-        // Filter out knobSpace to keep only those knobSpace[i] with settings containing appRefConfig.
-        // knobAppRefSpace[i].settings = ["utilizedCores": k, "threshold": 10000000, "step": 1], for some k.
-        let knobAppRefSpace = knobSpace.filter{$0.contains(appRefConfig)}
-        Log.debug("Tracing based on reference application configuration space of size \(knobAppRefSpace.count): \(knobAppRefSpace).")
-
-        // For system knobs that appear in the intent knob list,
-        // build the correspnding system reference configuration settings.
-        // For example, for incrementer, sysRefConfig = ["utilizedCores": 4]
-        //
-        var sysRefConfig = [String: Any]()
-        let sysKnobs =  myArch.getStatus()!["systemConfigurationKnobs"] as! [String : Any]
-        for (sysKnobName, _) in sysKnobs {
-            for (knobName, rangeReferencePair) in intent.knobs {
-                if (sysKnobName == knobName) {
-                    sysRefConfig[knobName] = rangeReferencePair.1
-                }
-            }
-        }
-
-        // Filter out knobSpace to keep only those knobSpace[i] with settings containing sysRefConfig.
-        // knobSysRefSpace[i].settings = ["utilizedCores": 4, "threshold": t, "step": s] for some t and some s.
-        let knobSysRefSpace = knobSpace.filter{$0.contains(sysRefConfig)}
-        Log.debug("Tracing based on reference system configuration space of size \(knobSysRefSpace.count): \(knobSysRefSpace).")
-
-        // Compute knobRefSpace = knobAppRefSpace union knobSysRefSpace
-        var knobRefSpace = knobAppRefSpace
-        for knobSettings in knobSysRefSpace {
-            if !knobAppRefSpace.contains(knobSettings) { // Do not duplicate the all-reference configuration
-                knobRefSpace.append(knobSettings)
-            }
-        }
-
-        let pureReferenceConfiguration          = Set(knobAppRefSpace).intersection(knobSysRefSpace).first! // Extract the element of the singleton 
-        // The id of an application configuration KnobSettings as its position in the knobSysRefSpace
-        let referenceApplicationConfigurationId = knobSysRefSpace.index(of: pureReferenceConfiguration)!
-        // The id of a system configuration KnobSettings as its position in the knobAppRefSpace
-        let referenceSystemConfigurationId      = knobAppRefSpace.index(of: pureReferenceConfiguration)!
-
-        Log.debug("Tracing based on reference configuration space of size \(knobRefSpace.count) with pure-refernce configuration '\(pureReferenceConfiguration)': \(knobRefSpace).")
-
-        let traceAllConfigurations = initialize(type: Bool.self, name: "traceAllConfigurations", from: key, or: false)        
-
-        let tracedKnobSpace = traceAllConfigurations ? knobSpace : knobRefSpace
-
-        for i in 0 ..< tracedKnobSpace.count {
+        for i in 0 ..< knobSpace.count {
 
             resetMeasures()
 
@@ -485,18 +405,27 @@ func optimize
             let measuringDevice = MeasuringDevice(ProgressSamplingPolicy(period: 1), windowSize, intent.measures, runtime)
             runtime.measuringDevices[id] = measuringDevice
 
-            let knobSettings = tracedKnobSpace[i]
-            Log.info("Start tracing of configuration: \(knobSettings.settings).")
+            let knobSettings = knobSpace[i]
+            Log.info("Start tracing of configuration \(i): \(knobSettings.settings).")
             knobSettings.apply(runtime: runtime)
             if let streamingApplication = runtime.application as? StreamApplication {
-                    streamingApplication.initializeStream()
+                streamingApplication.initializeStream()
             }
 
-            /// --- Begin DictDatabase code
+            // Assign an ID to the current configuration (of knobType) and insert that into idDict
+            func assignIdToConfiguration(knobType: String, module: TextApiModule, to idDict: inout [KnobSettings : Int]) -> Int {
+                let knobs = module.getStatus()![knobType] as! [String : Any]
+                let knobSettings = KnobSettings(kid: -1, DictDatabase.unwrapKnobStatus(knobStatus: knobs))
+                let id = knobSpace.index(where: { $0.contains(knobSettings.settings) })!
+                if idDict[knobSettings] == nil {
+                    idDict[knobSettings] = id
+                }
+                return idDict[knobSettings]!
+            }
             // The id of an application configuration KnobSettings as its position in the knobSysRefSpace
-            let applicationConfigurationId = knobSysRefSpace.index(of: knobSettings) ?? referenceApplicationConfigurationId
+            let applicationConfigurationId = assignIdToConfiguration(knobType: "applicationKnobs"        , module: myApp , to: &getCurrentAppConfigurationIdDict)
             // The id of a system configuration KnobSettings as its position in the knobAppRefSpace
-            let systemConfigurationId      = knobAppRefSpace.index(of: knobSettings) ?? referenceSystemConfigurationId
+            let systemConfigurationId      = assignIdToConfiguration(knobType: "systemConfigurationKnobs", module: myArch, to: &getCurrentSysConfigurationIdDict)
             // Register the profileEntryId of the current knobSettings in tracedConfigurations
             let profileEntryId = 
                 DictDatabase.ProfileEntryId( 
@@ -505,53 +434,15 @@ func optimize
                     , systemConfigurationId      : systemConfigurationId
                     )
             tracedConfigurations.append(profileEntryId)
-            // Assign an ID to the current application configuration and insert that into getCurrentAppConfigurationIdDict
-            let appKnobs = myApp.getStatus()!["applicationKnobs"] as! [String : Any]
-            let appKnobSettings = KnobSettings(kid: -1, DictDatabase.unwrapKnobStatus(knobStatus: appKnobs))
-            if getCurrentAppConfigurationIdDict[appKnobSettings] == nil {
-                // The id of an application configuration KnobSettings as its position in the knobSysRefSpace
-                getCurrentAppConfigurationIdDict[appKnobSettings] = knobSysRefSpace.index(where: { $0.contains(appKnobSettings.settings) })
-            }
-            // Assign an ID to the current system configuration and insert that into getCurrentSysConfigurationIdDict
-            let sysKnobs = myArch.getStatus()!["systemConfigurationKnobs"] as! [String : Any]
-            let sysKnobSettings = KnobSettings(kid: -1, DictDatabase.unwrapKnobStatus(knobStatus: sysKnobs))
-            if getCurrentSysConfigurationIdDict[sysKnobSettings] == nil {
-                // The id of a system configuration KnobSettings as its position in the knobAppRefSpace
-                getCurrentSysConfigurationIdDict[sysKnobSettings] = knobAppRefSpace.index(where: { $0.contains(sysKnobSettings.settings) })
-            }
-            /// --- End DictDatabase code
 
-            // step 3.1: Emit SQL to insert current application configuration and
-            // return the name of the current application configuration to be used in subsequent steps.
-            let (currentAppConfigInsertion, currentAppConfigName)
-            = emitScriptForCurrentApplicationConfigurationInsertion(application: myApp)
-
-            // step 3.2: Emit SQL to relate the application input stream in step 2.1
-            // and the application configuration in step 3.1.
-            let appInputStream_appConfigInsertion
-            = emitScriptForApplicationInputStream_ApplicationConfigurationInsertion(
-                  applicationName: myApp.name
-                , inputStreamName: inputStreamName
-                , appConfigName  : currentAppConfigName)
-
-            // step 4: Emit SQL to insert current system configuration and
-            // return the name of the current system configuration to be used in subsequent steps.
-            let (currentSysConfigInsertion, currentSysConfigName)
-            = emitScriptForCurrentSystemConfigurationInsertion(architecture: myArch)
-
-            insertionScript +=
-                "\n" + currentAppConfigInsertion             // step 3.1
-            + "\n" + appInputStream_appConfigInsertion     // step 3.2
-            + "\n" + currentSysConfigInsertion             // step 4
-
-            // step 5: For each input unit in the input stream, run the CP with the given input stream,
+            // For each input unit in the input stream, run the CP with the given input stream,
             // the current application configuration and current system configuration,
-            // and emit the SQL script to insert the measured delta time, delta energy.
+            // and insert the measured delta time, delta energy into the database.
             var inputNum = 0
             var lastTime = runtime.getMeasure("time")!
             var lastEnergy = runtime.getMeasure("energy")!
             var deltaTimeDeltaEnergyInsertion = ""
-            loop( iterations: profileSize
+            loop( iterations: traceSize
                 , postBody: { measuringDevice.reportProgress() } ) 
             {
                 routine()
@@ -559,60 +450,20 @@ func optimize
                 let energy = runtime.getMeasure("energy")!
                 let deltaTime = time - lastTime
                 let deltaEnergy = energy - lastEnergy
-                deltaTimeDeltaEnergyInsertion += "\n" +
-                    emitScriptForDeltaTimeDeltaEnergyInsertion(
-                        applicationName: myApp.name,
-                        inputStreamName: inputStreamName,
-                        appConfigName  : currentAppConfigName,
-                        sysConfigName  : currentSysConfigName,
-                        inputNumber    : inputNum,
-                        deltaTime      : deltaTime,
-                        deltaEnergy    : deltaEnergy
-                    )
 
-                /// --- Begin DictDatabase code
                 let profileEntryIterationId = 
                     DictDatabase.ProfileEntryIterationId(profileEntryId : profileEntryId, iteration: inputNum) 
+
                 readDeltaDict[profileEntryIterationId] = DictDatabase.TimeAndEnergyDelta(timeDelta: deltaTime, energyDelta: deltaEnergy)
-                /// --- End DictDatabase code
 
                 lastTime = time
                 lastEnergy = energy
                 inputNum += 1
             }
 
-            insertionScript +=
-            "\n" + deltaTimeDeltaEnergyInsertion         // step 5
         }
 
-        insertionScript += "\n COMMIT; PRAGMA foreign_keys = 'on';"
-
-        // Write SQL script to file:
-        let defaultProfileOutputPrefix: String = runtime.application?.name ?? "fast"
-        let profileOutputPrefix = initialize(type: String.self, name: "profileOutputPrefix", from: key, or: defaultProfileOutputPrefix)
-        withOpenFile(atPath: profileOutputPrefix + ".trace.sql") {
-            (sqlScriptOutputStream: Foundation.OutputStream) in
-                sqlScriptOutputStream.write(insertionScript, maxLength: insertionScript.count)
-        }
-
-        /// --- Begin DictDatabase code
-        // Compute the IDs of the reference application and system configurations
-        let referenceApplicationKnobSettings = 
-            KnobSettings(kid: -1, Dictionary(intent.knobs.filter{
-                appKnobs.keys.contains($0.0)
-            }.map{
-                (knobName: String, rangeAndReferenceValue: ([Any], Any)) in
-                let (_, referenceValue) = rangeAndReferenceValue
-                return (knobName, referenceValue)
-            }))
-        let referenceSystemKnobSettings = 
-            KnobSettings(kid: -1, Dictionary(intent.knobs.filter{
-                sysKnobs.keys.contains($0.0)
-            }.map{
-                (knobName: String, rangeAndReferenceValue: ([Any], Any)) in
-                let (_, referenceValue) = rangeAndReferenceValue
-                return (knobName, referenceValue)
-            }))
+        let profileOutputPrefix = initialize(type: String.self, name: "profileOutputPrefix", from: key, or: runtime.application?.name ?? "fast")
 
         // Write JSON database to file:
         let dicts = DictDatabase.Dicts(
@@ -621,10 +472,8 @@ func optimize
             , inputStreamName                     : inputStreamName
             , getCurrentAppConfigurationIdDict    : getCurrentAppConfigurationIdDict
             , getCurrentSysConfigurationIdDict    : getCurrentSysConfigurationIdDict
-            , referenceApplicationConfigurationId : referenceApplicationConfigurationId
-            , referenceSystemConfigurationId      : referenceSystemConfigurationId
             , warmupInputs                        : warmupInputNum 
-            , numberOfInputsTraced                : Int(profileSize)
+            , numberOfInputsTraced                : Int(traceSize)
             , tracedConfigurations                : tracedConfigurations
             , tapeNoise                           : tapeNoise
             , applicationId                       : applicationId
@@ -640,7 +489,6 @@ func optimize
             (jsonOutputStream: Foundation.OutputStream) in
                 jsonOutputStream.write(String(decoding: encodedDicts, as: UTF8.self), maxLength: encodedDicts.count)
         }
-        /// --- End DictDatabase code
 
     }
 
