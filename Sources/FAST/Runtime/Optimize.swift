@@ -473,8 +473,11 @@ func optimize
 
         Log.debug("Tracing based on reference configuration space of size \(knobRefSpace.count) with pure-refernce configuration '\(pureReferenceConfiguration)': \(knobRefSpace).")
 
-        // Trace only those configurations in knobRefSpace:
-        for i in 0 ..< knobRefSpace.count {
+        let traceAllConfigurations = initialize(type: Bool.self, name: "traceAllConfigurations", from: key, or: false)        
+
+        let tracedKnobSpace = traceAllConfigurations ? knobSpace : knobRefSpace
+
+        for i in 0 ..< tracedKnobSpace.count {
 
             resetMeasures()
 
@@ -482,7 +485,7 @@ func optimize
             let measuringDevice = MeasuringDevice(ProgressSamplingPolicy(period: 1), windowSize, intent.measures, runtime)
             runtime.measuringDevices[id] = measuringDevice
 
-            let knobSettings = knobRefSpace[i]
+            let knobSettings = tracedKnobSpace[i]
             Log.info("Start tracing of configuration: \(knobSettings.settings).")
             knobSettings.apply(runtime: runtime)
             if let streamingApplication = runtime.application as? StreamApplication {
