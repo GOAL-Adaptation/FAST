@@ -667,7 +667,7 @@ func optimize
 
             // FIXME Read a model corresponding to the initialized application,
             //       intent, and input stream.
-            let model = runtime.readModelFromFile(id)!
+            let model = runtime.readModelFromFile(id, intent: ips.initialConditions.missionIntent)!
 
             Log.debug("Using initialization parameters from test harness: \(ips.asDict()).")
 
@@ -705,7 +705,7 @@ func optimize
 
                 case .Adaptive:
 
-                    if let model = runtime.readModelFromFile(id) {
+                    if let model = runtime.readModelFromFile(id, intent: intent) {
                         Log.info("Model loaded for optimize scope \(id).")
 
                         if 

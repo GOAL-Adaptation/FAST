@@ -173,10 +173,10 @@ public class Runtime {
      * <APPLICATION_PATH>/<ID>.measuretable where <APPLICATION_PATH> is the
      * location of the application and <ID> is the value of the id parameter.
      */
-    func readModelFromFile(_ id: String, _ initialConfigurationIndex: Int = 0) -> Model? {
+    func readModelFromFile(_ id: String, intent: IntentSpec, _ initialConfigurationIndex: Int = 0) -> Model? {
         if let knobCSV = readFile(withName: id, ofType: "knobtable") {
             if let measureCSV = readFile(withName: id, ofType: "measuretable") {
-                return Model(knobCSV, measureCSV, initialConfigurationIndex)
+                return Model(knobCSV, measureCSV, intent, initialConfigurationIndex)
             }
             else {
                 Log.error("Unable to read measure table \(id).measuretable.")

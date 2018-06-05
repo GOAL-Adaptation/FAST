@@ -111,38 +111,32 @@ class IntentPreservingController : Controller {
                 let modelQualityMax = modelQualityMaxConfiguration.measureValues[qualityMeasureIdx]
                 let modelQualityMin = modelQualityMinConfiguration.measureValues[qualityMeasureIdx]
 
-                // Tolerate deviations of this relative amount from the maximum
-                // to account for runtime deviations from the model averages
-                //
-                // FIXME Compute this based on model variance information,
-                //       or expose as a parameter.
-                let qualityTolerance = 0.1
-
                 // Estimate of the range of achievable qualities of any 
                 // configuration by looking up in the model
                 let modelQualityMaxMinDiff = modelQualityMax - modelQualityMin
                 
-                let sufficientQuality = modelQualityMin + importance * (1 - qualityTolerance) * modelQualityMaxMinDiff
+                let sufficientQuality = modelQualityMin + importance * modelQualityMaxMinDiff
 
                 func importanceRespectingObjectiveFunction(_ scheduleMeasureAverages: [Double]) -> Double {
 
                     // Quality of this schedule
                     let quality = scheduleMeasureAverages[qualityMeasureIdx]
-
                     // If schedule does not produce a sufficiently high quality
                     if quality < sufficientQuality {
+                        Log.debug("Filtering schedule with insufficient quality \(quality) < \(sufficientQuality).")
                         switch intent.optimizationType {
                             case .minimize: return  Double.infinity
                             case .maximize: return -Double.infinity
                         }
                     }
                     else {
+                        Log.debug("Not filtering schedule with sufficient quality \(quality) >= \(sufficientQuality).")
                         return objectiveFunctionAfterMissionLength(scheduleMeasureAverages)
                     }
 
                 }
 
-                Log.debug("Using sceneImportance-respecting objective function.")
+                Log.debug("Using sceneImportance-respecting objective function based on sufficient quality \(sufficientQuality).")
                 objectiveFunctionAfterMissionLengthAndSceneImportance = importanceRespectingObjectiveFunction
 
             }

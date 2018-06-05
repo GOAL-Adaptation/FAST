@@ -30,13 +30,14 @@ open class Model {
     /** Loads a model, consisting of two tables for knob- and measure values.
         The entries in these tables are assumed to be connected by an "id" column,
         that is, the number of rows in each table must match. */
-    public init(_ knobCSV: String, _ measureCSV: String, _ initialConfigurationIndex: Int = 0) {
+    public init(_ knobCSV: String, _ measureCSV: String, _ intent: IntentSpec, _ initialConfigurationIndex: Int = 0) {
         let knobTable = CSwiftV(with: knobCSV)
         let measureTable = CSwiftV(with: measureCSV)
-        assert(knobTable.rows.count == measureTable.rows.count, "number of rows in knob and measure config files must match")
+        assert(knobTable.rows.count == measureTable.rows.count, "Number of rows in knob and measure config files must match")
         let knobNames = Array(knobTable.headers.dropFirst())
         let measureNonIdHeaders = measureTable.headers.dropFirst()
-        self.measureNames = Array(measureNonIdHeaders).sorted()
+        self.measureNames = intent.measures
+        assert(!intent.measures.map{ measureNonIdHeaders.contains($0) }.contains(false), "All measures in the intent must also be present in the model.")
         var configurations: [Configuration] = []
         for configId in 0 ..< knobTable.rows.count {
             let knobNameValuePairs = Array(zip(knobNames, knobTable.rows[configId].dropFirst().map{ parseKnobSetting(setting: $0) }))
