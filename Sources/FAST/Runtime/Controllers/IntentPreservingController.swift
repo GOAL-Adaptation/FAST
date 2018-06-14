@@ -37,6 +37,27 @@ class IntentPreservingController : Controller {
         if let constraintMeasureIdx = modelSortedByConstraintMeasure.measureNames.index(of: intent.constraintName) {
             
             // TODO Gather statistics about how many configurations are filtered by each test parameter
+            
+            ////
+            // Derive a sub-optimal value for the objective function, by evaluating it
+            // over the measure averages for each configuration found in the model.
+            ////
+            // FIXME Throw proper errors instead of using !
+            var subOptimalObjectiveFunctionValue: Double = {
+                let measureIndexMapping = intent.measures.map{ model.measureNames.index(of: $0)! }
+                let environments: [[Double]] = model.configurations.map{ (c : Configuration) in
+                    measureIndexMapping.map{ c.measureValues[$0] }
+                }
+                let objectiveFunctionValues = environments.map{ intent.costOrValue($0) }
+                let objectiveFunctionValueMin = objectiveFunctionValues.min()!
+                let objectiveFunctionValueMax = objectiveFunctionValues.max()!
+                let objectiveFunctionValueRange = objectiveFunctionValueMax - objectiveFunctionValueMin
+                switch intent.optimizationType {
+                    case .minimize: return objectiveFunctionValueMax + objectiveFunctionValueRange
+                    case .maximize: return objectiveFunctionValueMin - objectiveFunctionValueRange
+                }
+            }()
+            Log.debug("Using \(subOptimalObjectiveFunctionValue) as the sub-optimal objective function value to filter configurations.")
 
             ////
             // missionLength parameter
@@ -67,10 +88,7 @@ class IntentPreservingController : Controller {
 
                     // If schedule consumes too much energy per input, make it sub-optimal
                     if energySinceStart + energyPerIteration * remainingIterations > theEnergyLimit {
-                        switch intent.optimizationType {
-                            case .minimize: return  Double.infinity
-                            case .maximize: return -Double.infinity
-                        }
+                        return subOptimalObjectiveFunctionValue
                     }
                     else {
                         return intent.costOrValue(scheduleMeasureAverages)
@@ -124,10 +142,7 @@ class IntentPreservingController : Controller {
                     // If schedule does not produce a sufficiently high quality
                     if quality < sufficientQuality {
                         Log.debug("Filtering schedule with insufficient quality \(quality) < \(sufficientQuality).")
-                        switch intent.optimizationType {
-                            case .minimize: return  Double.infinity
-                            case .maximize: return -Double.infinity
-                        }
+                        return subOptimalObjectiveFunctionValue
                     }
                     else {
                         Log.debug("Not filtering schedule with sufficient quality \(quality) >= \(sufficientQuality).")
