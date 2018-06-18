@@ -27,6 +27,8 @@ open class Model {
     public let initialConfigurationIndex: Int?
     public let measureNames: [String]
 
+    private let measureNameToIndexMap: [String: Int]
+
     /** Loads a model, consisting of two tables for knob- and measure values.
         The entries in these tables are assumed to be connected by an "id" column,
         that is, the number of rows in each table must match. */
@@ -37,6 +39,7 @@ open class Model {
         let knobNames = Array(knobTable.headers.dropFirst())
         let measureNonIdHeaders = measureTable.headers.dropFirst()
         self.measureNames = intent.measures
+        self.measureNameToIndexMap = Dictionary(Array(zip(intent.measures, 0 ..< intent.measures.count)))
         assert(!intent.measures.map{ measureNonIdHeaders.contains($0) }.contains(false), "All measures in the intent must also be present in the model.")
         var configurations: [Configuration] = []
         for configId in 0 ..< knobTable.rows.count {
@@ -58,6 +61,7 @@ open class Model {
         Log.debug("Initializing Model with initialConfigurationIndex \(initialConfigurationIndex), and configurations \(configurations).")
         assert(!configurations.isEmpty || (configurations.isEmpty && initialConfigurationIndex == -1))
         measureNames = configurations.first!.measureNames
+        self.measureNameToIndexMap = Dictionary(Array(zip(measureNames, 0 ..< measureNames.count)))
         self.configurations = configurations
         assert(0 <= initialConfigurationIndex && initialConfigurationIndex < configurations.count, "0  <= initialCondigurationIndex < |configurations|")
         self.initialConfigurationIndex = initialConfigurationIndex
@@ -69,12 +73,19 @@ open class Model {
         self.configurations = configurations
         self.initialConfigurationIndex = initialConfigurationIndex
         self.measureNames = measureNames
+        self.measureNameToIndexMap = Dictionary(Array(zip(measureNames, 0 ..< measureNames.count)))
     }
 
+    /** Get the configuration at the given index. */
     subscript(_ index: Int) -> Configuration {
         get {
             return configurations[index]
         }
+    }
+
+    /** Get the measure value of the configuration at the given index. */
+    func getMeasureValue(_ index: Int, measureName: String) -> Double {
+        return configurations[index].measureValues[measureNameToIndexMap[measureName]!]
     }
 
     func getInitialConfiguration() -> Configuration? {

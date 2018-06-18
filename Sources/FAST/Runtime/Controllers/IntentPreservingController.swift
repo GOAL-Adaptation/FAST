@@ -124,16 +124,34 @@ class IntentPreservingController : Controller {
                 let modelQualityMaxConfiguration = modelSortedByQualityMeasure.configurations.last,
                 let modelQualityMinConfiguration = modelSortedByQualityMeasure.configurations.first
             {
-
-                // Max and min average qualities from the model
-                let modelQualityMax = modelQualityMaxConfiguration.measureValues[qualityMeasureIdx]
-                let modelQualityMin = modelQualityMinConfiguration.measureValues[qualityMeasureIdx]
-
-                // Estimate of the range of achievable qualities of any 
-                // configuration by looking up in the model
-                let modelQualityMaxMinDiff = modelQualityMax - modelQualityMin
                 
-                let sufficientQuality = modelQualityMin + importance * modelQualityMaxMinDiff
+                // Computes the range of achievable quality measure values, 
+                // given the constraint goal, by looking at the current model
+                func computeAchievableQualityRange(constraintGoal: Double) -> (Double,Double) {
+                    var (qualityMin,qualityMax): (Double,Double) = (Double.infinity,-Double.infinity)
+                    for upper in 0 ..< model.configurations.count {
+                        for lower in 0 ..< model.configurations.count {
+                            let constraintUpper = model.getMeasureValue(upper, measureName: intent.constraintName)
+                            let constraintLower = model.getMeasureValue(lower, measureName: intent.constraintName)
+                            let qualityUpper = model.getMeasureValue(upper, measureName: "quality")
+                            let qualityLower = model.getMeasureValue(lower, measureName: "quality")
+                            // Proportion of time that should be spent in the lower configuration
+                            let percentInLower = constraintUpper <= constraintLower
+                                               ? 0.0
+                                               : ((constraintUpper * constraintLower) - (constraintGoal * constraintLower)) 
+                                                 / 
+                                                 ((constraintUpper * constraintGoal) - (constraintGoal * constraintLower))
+                            let quality = percentInLower * qualityLower + (1 - percentInLower) * qualityUpper
+                            qualityMin = quality < qualityMin ? quality : qualityMin
+                            qualityMax = quality > qualityMax ? quality : qualityMax
+                        }
+                    }
+                    return (qualityMin,qualityMax)
+                }
+
+                let (qualityMin,qualityMax) = computeAchievableQualityRange(constraintGoal: intent.constraint)
+
+                let sufficientQuality = qualityMin + importance * (qualityMax - qualityMin)
 
                 func importanceRespectingObjectiveFunction(_ scheduleMeasureAverages: [Double]) -> Double {
 
