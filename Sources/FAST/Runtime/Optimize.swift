@@ -513,12 +513,16 @@ func optimize
                         let modelSortedByEnergyDeltaMeasure = controllerModel.sorted(by: "energyDelta")
                         if 
                             let energyDeltaMeasureIdx            = modelSortedByEnergyDeltaMeasure.measureNames.index(of: "energyDelta"),
-                            let modelEnergyDeltaMaxConfiguration = modelSortedByEnergyDeltaMeasure.configurations.last
+                            let modelEnergyDeltaMaxConfiguration = modelSortedByEnergyDeltaMeasure.configurations.last,
+                            let modelEnergyDeltaMinConfiguration = modelSortedByEnergyDeltaMeasure.configurations.first
                         {
                             let modelEnergyDeltaMax = UInt64(modelEnergyDeltaMaxConfiguration.measureValues[energyDeltaMeasureIdx])
+                            let modelEnergyDeltaMin = UInt64(modelEnergyDeltaMinConfiguration.measureValues[energyDeltaMeasureIdx])
 
                             let energyLimit = modelEnergyDeltaMax * missionLength
-                            Log.verbose("An energyLimit of \(energyLimit) was computed based on a missionLength of \(missionLength) and least energy-efficient model configuration with energyDelta \(modelEnergyDeltaMax).")
+                            let maxMissionLength = energyLimit / modelEnergyDeltaMin
+
+                            Log.verbose("An energyLimit of \(energyLimit) was computed based on a missionLength of \(missionLength) and least energy-efficient model configuration with energyDelta \(modelEnergyDeltaMax). Maximum missionLength with this energyLimit is \(maxMissionLength)")
 
                             return energyLimit
                         }
