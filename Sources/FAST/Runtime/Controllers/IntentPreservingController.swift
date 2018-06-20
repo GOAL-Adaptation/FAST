@@ -16,6 +16,7 @@ class IntentPreservingController : Controller {
 
     init?( _ model: Model
          , _ intent: IntentSpec
+         , _ runtime: Runtime
          , _ window: UInt32
          , _ missionLength: UInt64
          , _ energyLimit: UInt64?
@@ -70,34 +71,43 @@ class IntentPreservingController : Controller {
             // too much energy to meet missionLength on average. 
             // Otherwise use the unmodified currentObjectiveFunction.
 
-            if 
-                enforceEnergyLimit,
-                let theEnergyLimit        = energyLimit,
-                let energyMeasureIdx      = model.measureNames.index(of: "energy"),
-                let energyDeltaMeasureIdx = model.measureNames.index(of: "energyDelta"),
-                let iterationMeasureIdx   = model.measureNames.index(of: "iteration")
-            {
+            if enforceEnergyLimit {
+                if
+                    let theEnergyLimit        = energyLimit,
+                    let energyMeasureIdx      = model.measureNames.index(of: "energy"),
+                    let energyDeltaMeasureIdx = model.measureNames.index(of: "energyDelta")
+                {
 
-                func missionLengthRespectingObjectiveFunction(_ scheduleMeasureAverages: [Double]) -> Double {
-                    
-                    let energySinceStart   = UInt64(scheduleMeasureAverages[energyMeasureIdx])
-                    let energyPerIteration = UInt64(scheduleMeasureAverages[energyDeltaMeasureIdx])
-                    let iteration          = UInt64(scheduleMeasureAverages[iterationMeasureIdx])
+                    func missionLengthRespectingObjectiveFunction(_ scheduleMeasureAverages: [Double]) -> Double {
+                        
+                        let energySinceStart   = UInt64(scheduleMeasureAverages[energyMeasureIdx])
+                        let energyPerIteration = UInt64(scheduleMeasureAverages[energyDeltaMeasureIdx])
+                        let iteration          = UInt64(runtime.getMeasure("iteration") ?? 0.0)
 
-                    let remainingIterations = missionLength - iteration
+                        let remainingIterations = missionLength - iteration
 
-                    // If schedule consumes too much energy per input, make it sub-optimal
-                    if energySinceStart + energyPerIteration * remainingIterations > theEnergyLimit {
-                        return subOptimalObjectiveFunctionValue
+                        let projectedTotalEnergy = energySinceStart + energyPerIteration * remainingIterations
+
+                        // If schedule consumes too much energy per input, make it sub-optimal
+                        if projectedTotalEnergy > theEnergyLimit {
+                            Log.debug("Filtering schedule with excessive total energy \(projectedTotalEnergy) > \(theEnergyLimit).")
+                            return subOptimalObjectiveFunctionValue
+                        }
+                        else {
+                            Log.debug("Not filtering schedule with total energy \(projectedTotalEnergy) <= \(theEnergyLimit).")
+                            return intent.costOrValue(scheduleMeasureAverages)
+                        }
+
                     }
-                    else {
-                        return intent.costOrValue(scheduleMeasureAverages)
-                    }
 
+                    Log.debug("Using missionLength-respecting objective function based on energy limit \(theEnergyLimit).")
+                    objectiveFunctionAfterMissionLength = missionLengthRespectingObjectiveFunction
                 }
-
-                Log.debug("Using missionLength-respecting objective function.")
-                objectiveFunctionAfterMissionLength = missionLengthRespectingObjectiveFunction
+                else {
+                    let failMessage = "Unable to read measures required for constructing the missionLength-respecting objective function: energyLimit \(energyLimit),  energyMeasureIdx \(model.measureNames.index(of: "energy")), energyDeltaMeasureIdx \(model.measureNames.index(of: "energyDelta")), iterationMeasureIdx \(model.measureNames.index(of: "iteration")), model.measureNames \(model.measureNames)."
+                    Log.error(failMessage)
+                    fatalError(failMessage)
+                }
 
             }
             else {

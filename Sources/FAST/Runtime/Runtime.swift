@@ -430,7 +430,7 @@ public class Runtime {
         // configurations that the user has specified there.
         let trimmedModel = model.trim(to: intent)
         synchronized(controllerLock) {
-            if let c = IntentPreservingController(trimmedModel, intent, window, missionLength, self.energyLimit, enforceEnergyLimit, sceneImportance) {
+            if let c = IntentPreservingController(trimmedModel, intent, self, window, missionLength, self.energyLimit, enforceEnergyLimit, sceneImportance) {
                 setIntent(intent)
                 setModel(name: intent.name, trimmedModel)
                 controller = c
