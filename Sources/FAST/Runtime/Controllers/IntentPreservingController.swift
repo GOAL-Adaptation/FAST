@@ -119,7 +119,7 @@ class IntentPreservingController : Controller {
             let modelSortedByQualityMeasure = model.sorted(by: "quality")
 
             if 
-                let importance = sceneImportance,
+                let importance = sceneImportance, importance > 0.0,
                 let qualityMeasureIdx = modelSortedByQualityMeasure.measureNames.index(of: "quality"),
                 let modelQualityMaxConfiguration = modelSortedByQualityMeasure.configurations.last,
                 let modelQualityMinConfiguration = modelSortedByQualityMeasure.configurations.first
