@@ -188,16 +188,15 @@ func optimize
             // Run wrap-up code for this iteration, e.g. to report progress to a measuring device
             postBody()
             let timeAfter = runtime.getMeasure("time")! // stop measuring latency
+            let systemEnergyAfter = runtime.getMeasure("systemEnergy")! // stop measuring energy
             // Measure the iteration counter
             runtime.measure("iteration", Double(iteration))
             runtime.measure("windowSize", Double(windowSize))
-            // Compute the latency, and if that is greater than 0, record derived measures
-            let latency: Double = timeAfter - timeBefore
-            if latency > 0.0 {
-                
-                let systemEnergyAfter = runtime.getMeasure("systemEnergy")!
-                let energyDelta: Double = systemEnergyAfter - systemEnergyBefore
-                
+            // Compute the latency and energyDelta, and if both are greater than 0, record them and their derived measures
+            let latency: Double = timeAfter - timeBefore                
+            let energyDelta: Double = systemEnergyAfter - systemEnergyBefore
+            if latency > 0.0 && energyDelta > 0.0 {
+
                 runningTime += latency
                 energy += energyDelta
 
