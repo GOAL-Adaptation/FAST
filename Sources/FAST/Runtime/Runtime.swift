@@ -173,18 +173,19 @@ public class Runtime {
      * <APPLICATION_PATH>/<ID>.measuretable where <APPLICATION_PATH> is the
      * location of the application and <ID> is the value of the id parameter.
      */
-    func readModelFromFile(_ id: String, intent: IntentSpec, _ initialConfigurationIndex: Int = 0) -> Model? {
-        if let knobCSV = readFile(withName: id, ofType: "knobtable") {
-            if let measureCSV = readFile(withName: id, ofType: "measuretable") {
+    func readModelFromFile(_ id: String, intent: IntentSpec, readTradeoffFilteredModel: Bool = false, _ initialConfigurationIndex: Int = 0) -> Model? {
+        let tableSuffix = readTradeoffFilteredModel ? "table.filtered" : "table"
+        if let knobCSV = readFile(withName: id, ofType: "knob\(tableSuffix)") {
+            if let measureCSV = readFile(withName: id, ofType: "measure\(tableSuffix)") {
                 return Model(knobCSV, measureCSV, intent, initialConfigurationIndex)
             }
             else {
-                Log.error("Unable to read measure table \(id).measuretable.")
+                Log.error("Unable to read measure table \(id).measure\(tableSuffix).")
                 return nil
             }
         }
         else {
-            Log.error("Unable to read knob table \(id).knobtable.")
+            Log.error("Unable to read knob table \(id).knob\(tableSuffix).")
             return nil
         }
     }

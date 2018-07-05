@@ -670,7 +670,10 @@ func optimize
 
             // FIXME Read a model corresponding to the initialized application,
             //       intent, and input stream.
-            let model = runtime.readModelFromFile(id, intent: ips.initialConditions.missionIntent)!
+            // NOTE  If missionLength is to be enforced (ips.initialConditions.enforceEnergyLimit)
+            //       then load a model that has been filtered to keep only configurations that
+            //       exhibit a strictly isotonic relationship between energyDelta and quality.
+            let model = runtime.readModelFromFile(id, intent: ips.initialConditions.missionIntent, readTradeoffFilteredModel: ips.initialConditions.enforceEnergyLimit)!
 
             Log.debug("Using initialization parameters from test harness: \(ips.asDict()).")
 
