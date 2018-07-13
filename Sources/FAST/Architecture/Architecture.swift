@@ -158,11 +158,18 @@ public enum LinuxDvfsGovernor: String {
 
 }
 
+private var currentUtilizedCores: Int? = nil
+
 /** Default actuation command for a typical Linux system */
 internal func actuateLinuxUtilizedCoresSystemConfigurationKnob(actuationPolicy: ActuationPolicy, utilizedCores: Int) -> Void {
 
     switch actuationPolicy {
       case .Actuate:
+
+        if currentUtilizedCores == utilizedCores {
+            Log.verbose("Not applying utilizedCores knob: \(utilizedCores) since that is the current number of utilized cores.")
+            return
+        }
 
         let activeCores = ProcessInfo.processInfo.activeProcessorCount
         if utilizedCores > activeCores  {
@@ -184,6 +191,9 @@ internal func actuateLinuxUtilizedCoresSystemConfigurationKnob(actuationPolicy: 
         if coreMaskReturnCode != 0 {
             Log.error("Error running taskset: \(coreMaskReturnCode). Output was: \(String(describing: coreMaskOutput)).")
         }
+        else {
+            currentUtilizedCores = utilizedCores
+        }
 
       case .NoActuation:
         Log.info("Not applying system configuration knob (utilizedCores) due to active actuation policy.")
@@ -191,34 +201,41 @@ internal func actuateLinuxUtilizedCoresSystemConfigurationKnob(actuationPolicy: 
 
 }
 
+private var currentCoreFrequency: Int? = nil
+
 /** Default actuation command for a typical Linux system */
 internal func actuateLinuxUtilizedCoreFrequencySystemConfigurationKnob(actuationPolicy: ActuationPolicy, utilizedCoreFrequency: Int) -> Void {
 
     switch actuationPolicy {
       case .Actuate:
 
+        if currentCoreFrequency == utilizedCoreFrequency {
+            Log.verbose("Not applying CPU frequency: \(utilizedCoreFrequency) since it is already active.")
+            return
+        }
+
         let dvfsFile = linuxDvfsGovernor == .Performance ? "scaling_max_freq" : "scaling_setspeed" // performance : userspace
         let activeCores = ProcessInfo.processInfo.activeProcessorCount
-        let utilizedCoreRange = 0 ..< activeCores
-
+        
         // Configure the Hardware to use the core frequencies dictated by the system configuration knobs
 
         Log.verbose("Applying CPU frequency: \(utilizedCoreFrequency) to all \(activeCores) active CPU cores.")
 
-        for coreNumber in utilizedCoreRange {
-          let utilizedCoreFrequencyCommand = "/usr/bin/sudo"
-          let utilizedCoreFrequencyCommandArguments = ["/bin/sh", "-c", "/bin/echo \(utilizedCoreFrequency) > /sys/devices/system/cpu/cpu\(coreNumber)/cpufreq/\(dvfsFile)"]
-          Log.debug("Setting frequency limit for core \(coreNumber): '\(utilizedCoreFrequencyCommand ) \(utilizedCoreFrequencyCommandArguments.joined(separator: " "))'.")
-          let (utilizedCoreFrequencyReturnCode, utilizedCoreFrequencyOutput) = executeInShell(utilizedCoreFrequencyCommand, arguments: utilizedCoreFrequencyCommandArguments)
-          if utilizedCoreFrequencyReturnCode != 0 {
-              Log.error("Error setting frequency limit for core \(coreNumber): \(utilizedCoreFrequencyReturnCode). Output was: \(String(describing: utilizedCoreFrequencyOutput)).")
-          }
+        let utilizedCoreFrequencyCommand = "/usr/bin/sudo"
+        let utilizedCoreFrequencyCommandArguments = ["/bin/sh", "-c", "/bin/echo \(utilizedCoreFrequency) | /usr/bin/tee /sys/devices/system/cpu/*/cpufreq/\(dvfsFile)"]
+        Log.debug("Setting frequency limit: '\(utilizedCoreFrequencyCommand ) \(utilizedCoreFrequencyCommandArguments.joined(separator: " "))'.")
+        let (utilizedCoreFrequencyReturnCode, utilizedCoreFrequencyOutput) = executeInShell(utilizedCoreFrequencyCommand, arguments: utilizedCoreFrequencyCommandArguments)
+        if utilizedCoreFrequencyReturnCode != 0 {
+            Log.error("Error setting frequency limit: \(utilizedCoreFrequencyReturnCode). Output was: \(String(describing: utilizedCoreFrequencyOutput)).")
+        }
+        else {
+            currentCoreFrequency = utilizedCoreFrequency
         }
 
       case .NoActuation:
         Log.info("Not applying system configuration knobs (CPU frequency) due to active actuation policy.")
     }
 
-  }
+}
 
 //---------------------------------------
