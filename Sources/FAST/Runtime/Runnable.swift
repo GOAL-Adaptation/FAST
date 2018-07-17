@@ -1,3 +1,4 @@
+import Foundation
 import LoggerAPI
 import HeliumLogger
 
@@ -116,8 +117,15 @@ public func optimize(
     samplingPolicy: SamplingPolicy = ProgressSamplingPolicy(period: 1),
     _ routine: @escaping () -> Void)
 {
+
+    struct StandardError: TextOutputStream {
+        func write(_ text: String) {
+            guard let data = text.data(using: String.Encoding.utf8) else { return }
+            FileHandle.standardError.write(data)
+        }
+    }
     let logLevel = initialize(type: LoggerMessageType.self, name: "logLevel", from: ["proteus","runtime"], or: .verbose)
-    HeliumLogger.use(logLevel)
+    HeliumStreamLogger.use(logLevel, outputStream: StandardError())
 
     // initialize runtime
     runtime = providedRuntime ?? Runtime.newRuntime()
