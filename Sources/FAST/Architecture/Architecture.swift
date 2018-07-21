@@ -14,7 +14,9 @@
 import Foundation
 import LoggerAPI
 import Dispatch
+#if os(Linux)
 import Glibc
+#endif
 
 //---------------------------------------
 
