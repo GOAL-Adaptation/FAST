@@ -14,6 +14,7 @@
 import Foundation
 import LoggerAPI
 import Dispatch
+import Glibc
 
 //---------------------------------------
 
@@ -216,20 +217,29 @@ internal func actuateLinuxUtilizedCoreFrequencySystemConfigurationKnob(actuation
 
         let dvfsFile = linuxDvfsGovernor == .Performance ? "scaling_max_freq" : "scaling_setspeed" // performance : userspace
         let activeCores = ProcessInfo.processInfo.activeProcessorCount
-        
+        let utilizedCoreRange = 0 ..< activeCores
+        let freqString = String(utilizedCoreFrequency)
+        let freqStringSize = freqString.count
+
         // Configure the Hardware to use the core frequencies dictated by the system configuration knobs
 
         Log.verbose("Applying CPU frequency: \(utilizedCoreFrequency) to all \(activeCores) active CPU cores.")
 
-        let utilizedCoreFrequencyCommand = "/usr/bin/sudo"
-        let utilizedCoreFrequencyCommandArguments = ["/bin/sh", "-c", "/bin/echo \(utilizedCoreFrequency) | /usr/bin/tee /sys/devices/system/cpu/*/cpufreq/\(dvfsFile)"]
-        Log.debug("Setting frequency limit: '\(utilizedCoreFrequencyCommand ) \(utilizedCoreFrequencyCommandArguments.joined(separator: " "))'.")
-        let (utilizedCoreFrequencyReturnCode, utilizedCoreFrequencyOutput) = executeInShell(utilizedCoreFrequencyCommand, arguments: utilizedCoreFrequencyCommandArguments)
-        if utilizedCoreFrequencyReturnCode != 0 {
-            Log.error("Error setting frequency limit: \(utilizedCoreFrequencyReturnCode). Output was: \(String(describing: utilizedCoreFrequencyOutput)).")
-        }
-        else {
-            currentCoreFrequency = utilizedCoreFrequency
+        for coreNumber in utilizedCoreRange {
+           let utilizedCoreFrequencyFilename = "/sys/devices/system/cpu/cpu\(coreNumber)/cpufreq/\(dvfsFile)"
+           Log.debug("Writing new frequency \(freqString) to \(utilizedCoreFrequencyFilename)")
+
+           let fp = open(utilizedCoreFrequencyFilename, O_WRONLY)
+           if fp == -1 {
+              Log.error("Error opening frequency file for core \(coreNumber): \(utilizedCoreFrequencyFilename). Did you forget to run as root?")
+              fatalError()
+           }
+
+           if pwrite(fp, freqString, freqStringSize, 0) == -1 {
+              Log.error("Error writing to \(utilizedCoreFrequencyFilename).")
+           }
+
+           close(fp)
         }
 
       case .NoActuation:
