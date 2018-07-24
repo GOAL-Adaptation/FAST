@@ -179,26 +179,14 @@ internal func actuateLinuxUtilizedCoresSystemConfigurationKnob(actuationPolicy: 
         if utilizedCores > activeCores  {
           Log.warning("Knob utilizedCores was set to \(utilizedCores) which is higher than the number of active cores (\(activeCores)). Using the lower number.")
         }
-/*
-        let utilizedCoreRange = 0 ..< min(activeCores, utilizedCores)
 
-        // Configure the Hardware to use the number of cores dictated by the system configuration knobs
-
-        let coreMask = utilizedCoreRange.map({String($0)}).joined(separator: ",")
-        let pid = getpid()
-        let utilizedCoresCommand = "/bin/sh"
-        let utilizedCoresCommandArguments = ["-c", "ps -eLf | awk '(/\(pid)/) && (!/awk/) {print $4}' | xargs -n1 taskset -c -p \(coreMask) > /dev/null"] 
-
-        Log.verbose("Applying utilizedCores as core allocation '\(coreMask)'.")
-        Log.debug("Applying utilizedCores using core allocation command: \(utilizedCoresCommand) \(utilizedCoresCommandArguments.joined(separator: " ")).")
-
-        let (coreMaskReturnCode, coreMaskOutput) = executeInShell(utilizedCoresCommand, arguments: utilizedCoresCommandArguments)
-        if coreMaskReturnCode != 0 {
-            Log.error("Error running taskset: \(coreMaskReturnCode). Output was: \(String(describing: coreMaskOutput)).")
-*/
-	let coreMaskReturnCode = set_app_affinity(CUnsignedInt(min(activeCores, utilizedCores)))
+        // Call external C routine to set affinity for all threads in this process
+        let numCores = CUnsignedInt(min(activeCores, utilizedCores))
+	Log.verbose("Applying utilizedCores by restricting app to \(numCores) cores.")
+	let coreMaskReturnCode = set_app_affinity(numCores)
         if coreMaskReturnCode == 0 {
             currentUtilizedCores = utilizedCores
+	    Log.debug("Setting affinity for all threads succeeded.")
         } else if coreMaskReturnCode == -3 {
             Log.error("Error setting thread affinity. Did you forget to run as root?")
         } else if coreMaskReturnCode == -1 {
