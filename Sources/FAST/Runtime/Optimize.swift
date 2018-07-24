@@ -589,6 +589,7 @@ func optimize
                     let currentKnobSettings = intent.referenceKnobSettings()
                     runtime.controller = ConstantController(knobSettings: currentKnobSettings) 
                     runtime.setIntent(intent)        
+                    runtime.setModel(name: intent.name, model!)
 
                     // Initialize measures
                     for measure in intent.measures {
@@ -682,6 +683,10 @@ func optimize
             let _ = RestClient.sendRequest(to: "initialized")
 
             runtime.setScenarioKnobs(accordingTo: ips.initialConditions)
+            
+            let applicationExecutionMode: ApplicationExecutionMode = ips.adaptationEnabled ? .Adaptive : .NonAdaptive
+            Log.verbose("Setting application execution model to \(applicationExecutionMode).")
+            runtime.runtimeKnobs.applicationExecutionMode.set(applicationExecutionMode)
 
             run(model: model, intent: ips.initialConditions.missionIntent, missionLength: ips.initialConditions.missionLength, enforceEnergyLimit: ips.initialConditions.enforceEnergyLimit)
 
@@ -732,14 +737,21 @@ func optimize
 
                 case .NonAdaptive:
 
-                    if 
-                        let missionLength = initialize(type: UInt64.self, name: "missionLength", from: key)
-                    {
-                        // No model for ConstantController, energyLimit not defined or enforced
-                        run(model: nil, intent: intent, missionLength: missionLength, enforceEnergyLimit: false)
-                    }
-                    else {
-                        Log.error("The missionLength parameter (mandatory for NonAdaptive execution) could not be initialized.")
+                    if let model = runtime.readModelFromFile(id, intent: intent) {
+
+                        if 
+                            let missionLength = initialize(type: UInt64.self, name: "missionLength", from: key)
+                        {
+                            // energyLimit not defined or enforced
+                            run(model: model, intent: intent, missionLength: missionLength, enforceEnergyLimit: false)
+                        }
+                        else {
+                            Log.error("The missionLength parameter (mandatory for NonAdaptive execution) could not be initialized.")
+                            fatalError()
+                        }
+
+                    } else {
+                        Log.error("No model loaded for optimize scope '\(id)'. Cannot execute application in application execution mode \(runtime.runtimeKnobs.applicationExecutionMode.get()).")
                         fatalError()
                     }
             
