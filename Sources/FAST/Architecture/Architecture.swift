@@ -17,6 +17,7 @@ import Dispatch
 #if os(Linux)
 import Glibc
 #endif
+import CAffinity
 
 //---------------------------------------
 
@@ -178,6 +179,7 @@ internal func actuateLinuxUtilizedCoresSystemConfigurationKnob(actuationPolicy: 
         if utilizedCores > activeCores  {
           Log.warning("Knob utilizedCores was set to \(utilizedCores) which is higher than the number of active cores (\(activeCores)). Using the lower number.")
         }
+/*
         let utilizedCoreRange = 0 ..< min(activeCores, utilizedCores)
 
         // Configure the Hardware to use the number of cores dictated by the system configuration knobs
@@ -193,10 +195,18 @@ internal func actuateLinuxUtilizedCoresSystemConfigurationKnob(actuationPolicy: 
         let (coreMaskReturnCode, coreMaskOutput) = executeInShell(utilizedCoresCommand, arguments: utilizedCoresCommandArguments)
         if coreMaskReturnCode != 0 {
             Log.error("Error running taskset: \(coreMaskReturnCode). Output was: \(String(describing: coreMaskOutput)).")
-        }
-        else {
+*/
+	let coreMaskReturnCode = set_app_affinity(CUnsignedInt(min(activeCores, utilizedCores)))
+        if coreMaskReturnCode == 0 {
             currentUtilizedCores = utilizedCores
-        }
+        } else if coreMaskReturnCode == -3 {
+            Log.error("Error setting thread affinity. Did you forget to run as root?")
+        } else if coreMaskReturnCode == -1 {
+	    Log.error("Unable to get thread ID list, utilizedCores knob not available on this system.")
+	    //TODO: fall back to shell command method instead?
+	} else {
+	    Log.error("Unknown error setting thread affinity.")
+	}
 
       case .NoActuation:
         Log.info("Not applying system configuration knob (utilizedCores) due to active actuation policy.")

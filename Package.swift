@@ -7,6 +7,7 @@ let package = Package(
   products: [
     .executable(name: "incrementer", targets: ["incrementer"]),
     .library(name: "FAST", targets: ["FAST"]),
+    .library(name: "CAffinity", targets: ["CAffinity"]),
   ],
   dependencies: [
     .package(url: "https://github.com/IBM-Swift/HeliumLogger", .exact("1.7.1")),
@@ -18,8 +19,9 @@ let package = Package(
   ],
   targets: [
     .target(name: "FAST", dependencies: [
-      "HeliumLogger", "PerfectHTTPServer", "SwiftAST", "FASTController", "CSwiftV"]),
+      "HeliumLogger", "PerfectHTTPServer", "SwiftAST", "FASTController", "CSwiftV", "CAffinity"]),
     .target(name: "incrementer", dependencies: ["FAST"]),
+    .target(name: "CAffinity", path: "Sources/CAffinity"),
     .testTarget(name: "FASTTests", dependencies: ["FAST"]),
   ],
   swiftLanguageVersions: [4]
