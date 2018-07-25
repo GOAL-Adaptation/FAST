@@ -17,6 +17,7 @@
 #include "set_app_affinity.h"
 
 int set_app_affinity(uint num_cores) {
+#ifdef linux
   cpu_set_t cpumask;
   int result;
 
@@ -73,6 +74,6 @@ int set_app_affinity(uint num_cores) {
     // /proc not available, cannot set affinity
     return -1;
   }
-
+#endif
   return 0;
 }
