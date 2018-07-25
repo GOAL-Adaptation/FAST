@@ -16,6 +16,7 @@ struct InitializationParameters {
     let adaptationEnabled        : Bool
     let statusInterval           : UInt64
     let randomSeed               : UInt64
+    let model                    : Model?
     let initialConditions        : Perturbation
 
     init?(json: [String: Any]) {
@@ -35,12 +36,25 @@ struct InitializationParameters {
                 return nil
             }
 
+            if 
+                let measureTableAny = json["measureTable"],
+                let knobTableAny    = json["knobTable"],
+                let measureTable    = measureTableAny as? String,
+                let knobTable       = knobTableAny    as? String
+            {
+                self.model = Model(knobTable, measureTable, initialConditions.missionIntent)
+            }
+            else {
+                self.model = nil
+            }
+
             self.architecture             = architecture
             self.applicationName          = applicationName
             self.applicationInputFileName = applicationInputFileName
             self.adaptationEnabled        = adaptationEnabled
             self.statusInterval           = statusInterval
             self.randomSeed               = randomSeed
+            
             self.initialConditions        = initialConditions
         }
         else {

@@ -711,7 +711,15 @@ func optimize
             // NOTE  If missionLength is to be enforced (ips.initialConditions.enforceEnergyLimit)
             //       then load a model that has been filtered to keep only configurations that
             //       exhibit a strictly isotonic relationship between energyDelta and quality.
-            let model = runtime.readModelFromFile(id, intent: ips.initialConditions.missionIntent, readTradeoffFilteredModel: ips.initialConditions.enforceEnergyLimit)!
+            var model: Model
+            if let modelFromTestHarness = ips.model {
+                Log.info("Received model as part of the inialization parameters.")
+                model = modelFromTestHarness
+            }
+            else {
+                Log.info("No model received as part of the inialization parameters, will read the model from file.")
+                model = runtime.readModelFromFile(id, intent: ips.initialConditions.missionIntent, readTradeoffFilteredModel: ips.initialConditions.enforceEnergyLimit)!
+            }
 
             Log.debug("Using initialization parameters from test harness: \(ips.asDict()).")
 
