@@ -280,12 +280,22 @@ public class Runtime {
                 ]
 
             // The measure values that the controller associates with the current configuration
-            if let currentKnobSettingsId = getMeasure("currentConfiguration"), // kid of the currently active KnobSettings
-               let currentModel = models[appName], // Will be undefined when running in NonAdaptive mode, omitting this from the Status message
-               let currentConfiguration = currentModel.configurations.first(where: { $0.knobSettings.kid == Int(currentKnobSettingsId) }) {
-                arguments["measurePredictions"] = zip( currentConfiguration.measureNames
-                                                     , currentConfiguration.measureValues
-                                                    ).map{ [ "name" : $0, "value" : $1 ] }
+            if 
+                let currentKnobSettingsId = getMeasure("currentConfiguration"), // kid of the currently active KnobSettings
+                let currentModel = models[appName] // Will be undefined when running in NonAdaptive mode, omitting this from the Status message
+            {
+                if currentKnobSettingsId == -1 { // Running in NonAdaptive mode, use the first configuration in the current model
+                    let firstConfiguration = currentModel.configurations[0];
+                    arguments["measurePredictions"] = zip( firstConfiguration.measureNames
+                                                         , firstConfiguration.measureValues
+                                                         ).map{ [ "name" : $0, "value" : $1 ] }
+                }
+                else { // Running in Adaptive mode, use the current configuration
+                    let currentConfiguration = currentModel.configurations.first(where: { $0.knobSettings.kid == Int(currentKnobSettingsId) })!
+                    arguments["measurePredictions"] = zip( currentConfiguration.measureNames
+                                                         , currentConfiguration.measureValues
+                                                         ).map{ [ "name" : $0, "value" : $1 ] }
+               }
             }
 
             let status : [String : Any] =
