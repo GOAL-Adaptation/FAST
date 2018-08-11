@@ -214,10 +214,12 @@ public class Runtime {
         }
 
         func extractStatus(from module: TextApiModule) -> [String : Any] {
+            Log.debug("Extracting status for module \(module.name).")
             return module.getStatus().map{ unwrapValues($0) } ?? [:]
         }
 
         func extractStatus(of subModule: String, from module: TextApiModule?) -> [String : Any] {
+            Log.debug("Extracting status for submodule \(subModule).")
             return (module?.getStatus()?[subModule] as? [String: Any]).map{ unwrapValues($0) } ?? [:]
         }
 
@@ -228,7 +230,7 @@ public class Runtime {
             let systemConfigurationKnobs       = extractStatus(of: "systemConfigurationKnobs", from: architecture )
             let architecureScenarioKnobsStatus = extractStatus(of: "scenarioKnobs",            from: architecture)
             let scenarioKnobsStatus            = extractStatus(                                from: scenarioKnobs)
-
+            Log.debug("Finished extracting status from all modules.")
             var combinedScenarioKnobsStatus: [String: Any] = [:]
             for k in scenarioKnobsStatus.keys {
                 combinedScenarioKnobsStatus[k] = scenarioKnobsStatus[k]
@@ -237,6 +239,7 @@ public class Runtime {
                 combinedScenarioKnobsStatus[k] = architecureScenarioKnobsStatus[k]
             }
 
+            Log.debug("Creating verdictComponents dictionary.")
             let verdictComponents: [String : Any] =
                 Dictionary(measuringDevices.map{
                     (intentName, measuringDevice) in
@@ -262,12 +265,14 @@ public class Runtime {
             * Create a Dictionary of (measureName, statisticsValues) where
             * statisticsValues is a Dictionary of (statisticsName, statisticsValue).
             */
+            Log.debug("Creating measureStatistics.")
             let measureStatistics: [String : [String : Double]] =
                 Dictionary(self.measuringDevices[appName]!.stats.map {
                     (measureName: String, stats: Statistics) in
                     (measureName, stats.asJson)
                 })
 
+            Log.debug("Creating arguments dictionary.")
             var arguments : [String : Any] =
                 [ "application"              : appName
                 , "applicationKnobs"         : toArrayOfPairDicts(applicationKnobs)
@@ -280,6 +285,7 @@ public class Runtime {
                 ]
 
             // The measure values that the controller associates with the current configuration
+            Log.debug("Calculating measurePredictions.")
             if 
                 let currentKnobSettingsId = getMeasure("currentConfiguration"), // kid of the currently active KnobSettings
                 let currentModel = models[appName] // Will be undefined when running in NonAdaptive mode, omitting this from the Status message
@@ -291,13 +297,15 @@ public class Runtime {
                                                          ).map{ [ "name" : $0, "value" : $1 ] }
                 }
                 else { // Running in Adaptive mode, use the current configuration
-                    let currentConfiguration = currentModel.configurations.first(where: { $0.knobSettings.kid == Int(currentKnobSettingsId) })!
-                    arguments["measurePredictions"] = zip( currentConfiguration.measureNames
-                                                         , currentConfiguration.measureValues
-                                                         ).map{ [ "name" : $0, "value" : $1 ] }
+                    if let currentConfiguration = currentModel.configurations.first(where: { $0.knobSettings.kid == Int(currentKnobSettingsId) }) {
+                        arguments["measurePredictions"] = zip( currentConfiguration.measureNames
+                                                             , currentConfiguration.measureValues
+                                                             ).map{ [ "name" : $0, "value" : $1 ] }
+                    }
                }
             }
 
+            Log.debug("Done with statusDictionary, returning results.")
             let status : [String : Any] =
                 [ "time"      : utcDateString()
                 , "arguments" : arguments
