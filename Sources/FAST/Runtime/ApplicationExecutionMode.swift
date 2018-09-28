@@ -26,6 +26,10 @@ enum ApplicationExecutionMode {
     // values of ordered knob ranges should be included (the remaining percentage is distributed
     // uniformly across ranges).
     case SelectiveProfiling(percentage: Int, extremeValues: Bool)
+
+    // Enable intialization and online update of controller models using the machine learning
+    // module (proteus-ml), accessed over ReST using MLClient.
+    case MachineLearning
 }
 
 extension ApplicationExecutionMode: Equatable {
@@ -35,33 +39,13 @@ extension ApplicationExecutionMode: Equatable {
              (.NonAdaptive, .NonAdaptive),
              (.ExhaustiveProfiling, .ExhaustiveProfiling),
              (.EndPointsProfiling, .EndPointsProfiling),
-             (.EmulatorTracing, .EmulatorTracing):
+             (.EmulatorTracing, .EmulatorTracing),
+             (.MachineLearning, .MachineLearning):
             return true
         case (let .SelectiveProfiling(pl, el), let .SelectiveProfiling(pr, er)):
             return pl == pr && el == er
         default:
             return false
-        }
-    }
-}
-
-/** Extension for ApplicationExecutionMode */
-extension ApplicationExecutionMode: InitializableFromString {
-    public init?(from text: String) {
-        switch text {
-        case "Adaptive":
-            self = .Adaptive
-        case "NonAdaptive":
-            self = .NonAdaptive
-        case "ExhaustiveProfiling":
-            self = .ExhaustiveProfiling
-        case "EndPointsProfiling":
-            self = .EndPointsProfiling
-        case "EmulatorTracing":
-            self = .EmulatorTracing
-        default:
-            Log.warning("Failed to initialize ApplicationExecutionMode from string '\(text)'.")
-            return nil
         }
     }
 }

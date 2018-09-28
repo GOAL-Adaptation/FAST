@@ -15,8 +15,6 @@ class ConstantController : Controller {
     }
 
     func getSchedule(_ intent: IntentSpec, _ measureValues: [String : Double]) -> Schedule {
-        return Schedule({ (_: UInt32) -> KnobSettings in
-            return self.knobSettings
-        })
+        return Schedule(constant: self.knobSettings)
     }
 }

@@ -78,6 +78,9 @@ public class Runtime {
     // and posting to brass-th/status after the processing of each input.
     let executeWithTestHarness = initialize(type: Bool.self, name: "executeWithTestHarness", from: key, or: false)
 
+    // Controls whether or not the machine learning module will be used to update the controller model online.
+    let executeWithMachineLearning = initialize(type: Bool.self, name: "executeWithMachineLearning", from: key, or: false)
+
     // Names of measures registered by the runtime. 
     // Along with the systemMeasures registered by the architecture, these are reserved measure names.
     let runtimeMeasures = 
@@ -190,7 +193,76 @@ public class Runtime {
         }
     }
 
-//------------------- very new stuff
+    /**
+     * Assuming the runtime's controller has not yet been initialized, request a new 
+     * model from the machine learning module.
+     * The purpse of passing the originalModel to the machine learning module is that
+     * machine learning can be used to extend the model to include configurations missing
+     * in the original model (a.k.a. "filling in the holes" in the orginal model).
+     */
+    internal func requestInitialModelFromMachineLearning(id: String, activeIntent intent: IntentSpec, originalModel: Model?) -> Model {
+
+        Log.info("Model loaded for optimize scope \(id) in machine learning mode.")
+        guard
+            let m = originalModel,
+            let initJSON = m.toSetupJSON(id: id, intent: intent) else
+        {
+            Log.error("Failed in converting initial model to JSON for ML mode.")
+            fatalError()
+        }
+        guard let newJSON = MLClient.setup(initJSON) else {
+            Log.error("Failed in getting an updated JSON from ML REST API.")
+            fatalError()
+        }
+        guard let newModel = Model(fromMachineLearning: newJSON, intent: intent) else {
+            Log.error("Failed in constructing an updated mode from ML JSON.")
+            fatalError()
+        }
+        return newModel
+    
+    }
+
+    /** 
+     * Assuming the runtime's controller has already been initialized, request a new Model from the 
+     * machine learning module, and then use it to reinitialize the controller.
+     */
+    internal func updateModelFromMachineLearning(_ id: String, _ lastWindowConfigIds: [Int], _ lastWindowMeasures: [String: [Double]]) {
+
+        let additionalArguments: [String: Any] = ["lastWindowMeasures": lastWindowMeasures]
+        guard let currentIntent = self.intents[id] else {
+            Log.error("Attempt to update from machine learning module without existing intent specification.")
+            fatalError()
+        }
+        guard let currentModel = self.models[id] else {
+            Log.error("Attempt to update from machine learning module without existing controller model.")
+            fatalError()
+        }
+        guard let currentModelJSON = currentModel.toUpdateJSON(id: id, lastWindowConfigIds: lastWindowConfigIds, lastWindowMeasures: lastWindowMeasures) else {
+            Log.error("Failed in converting current model to JSON for ML mode.")
+            fatalError()
+        }
+        guard let newJSON = MLClient.update(currentModelJSON) else {
+            Log.error("Failed in getting an updated JSON from ML REST API.")
+            fatalError()
+        }
+        guard let newModel = Model(fromMachineLearning: newJSON, intent: currentIntent) else {
+            Log.error("Failed in constructing an updated mode from ML JSON.")
+            fatalError()
+        }
+        guard let intentPreservingController = self.controller as? IntentPreservingController else {
+            Log.error("Attempt to update model from machine learning module without an active IntentPreservingController.")
+            fatalError()
+        }
+        Log.debug("Reinitializing controller with new model from machine learning module.")
+        self.reinitializeController(
+            currentIntent, 
+            replacingCurrentModelWith: newModel, 
+            intentPreservingController.missionLength,
+            intentPreservingController.enforceEnergyLimit,
+            intentPreservingController.sceneImportance
+        )
+
+    }
 
     // The runtime registers the APIs of the platform and application
     var architecture: Architecture? = nil
@@ -441,7 +513,6 @@ public class Runtime {
         recursivelyFindAndRegisterKnobs(submodule)
       }
     }
-//------------------- end of very new stuff
 
     /** Intialize intent preserving controller with the given model, intent, missionLength and window. */
     func initializeController(_ model: Model, _ intent: IntentSpec, _ window: UInt32 = 20, _ missionLength: UInt64, _ enforceEnergyLimit: Bool, _ sceneImportance: Double? = nil) {
@@ -463,9 +534,11 @@ public class Runtime {
     }
 
     /** Intialize intent preserving controller with the intent, keeping the previous model and window */
-    public func reinitializeController(_ spec: IntentSpec, _ missionLength: UInt64?, _ enforceEnergyLimit: Bool?, _ sceneImportance: Double? = nil) {
+    public func reinitializeController(_ spec: IntentSpec, replacingCurrentModelWith newModel: Model? = nil, _ missionLength: UInt64?, _ enforceEnergyLimit: Bool?, _ sceneImportance: Double? = nil) {
         if let intentPreservingController = self.controller as? IntentPreservingController {
-            initializeController(intentPreservingController.model!, spec, controller.window, 
+            // Use the passed model if available, otherwise use the model of the active controller
+            var model = newModel ?? intentPreservingController.model!
+            initializeController(model, spec, controller.window, 
                 missionLength      ?? intentPreservingController.missionLength,
                 enforceEnergyLimit ?? intentPreservingController.enforceEnergyLimit, 
                 sceneImportance    ?? intentPreservingController.sceneImportance)

@@ -491,10 +491,15 @@ func optimize
 
     }
 
-
     func run(model: Model?, intent: IntentSpec, missionLength: UInt64, enforceEnergyLimit: Bool) {
 
         Log.info("Running optimize scope \(id).")
+
+        // By default, use the passed controller model but, if the machine learning
+        // module is enabled, request a model from it and use that instead.
+        let model = runtime.executeWithMachineLearning 
+                  ? runtime.requestInitialModelFromMachineLearning(id: id, activeIntent: intent, originalModel: model)
+                  : model
 
         /** 
          * Compute the energyLimit as the amount of energy that must be available 
@@ -506,7 +511,7 @@ func optimize
 
             switch runtime.runtimeKnobs.applicationExecutionMode.get() {
                 
-                case .Adaptive:
+                case .Adaptive, .MachineLearning:
 
                     if let controllerModel = model {
                         let modelSortedByEnergyDeltaMeasure = controllerModel.sorted(by: "energyDelta")
@@ -628,10 +633,23 @@ func optimize
                 // Request a new schedule if this is the first iteration of a window, 
                 // or if the schedule has been invalidated (e.g. by the /perturb endpoint)
                 if (iteration > 0 && iteration % windowSize == 0) || runtime.schedule == nil {
+
+                    // If the controller deems the model is bad, and if online model updates
+                    // have been enabled, request a new model from the machine learning module.
+                    let shouldRequestNewModel = schedule.oscillating
+                    if runtime.executeWithMachineLearning && shouldRequestNewModel {
+                        Log.verbose("Requesting new model from machine learning module at iteration \(iteration).")
+                        let lastWindowConfigIds = (0..<windowSize).map { schedule[$0].kid }
+                        let lastWindowMeasures = measuringDevice.stats.mapValues { $0.lastWindow }
+                        runtime.updateModelFromMachineLearning(id, lastWindowConfigIds, lastWindowMeasures)
+                    }
+
                     Log.debug("Computing schedule from window averages: \(measuringDevice.windowAverages()).")
                     runtime.schedule = runtime.controller.getSchedule(runtime.intents[id]!, measuringDevice.windowAverages())
+
                 }
                 if runtime.runtimeKnobs.applicationExecutionMode.get() == ApplicationExecutionMode.Adaptive {
+                    
                     currentKnobSettings = runtime.schedule![iteration % windowSize]
                     runtime.measure("currentConfiguration", Double(currentKnobSettings.kid)) // The id of the configuration given in the knobtable
                     if currentKnobSettings != lastKnobSettings {
@@ -642,6 +660,7 @@ func optimize
                     else {
                         Log.debug("Scheduled configuration has not changed since the last iteration, will skip applying knob settings.")
                     }
+
                 }
             }
             , postBody: {

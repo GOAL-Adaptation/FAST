@@ -198,6 +198,9 @@ class IntentPreservingController : Controller {
                               , initialModelEntryIdx: modelSortedByConstraintMeasure.initialConfigurationIndex!
                               )
 
+            // Enable logging to standard output
+            self.fastController.logFile = FileHandle.standardOutput
+
         }
         else {
             Log.error("Intent inconsistent with active model: could not match constraint name '\(intent.constraintName)' stated in intent with a measure name in the active model, whose measures are: \(model.measureNames). ")
@@ -219,8 +222,11 @@ class IntentPreservingController : Controller {
             }
         }
         let s = fastController.computeSchedule(tag: 0, measures: values) // FIXME Pass meaningful tag for logging
-        return Schedule({ (i: UInt32) -> KnobSettings in
-            return self.model![Int(i) < s.nLowerIterations ? s.idLower : s.idUpper].knobSettings
-        })
+        return Schedule(
+            { (i: UInt32) -> KnobSettings in
+                return self.model![Int(i) < s.nLowerIterations ? s.idLower : s.idUpper].knobSettings
+            }, 
+            oscillating: s.oscillating
+        )
     }
 }
