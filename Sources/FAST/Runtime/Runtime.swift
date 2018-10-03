@@ -526,9 +526,6 @@ public class Runtime {
         if let setKnobTo = knobSetters[name] {
             setKnobTo(value)
         }
-        else {
-            fatalError("Tried to assign \(value) to an unknown knob called \(name).")
-        }
     }
 
     /** Set scenario knobs according to perturbation */

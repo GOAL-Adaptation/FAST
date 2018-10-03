@@ -323,6 +323,7 @@ func optimize
                                 measuringDevice.reportProgress()
                                 let statusDictionary = runtime.statusDictionary()
                                 Log.debug("\nCurrent status: \(convertToJsonSR4783(from: statusDictionary ?? [:])).\n")
+                                knobSettings.apply(runtime: runtime)
                             }) 
                         {
                             startTime = ProcessInfo.processInfo.systemUptime // reset, in case something paused execution between iterations
@@ -517,6 +518,10 @@ func optimize
                         {
                             let modelEnergyDeltaMax = UInt64(modelEnergyDeltaMaxConfiguration.measureValues[energyDeltaMeasureIdx])
                             let modelEnergyDeltaMin = UInt64(modelEnergyDeltaMinConfiguration.measureValues[energyDeltaMeasureIdx])
+
+                            if modelEnergyDeltaMin == 0 {
+                                Log.error("Minimum energyDelta found in active controller model is 0. Energy limit computation will fail!")
+                            }
 
                             let energyLimit = modelEnergyDeltaMax * missionLength
                             let maxMissionLength = energyLimit / modelEnergyDeltaMin
