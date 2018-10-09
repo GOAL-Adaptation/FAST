@@ -520,9 +520,16 @@ func optimize
                             let modelEnergyDeltaMaxConfiguration = modelSortedByEnergyDeltaMeasure.configurations.last,
                             let modelEnergyDeltaMinConfiguration = modelSortedByEnergyDeltaMeasure.configurations.first
                         {
-                            let modelEnergyDeltaMax = UInt64(modelEnergyDeltaMaxConfiguration.measureValues[energyDeltaMeasureIdx])
-                            let modelEnergyDeltaMin = UInt64(modelEnergyDeltaMinConfiguration.measureValues[energyDeltaMeasureIdx])
+                            let modelEnergyDeltaMaxDouble = modelEnergyDeltaMaxConfiguration.measureValues[energyDeltaMeasureIdx]
+                            let modelEnergyDeltaMinDouble = modelEnergyDeltaMinConfiguration.measureValues[energyDeltaMeasureIdx]
 
+                            if modelEnergyDeltaMinDouble == 0.0 {
+                                fatalError("Model minimum energyDelta measure is 0.0. Can not compute energyLimit.")
+                            }
+
+                            let modelEnergyDeltaMax = UInt64(modelEnergyDeltaMaxDouble)
+                            let modelEnergyDeltaMin = UInt64(modelEnergyDeltaMinDouble)
+                            
                             let energyLimit = modelEnergyDeltaMax * missionLength
                             let maxMissionLength = energyLimit / modelEnergyDeltaMin
 
