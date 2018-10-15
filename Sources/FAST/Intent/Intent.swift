@@ -143,7 +143,7 @@ extension IntentSpec {
     if let model = runtime.models[name] {
         guard let measuringDevice = runtime.measuringDevices[name] else {
             Log.error("No measuring device registered for intent \(name).")
-            fatalError()
+            FAST.fatalError()
         }
         let measureValuesDict = measuringDevice.windowAverages()
         // FIXME Replace global measure store with custom ordered collection that avoids this conversion
@@ -156,12 +156,12 @@ extension IntentSpec {
                 }
                 else {
                   Log.error("Measure '\(measureName)', present in intent, but not in model.")
-                  fatalError()  
+                  FAST.fatalError()  
                 }
             }
             else {
                 Log.error("Measure '\(measureName)', present in intent, has not been registered in the application.")
-                fatalError()
+                FAST.fatalError()
             }
         }
         return measureValueArray

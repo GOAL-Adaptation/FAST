@@ -107,13 +107,13 @@ public class DictDatabase: TextApiModule, Database {
       let jsonData = databaseString.data(using: .utf8)
     else {
       Log.error("Could not read emulation database JSON from file : \(databaseFile).")
-      fatalError()
+      FAST.fatalError()
     }
     guard
       let decodedDatabase = try? JSONDecoder().decode(Dicts.self, from: jsonData)
     else {
       Log.error("Could not decode emulation database from file '\(databaseString)' contents: \(jsonData).")
-      fatalError()
+      FAST.fatalError()
     }
     
     self.database = decodedDatabase
@@ -132,7 +132,7 @@ public class DictDatabase: TextApiModule, Database {
         self.init(databaseFile: databaseFile)
     } else {
         Log.error("Failed to initialize emulation database from key '\(key)'.")
-        fatalError()
+        FAST.fatalError()
     }
   }
 
@@ -151,7 +151,7 @@ public class DictDatabase: TextApiModule, Database {
     let knobsStatusAsKnobSettings = KnobSettings(kid: -1, DictDatabase.unwrapKnobStatus(knobStatus: knobStatus)) // -1 is a dummy value, since that id refers to the profiling table, which is irrelevant here
 
     guard let result = currentConfigurationIdDict[knobsStatusAsKnobSettings] else {
-      fatalError("No entry in getCurrent\(knobType)ConfigurationIdDict dictionary database for the current \(knobType) configuration ID: \(knobsStatusAsKnobSettings)")
+      FAST.fatalError("No entry in getCurrent\(knobType)ConfigurationIdDict dictionary database for the current \(knobType) configuration ID: \(knobsStatusAsKnobSettings)")
     }
 
     return result
@@ -210,7 +210,7 @@ public class DictDatabase: TextApiModule, Database {
     }
     else {
       Log.error("Attempt to count the number of traced inputs for a configuration '\(profileEntryId)' that was not traced. The \(database.tracedConfigurations.count) traced configurations are: \(database.tracedConfigurations).")
-      fatalError()
+      FAST.fatalError()
     }
     
 

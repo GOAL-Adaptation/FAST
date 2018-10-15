@@ -158,12 +158,12 @@ public class Compiler {
                     return r
                 default: 
                     Log.error("Unsupported literal: \(le).")
-                    fatalError()
+                    FAST.fatalError()
             }
         }
         else {
             Log.error("Expected literal in compileLiteral. Found: \(e).")
-            fatalError()
+            FAST.fatalError()
         }
     }
 
@@ -190,7 +190,7 @@ public class Compiler {
                     }
                     else {
                         Log.error("Unknown measure: \(identifier).")
-                        fatalError()
+                        FAST.fatalError()
                     }
                 }
                 else {
@@ -200,7 +200,7 @@ public class Compiler {
                             return compilePrefixOperatorExpression(eAsPrefixOpExpr, store)
                     } else {
                         Log.error("Unsupported expression found in compileExpression: \(e) of type \(type(of: e)).")
-                        fatalError()
+                        FAST.fatalError()
                     }
                 }
             }
@@ -215,7 +215,7 @@ public class Compiler {
                 return elements.map{ compileLiteral($0) }
             default: 
                 Log.error("Could not compile knob range in compileRange: \(range).")
-                fatalError()
+                FAST.fatalError()
         }
     }
 
@@ -253,7 +253,7 @@ public class Compiler {
             case "*": return { (measures: [Double]) in l(measures) * r(measures) }
             case "/": return { (measures: [Double]) in l(measures) / r(measures) }
             default:
-                fatalError("Unknown operator found in compileBinaryOperatorExpression: \(e.binaryOperator).")
+                FAST.fatalError("Unknown operator found in compileBinaryOperatorExpression: \(e.binaryOperator).")
         }
     }
 
@@ -264,7 +264,7 @@ public class Compiler {
             case "-": return { (measures: [Double]) in 0 - compiled(measures) }
             default:
                 Log.error("Unknown operator found in compilePrefixOperatorExpression: \(e.prefixOperator).")
-                fatalError()
+                FAST.fatalError()
         }
     }
 
@@ -286,17 +286,17 @@ public class Compiler {
                         }
                         else {
                             Log.error("Expected training set element string in compileTrainingSet. Found: \($0).")
-                            fatalError()
+                            FAST.fatalError()
                         }
                     }
                 default: 
                     Log.error("Unsupported training set descriptor found in compileTrainingSet: \(commands.kind).")
-                    fatalError()
+                    FAST.fatalError()
             }
         }
         else {
             Log.error("Could not compile training set descriptor found in compileTrainingSet: \(commandsExpr).")
-            fatalError()
+            FAST.fatalError()
         }
     }
 

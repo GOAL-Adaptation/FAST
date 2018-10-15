@@ -20,7 +20,7 @@ class KnobSettings: Hashable, Codable, CustomStringConvertible {
                 hash = hash ^ knobValue.hashValue &* 16777619
             }
             else {
-                fatalError("Can not compute hash for knob value '\(settings[knobName])' of type '\(type(of: settings[knobName]))'.")            
+                FAST.fatalError("Can not compute hash for knob value '\(settings[knobName])' of type '\(type(of: settings[knobName]))'.")            
             }
         }
         self.hashValue = hash
@@ -80,7 +80,7 @@ class KnobSettings: Hashable, Codable, CustomStringConvertible {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(kid, forKey: .kid)
         guard let intSettings = settings as? [String : Int] else {
-            fatalError("Serializing non-integer knob values is not implemented.")
+            FAST.fatalError("Serializing non-integer knob values is not implemented.")
         }
         try container.encode(intSettings, forKey: .settings)
         try container.encode(hashValue, forKey: .hashValue)

@@ -37,7 +37,7 @@ extension Knob: TextApiModule {
         else {
             let failMessage = "Cannot initailze knob (of type \(T.self)) from an empty key, as the last entry in the key is used as the knob name."
             Log.error(failMessage)
-            fatalError(failMessage)
+            FAST.fatalError(failMessage)
         }
 
     }

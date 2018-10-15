@@ -73,7 +73,7 @@ class Emulator: TextApiModule, ClockMonitor, EnergyMonitor {
         self.database = database
       } else {
         Log.error("Could not initialize the Database.")
-        fatalError()
+        FAST.fatalError()
       }
       self.application = application
       self.applicationInputId = applicationInput

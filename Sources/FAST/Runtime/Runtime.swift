@@ -208,15 +208,15 @@ public class Runtime {
             let initJSON = m.toSetupJSON(id: id, intent: intent) else
         {
             Log.error("Failed in converting initial model to JSON for ML mode.")
-            fatalError()
+            FAST.fatalError()
         }
         guard let newJSON = MLClient.setup(initJSON) else {
             Log.error("Failed in getting an updated JSON from ML REST API.")
-            fatalError()
+            FAST.fatalError()
         }
         guard let newModel = Model(fromMachineLearning: newJSON, intent: intent) else {
             Log.error("Failed in constructing an updated mode from ML JSON.")
-            fatalError()
+            FAST.fatalError()
         }
         return newModel
     
@@ -231,27 +231,27 @@ public class Runtime {
         let additionalArguments: [String: Any] = ["lastWindowMeasures": lastWindowMeasures]
         guard let currentIntent = self.intents[id] else {
             Log.error("Attempt to update from machine learning module without existing intent specification.")
-            fatalError()
+            FAST.fatalError()
         }
         guard let currentModel = self.models[id] else {
             Log.error("Attempt to update from machine learning module without existing controller model.")
-            fatalError()
+            FAST.fatalError()
         }
         guard let currentModelJSON = currentModel.toUpdateJSON(id: id, lastWindowConfigIds: lastWindowConfigIds, lastWindowMeasures: lastWindowMeasures) else {
             Log.error("Failed in converting current model to JSON for ML mode.")
-            fatalError()
+            FAST.fatalError()
         }
         guard let newJSON = MLClient.update(currentModelJSON) else {
             Log.error("Failed in getting an updated JSON from ML REST API.")
-            fatalError()
+            FAST.fatalError()
         }
         guard let newModel = Model(fromMachineLearning: newJSON, intent: currentIntent) else {
             Log.error("Failed in constructing an updated mode from ML JSON.")
-            fatalError()
+            FAST.fatalError()
         }
         guard let intentPreservingController = self.controller as? IntentPreservingController else {
             Log.error("Attempt to update model from machine learning module without an active IntentPreservingController.")
-            fatalError()
+            FAST.fatalError()
         }
         Log.debug("Reinitializing controller with new model from machine learning module.")
         self.reinitializeController(
@@ -528,7 +528,7 @@ public class Runtime {
             }
             else {
                 Log.error("Controller failed to initialize.")
-                fatalError()
+                FAST.fatalError()
             }
         }
     }
@@ -547,7 +547,7 @@ public class Runtime {
             setIntent(spec)
         } else {
             Log.error("Attempt to reinitialize controller based on a controller with an undefined model.")
-            fatalError()
+            FAST.fatalError()
         }
     }
 
@@ -600,7 +600,7 @@ public class Runtime {
             setKnobTo(value)
         }
         else {
-            fatalError("Tried to assign \(value) to an unknown knob called \(name).")
+            FAST.fatalError("Tried to assign \(value) to an unknown knob called \(name).")
         }
     }
 

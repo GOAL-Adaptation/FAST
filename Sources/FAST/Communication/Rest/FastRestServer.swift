@@ -168,7 +168,7 @@ class FastRestServer : RestServer {
 
                             }
                             else {
-                                fatalError("Malformed knob setting: \(nameValuePairDictAny).")
+                                FAST.fatalError("Malformed knob setting: \(nameValuePairDictAny).")
                             }
                             let fixedConfiguration = KnobSettings(kid: -1, parsedKnobSettings)
                             // Overwrite any existing schedule to prevent it from overwriting the fixed 

@@ -106,7 +106,7 @@ class IntentPreservingController : Controller {
                 else {
                     let failMessage = "Unable to read measures required for constructing the missionLength-respecting objective function: energyLimit \(energyLimit),  energyMeasureIdx \(model.measureNames.index(of: "energy")), energyDeltaMeasureIdx \(model.measureNames.index(of: "energyDelta")), iterationMeasureIdx \(model.measureNames.index(of: "iteration")), model.measureNames \(model.measureNames)."
                     Log.error(failMessage)
-                    fatalError(failMessage)
+                    FAST.fatalError(failMessage)
                 }
 
             }
@@ -218,7 +218,7 @@ class IntentPreservingController : Controller {
                 values.append(v)
             }
             else {
-                fatalError("Measure '\(measureName)', present in model, has not been registered in the application.")
+                FAST.fatalError("Measure '\(measureName)', present in model, has not been registered in the application.")
             }
         }
         let s = fastController.computeSchedule(tag: 0, measures: values) // FIXME Pass meaningful tag for logging

@@ -133,7 +133,7 @@ open class Model {
                     } 
                     else {
                         Log.error("Knob \(knobName) in model has value '\(knobValue)' of unsupported type: '\(type(of: knobValue))'.")
-                        fatalError()
+                        FAST.fatalError()
                     }
                 }
                 else {
