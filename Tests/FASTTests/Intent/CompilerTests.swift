@@ -56,22 +56,26 @@ class CompilerTests: XCTestCase {
         }
 
         let (thresholdRange, thresholdReference) = spec.knobs["threshold"]!
-        XCTAssertEqual(10000000, thresholdReference as! Int)
-        let thresholdRangeExpected = [2000000,4000000,6000000,8000000,10000000]
+        XCTAssertEqual(1000000, thresholdReference as! Int)
+        let thresholdRangeExpected = [200000,400000,600000,800000,1000000]
         for i in 0 ..< thresholdRangeExpected.count {
             XCTAssertEqual(thresholdRangeExpected[i], thresholdRange[i] as! Int)
         }
 
         /* Measures */
 
-        XCTAssertEqual(["energyDelta", "operations", "performance", "quality"], spec.measures.sorted())
+        // Note: this list must contain all the measures listed in incrementer.intent, but in alphabetical order
+        // Note: this list must be reflected in incrementer.json
+        XCTAssertEqual(["energy", "energyDelta", "latency", "operations", "performance", "powerConsumption", "quality"], spec.measures.sorted())
 
         /* Intent */
 
         XCTAssertEqual("incrementer", spec.name)
         XCTAssertEqual(50.0         , spec.constraint)
         XCTAssertEqual("performance", spec.constraintName)
-        XCTAssertEqual(4.5          , spec.costOrValue([0.0,3.0])) // 4.5 == (3.0*3.0)/2.0
+                                                    // Note: this list must contain all the measures listed in incrementer.intent, but in alphabetical order
+                                                    // ["energy", "energyDelta", "latency", "operations", "performance", "powerConsumption", "quality"]
+        XCTAssertEqual(4.5          , spec.costOrValue([13.0     , 7.0          , 1.0/50.0 , 3.0         , 50.0         , 11.0             , 1.0/2.0  ])) // 4.5 == (3.0*3.0)/2.0
         XCTAssertEqual(.minimize    , spec.optimizationType)
 
         /* Training set */

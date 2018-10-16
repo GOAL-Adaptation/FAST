@@ -9,6 +9,7 @@ measures    energy           : Double // System measure
             performance      : Double // System measure
             powerConsumption : Double // System measure
             operations       : Double // Application measure
+            quality          : Double // Application measure
 
 intent      incrementer min(((operations * operations) / 2.0)) such that performance == 50.0
 
