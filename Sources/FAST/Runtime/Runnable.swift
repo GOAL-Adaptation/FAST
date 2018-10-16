@@ -38,6 +38,22 @@ class Runnable: Application, EmulateableApplication, StreamApplication {
 
 fileprivate var runtime: Runtime!
 
+/** Register a dynamically created application knob, that is, one instantiated from inside the optimize loop's body. */
+func registerApplicationKnob(_ knob: TextApiModule) {
+    // Knobs that are instantiated outside the optimize loop are registered in 
+    // the Runnable initializer, and will thus be skipped in the follwing if-let
+    if 
+        let k = knob as? IKnob,
+        let r = runtime,
+        let application = r.application,
+        let applicationAsRunnable = application as? Runnable,
+        let applicationKnobs = applicationAsRunnable.subModules["applicationKnobs"]
+    {
+        r.knobSetters[knob.name] = k.setter
+        applicationKnobs.addSubModule(newModule: knob)
+    }
+}
+
 @discardableResult public func measure(_ name: String, _ value: Double) -> Double {
     return runtime.measure(name, value)
 }

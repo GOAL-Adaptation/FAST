@@ -28,11 +28,14 @@ public class Knob<T> : IKnob {
     public let name:  String
     var value: T
 
-    public init(_ name: String, _ value: T, _ preSetter: @escaping Action = { _,_ in }, _ postSetter: @escaping Action = { _,_ in }) {
+    public init(_ name: String, _ value: T, _ applicationKnob: Bool = true, _ preSetter: @escaping Action = { _,_ in }, _ postSetter: @escaping Action = { _,_ in }) {
         self.name  = name
         self.value = value
         self.preSetter = preSetter
         self.postSetter = postSetter
+        if applicationKnob {
+            registerApplicationKnob(self)
+        }
     }
 
     public func get() -> T {
