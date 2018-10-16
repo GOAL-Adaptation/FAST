@@ -186,11 +186,17 @@ public class Compiler {
                      case let .identifier(identifier, _) = identifierExpr.kind {
                     Log.debug("Compiling identifier '\(identifier)'.")
                     if let i = store[identifier.textDescription] {
-                        return { (measures: [Double]) in measures[i] }
+                        return { (measures: [Double]) in 
+                            if i < measures.count {
+                                return measures[i]
+                            }
+                            else {
+                                FAST.fatalError("Value for measure \(identifier), present in the store \(store), is missing from the environment \(measures).")        
+                            }
+                        }
                     }
                     else {
-                        Log.error("Unknown measure: \(identifier).")
-                        FAST.fatalError()
+                        FAST.fatalError("Unknown measure: \(identifier).")
                     }
                 }
                 else {
