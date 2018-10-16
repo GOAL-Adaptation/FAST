@@ -11,7 +11,7 @@
 import Foundation
 import FAST
 
-let threshold = Knob("threshold", 10000000)
+let threshold = Knob("threshold", 1000000)
 let step = Knob("step", 1)
 
 var x = 0
@@ -23,5 +23,5 @@ optimize("incrementer", [threshold, step]) {
     }
     x = 0
     measure("operations", operations)
-    measure("quality", Double(threshold.get()) / Double(step.get()))
+    measure("quality", 1.0 / Double(step.get()))
 }

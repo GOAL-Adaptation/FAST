@@ -4,7 +4,7 @@ class DummyEnergyMonitor : EnergyMonitor {
 
     /* Returns the current energy in microjoules */
     func readEnergy() -> UInt64 {
-        return 0
+        return 1
     }
 
     /* Destroy the energymon instance */

@@ -58,7 +58,7 @@ public class Knob<T> : IKnob {
         case let castedValue as T:
             self.set(castedValue)
         default:
-            fatalError("Tried to assign \(newValue) to a knob of type \(T.self).")
+            FAST.fatalError("Tried to assign \(newValue) to a knob of type \(T.self).")
         }
     }
 }

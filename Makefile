@@ -31,7 +31,7 @@ TEST_RESOURCE_TARGET_PATH := $(RESOURCE_TARGET_PATH)/FASTPackageTests.xctest/Con
 endif
 
 build: copy-resources-build
-	swift build $(SPM_FLAGS)
+	swift build -Xswiftc -suppress-warnings $(SPM_FLAGS)
 
 test: export proteus_runtime_logLevel        := Error
 test: export proteus_runtime_missionLength   := 1000
@@ -86,6 +86,7 @@ all:                    rebuild run
 
 run:              		export proteus_runtime_missionLength                    := 2000
 run:               		export proteus_runtime_applicationExecutionMode         := Adaptive
+run:               		export proteus_runtime_executeWithMachineLearning       := false
 run:               		execute
 
 run-scripted:      		export proteus_runtime_interactionMode                  := Scripted

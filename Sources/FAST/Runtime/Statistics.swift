@@ -78,6 +78,14 @@ internal class Statistics {
         get { return _windowAverage }
     }
 
+    /** The last window of observed measure values. */
+    var lastWindow: [Double] {
+      return Array((windowHead..<windowHead+window.count)
+        .map({ window[$0 % window.count] })
+        .filter({ !$0.isNaN })
+        .reversed())
+    }
+
     init(measure: String, windowSize: Int) {
         self.measure = measure
         precondition(windowSize > 0, "Window size must be positive")

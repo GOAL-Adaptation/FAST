@@ -188,7 +188,7 @@ public class RestServer {
                     return variableName
                 }
                 else {
-                    fatalError("Unknown expression: \(json).")
+                    FAST.fatalError("Unknown expression: \(json).")
                 }
             case 2:
                 // Unary operator
@@ -199,7 +199,7 @@ public class RestServer {
                     return "(\(op)\(eString))"
                 }
                 else {
-                    fatalError("Unknown expression: \(json).")
+                    FAST.fatalError("Unknown expression: \(json).")
                 }
             case 3:
                 // Binary operator
@@ -215,10 +215,10 @@ public class RestServer {
                     return "(\(lString) \(op) \(rString))"
                 }
                 else {
-                    fatalError("Unknown expression: \(json).")
+                    FAST.fatalError("Unknown expression: \(json).")
                 }
             default:
-                fatalError("Unknown expression: \(json).")
+                FAST.fatalError("Unknown expression: \(json).")
         }
 
     }

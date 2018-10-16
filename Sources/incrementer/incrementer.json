@@ -3,8 +3,8 @@
 		"knobs": [
 			{
 				"name": "threshold",
-				"range": [2000000,4000000,6000000,8000000,10000000],
-				"referenceValue": 10000000
+				"range": [200000,400000,600000,800000,1000000],
+				"referenceValue": 1000000
 			},
 			{
 				"name": "step",
@@ -14,16 +14,25 @@
 		],
 		"measures": [
 			{
+				"name": "energy"
+			},
+			{
+				"name": "energyDelta"
+			},
+			{
+				"name": "latency"
+			},
+			{
 				"name": "performance"
+			},
+			{
+				"name": "powerConsumption"
 			},
 			{
 				"name": "operations"
 			},
 			{
 				"name": "quality"
-			},
-			{
-				"name": "energyDelta"
 			}
 		],
 		"intent": {

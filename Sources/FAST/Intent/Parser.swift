@@ -221,13 +221,13 @@ class IntentParser : Parser {
                     let referenceExpr = try super.parseExpression(config: config)
                 return KnobDecl(name: knobName, range: knobValue, reference: referenceExpr)
                 } else {
-                fatalError("Expected 'reference'. Found: \(_lexer.look().kind).")
+                FAST.fatalError("Expected 'reference'. Found: \(_lexer.look().kind).")
                 }
             } else {
-                fatalError("Expected '=' after knob name. Found: \(_lexer.look().kind).")
+                FAST.fatalError("Expected '=' after knob name. Found: \(_lexer.look().kind).")
             }
         } else {
-            fatalError("Expected a knob name. Found: \(_lexer.look().kind).")
+            FAST.fatalError("Expected a knob name. Found: \(_lexer.look().kind).")
         }
     }
 
@@ -256,10 +256,10 @@ class IntentParser : Parser {
                 _lexer.advance(by:1)
                 return MeasureDecl(name: measureName, type: measureType)
             } else {
-                fatalError("Expected a measure type. Found: \(_lexer.look().kind).")
+                FAST.fatalError("Expected a measure type. Found: \(_lexer.look().kind).")
             }
         } else {
-            fatalError("Expected a measure name followed by a colon. Found: \(_lexer.look().kind).")
+            FAST.fatalError("Expected a measure name followed by a colon. Found: \(_lexer.look().kind).")
         }
     }
 
@@ -298,13 +298,13 @@ class IntentParser : Parser {
                         return IntentDecl(name: intentName, optimizationType : optimizationType,
                                         optimizedExpr: optimizedExpr, constraintName: constraintName, constraint: constraint)
                 } else {
-                    fatalError("expected right parenthesis followed by 'such that', a measure name, and '=='. Found: \(_lexer.look().kind).")
+                    FAST.fatalError("expected right parenthesis followed by 'such that', a measure name, and '=='. Found: \(_lexer.look().kind).")
                 }
             } else {
-                fatalError("expected 'max' or 'min' followed by a left parenthesis. Found: \(_lexer.look().kind).")
+                FAST.fatalError("expected 'max' or 'min' followed by a left parenthesis. Found: \(_lexer.look().kind).")
             }
         } else {
-            fatalError("expected an intent name. Found: \(_lexer.look().kind).")
+            FAST.fatalError("expected an intent name. Found: \(_lexer.look().kind).")
         }
     }
 
@@ -340,7 +340,7 @@ class IntentParser : Parser {
                 return IntentExpression(knobSection: knobSection, measureSection: measureSection,
                                         intentSection:intentSection, trainingSetSection: trainingSetSection)
             } else {
-                fatalError("expected 'trainingSet'. Found: \(_lexer.look().kind).")
+                FAST.fatalError("expected 'trainingSet'. Found: \(_lexer.look().kind).")
             }
         } else {
             return try super.parseExpression(config: config)

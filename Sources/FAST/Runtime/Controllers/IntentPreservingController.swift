@@ -106,7 +106,7 @@ class IntentPreservingController : Controller {
                 else {
                     let failMessage = "Unable to read measures required for constructing the missionLength-respecting objective function: energyLimit \(energyLimit),  energyMeasureIdx \(model.measureNames.index(of: "energy")), energyDeltaMeasureIdx \(model.measureNames.index(of: "energyDelta")), iterationMeasureIdx \(model.measureNames.index(of: "iteration")), model.measureNames \(model.measureNames)."
                     Log.error(failMessage)
-                    fatalError(failMessage)
+                    FAST.fatalError(failMessage)
                 }
 
             }
@@ -198,6 +198,9 @@ class IntentPreservingController : Controller {
                               , initialModelEntryIdx: modelSortedByConstraintMeasure.initialConfigurationIndex!
                               )
 
+            // Enable logging to standard output
+            self.fastController.logFile = FileHandle.standardOutput
+
         }
         else {
             Log.error("Intent inconsistent with active model: could not match constraint name '\(intent.constraintName)' stated in intent with a measure name in the active model, whose measures are: \(model.measureNames). ")
@@ -215,12 +218,15 @@ class IntentPreservingController : Controller {
                 values.append(v)
             }
             else {
-                fatalError("Measure '\(measureName)', present in model, has not been registered in the application.")
+                FAST.fatalError("Measure '\(measureName)', present in model, has not been registered in the application.")
             }
         }
         let s = fastController.computeSchedule(tag: 0, measures: values) // FIXME Pass meaningful tag for logging
-        return Schedule({ (i: UInt32) -> KnobSettings in
-            return self.model![Int(i) < s.nLowerIterations ? s.idLower : s.idUpper].knobSettings
-        })
+        return Schedule(
+            { (i: UInt32) -> KnobSettings in
+                return self.model![Int(i) < s.nLowerIterations ? s.idLower : s.idUpper].knobSettings
+            }, 
+            oscillating: s.oscillating
+        )
     }
 }

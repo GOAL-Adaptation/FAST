@@ -214,6 +214,31 @@ extension EmulationDatabaseType: InitializableFromString {
 
 }
 
+/** Extension for ApplicationExecutionMode */
+extension ApplicationExecutionMode: InitializableFromString {
+
+    public init?(from text: String) {
+        switch text {
+            case "Adaptive":
+                self = .Adaptive
+            case "NonAdaptive":
+                self = .NonAdaptive
+            case "ExhaustiveProfiling":
+                self = .ExhaustiveProfiling
+            case "EndPointsProfiling":
+                self = .EndPointsProfiling
+            case "EmulatorTracing":
+                self = .EmulatorTracing
+            case "MachineLearning":
+                self = .MachineLearning
+            default:
+                failedToInitialize("ApplicationExecutionMode", from: text)
+                return nil
+        }
+    }
+
+}
+
 //---------------------------------------
 
 fileprivate func failedToInitialize(_ typeString: String, from text: String) {

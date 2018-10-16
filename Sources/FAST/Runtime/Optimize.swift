@@ -75,11 +75,11 @@ fileprivate func startRestServer(using runtime: Runtime) -> (RestServer, Initial
             }
             else {
                 logAndPostErrorToTh("Failed to parse InitializationParameters from response from post to TH/ready: \(initializationParametersJson).")
-                fatalError()
+                FAST.fatalError()
             }
         } else {
             logAndPostErrorToTh("No response from TH/ready.")
-            fatalError()
+            FAST.fatalError()
         }
 
     }
@@ -155,7 +155,7 @@ func optimize
         }
         else {
             Log.error("No value for measure '\(measureName)' available in runtime. Valid measures are: \(runtime.getMeasures().keys).")
-            fatalError()
+            FAST.fatalError()
         }
     }
 
@@ -269,7 +269,7 @@ func optimize
             }
             else {
                 Log.info("Invalid knob table found at '\(knobTablePath)'.")
-                fatalError()
+                FAST.fatalError()
             }
         }
         catch {
@@ -341,7 +341,7 @@ func optimize
                             }
                             else {
                                 Log.error("No statistics for measure '\(measureName)' available in measuring device. Valid measures are: \(measuringDevice.stats.keys).")
-                                fatalError()
+                                FAST.fatalError()
                             }
                         }
 
@@ -377,7 +377,7 @@ func optimize
             let myApp  = runtime.application as? EmulateableApplication, 
             let myArch = runtime.architecture as? EmulateableArchitecture 
         else {
-            fatalError("Cannot trace since either the application or the architecture are not emulatable.")
+            FAST.fatalError("Cannot trace since either the application or the architecture are not emulatable.")
         }
 
         // Initialize dictionaries for JSON database
@@ -482,7 +482,7 @@ func optimize
             , readDeltaDict                       : readDeltaDict
         )
         guard let encodedDicts = try? JSONEncoder().encode(dicts) else {
-            fatalError("Can not encode tracing database as JSON: \(dicts).")
+            FAST.fatalError("Can not encode tracing database as JSON: \(dicts).")
         }
         withOpenFile(atPath: profileOutputPrefix + ".trace.json") {
             (jsonOutputStream: Foundation.OutputStream) in
@@ -491,10 +491,15 @@ func optimize
 
     }
 
-
     func run(model: Model?, intent: IntentSpec, missionLength: UInt64, enforceEnergyLimit: Bool) {
 
         Log.info("Running optimize scope \(id).")
+
+        // By default, use the passed controller model but, if the machine learning
+        // module is enabled, request a model from it and use that instead.
+        let model = runtime.executeWithMachineLearning 
+                  ? runtime.requestInitialModelFromMachineLearning(id: id, activeIntent: intent, originalModel: model)
+                  : model
 
         /** 
          * Compute the energyLimit as the amount of energy that must be available 
@@ -506,7 +511,7 @@ func optimize
 
             switch runtime.runtimeKnobs.applicationExecutionMode.get() {
                 
-                case .Adaptive:
+                case .Adaptive, .MachineLearning:
 
                     if let controllerModel = model {
                         let modelSortedByEnergyDeltaMeasure = controllerModel.sorted(by: "energyDelta")
@@ -515,9 +520,16 @@ func optimize
                             let modelEnergyDeltaMaxConfiguration = modelSortedByEnergyDeltaMeasure.configurations.last,
                             let modelEnergyDeltaMinConfiguration = modelSortedByEnergyDeltaMeasure.configurations.first
                         {
-                            let modelEnergyDeltaMax = UInt64(modelEnergyDeltaMaxConfiguration.measureValues[energyDeltaMeasureIdx])
-                            let modelEnergyDeltaMin = UInt64(modelEnergyDeltaMinConfiguration.measureValues[energyDeltaMeasureIdx])
+                            let modelEnergyDeltaMaxDouble = modelEnergyDeltaMaxConfiguration.measureValues[energyDeltaMeasureIdx]
+                            let modelEnergyDeltaMinDouble = modelEnergyDeltaMinConfiguration.measureValues[energyDeltaMeasureIdx]
 
+                            if modelEnergyDeltaMinDouble == 0.0 {
+                                FAST.fatalError("Model minimum energyDelta measure is 0.0. Can not compute energyLimit.")
+                            }
+
+                            let modelEnergyDeltaMax = UInt64(modelEnergyDeltaMaxDouble)
+                            let modelEnergyDeltaMin = UInt64(modelEnergyDeltaMinDouble)
+                            
                             let energyLimit = modelEnergyDeltaMax * missionLength
                             let maxMissionLength = energyLimit / modelEnergyDeltaMin
 
@@ -527,12 +539,12 @@ func optimize
                         }
                         else {
                             Log.error("Model is missing the energyDelta measure. Can not compute energyLimit.")
-                            fatalError("")
+                            FAST.fatalError("")
                         }
                     }
                     else {
                         Log.error("No model loaded. Can not compute energyLimit.")
-                        fatalError("")
+                        FAST.fatalError("")
                     }
 
                 case .NonAdaptive:
@@ -542,7 +554,7 @@ func optimize
 
                 default:
                     
-                    fatalError("Attempt to execute in unsupported execution mode: \(runtime.runtimeKnobs.applicationExecutionMode.get()).")
+                    FAST.fatalError("Attempt to execute in unsupported execution mode: \(runtime.runtimeKnobs.applicationExecutionMode.get()).")
             }
 
         }
@@ -569,7 +581,7 @@ func optimize
                             }
                             else {
                                 Log.error("Invalid model: missing values for measure '\(measure)'.")
-                                fatalError()
+                                FAST.fatalError()
                             }
                         }
 
@@ -580,7 +592,7 @@ func optimize
                     }
                     else {
                         Log.error("Attempt to execute in adaptive mode using controller with undefined model.")
-                        fatalError()
+                        FAST.fatalError()
                     }
 
                 case .NonAdaptive:
@@ -603,7 +615,7 @@ func optimize
                 
                 default:
                     
-                    fatalError("Attempt to execute in unsupported execution mode: \(runtime.runtimeKnobs.applicationExecutionMode.get()).")
+                    FAST.fatalError("Attempt to execute in unsupported execution mode: \(runtime.runtimeKnobs.applicationExecutionMode.get()).")
 
             }
         }
@@ -628,10 +640,23 @@ func optimize
                 // Request a new schedule if this is the first iteration of a window, 
                 // or if the schedule has been invalidated (e.g. by the /perturb endpoint)
                 if (iteration > 0 && iteration % windowSize == 0) || runtime.schedule == nil {
+
+                    // If the controller deems the model is bad, and if online model updates
+                    // have been enabled, request a new model from the machine learning module.
+                    let shouldRequestNewModel = schedule.oscillating
+                    if runtime.executeWithMachineLearning && shouldRequestNewModel {
+                        Log.verbose("Requesting new model from machine learning module at iteration \(iteration).")
+                        let lastWindowConfigIds = (0..<windowSize).map { schedule[$0].kid }
+                        let lastWindowMeasures = measuringDevice.stats.mapValues { $0.lastWindow }
+                        runtime.updateModelFromMachineLearning(id, lastWindowConfigIds, lastWindowMeasures)
+                    }
+
                     Log.debug("Computing schedule from window averages: \(measuringDevice.windowAverages()).")
                     runtime.schedule = runtime.controller.getSchedule(runtime.intents[id]!, measuringDevice.windowAverages())
+
                 }
                 if runtime.runtimeKnobs.applicationExecutionMode.get() == ApplicationExecutionMode.Adaptive {
+                    
                     currentKnobSettings = runtime.schedule![iteration % windowSize]
                     runtime.measure("currentConfiguration", Double(currentKnobSettings.kid)) // The id of the configuration given in the knobtable
                     if currentKnobSettings != lastKnobSettings {
@@ -642,6 +667,7 @@ func optimize
                     else {
                         Log.debug("Scheduled configuration has not changed since the last iteration, will skip applying knob settings.")
                     }
+
                 }
             }
             , postBody: {
@@ -693,7 +719,7 @@ func optimize
         }
         else {
             logAndPostErrorToTh("Invalid initalization parameters received from /ready endpoint.")
-            fatalError()
+            FAST.fatalError()
         }
 
     }
@@ -727,12 +753,12 @@ func optimize
                         }
                         else {
                             Log.error("The  missionLength and enforceEnergyLimit parameters (mandatory for Adaptive execution) could not be initialized.")
-                            fatalError()
+                            FAST.fatalError()
                         }
 
                     } else {
                         Log.error("No model loaded for optimize scope '\(id)'. Cannot execute application in application execution mode \(runtime.runtimeKnobs.applicationExecutionMode.get()).")
-                        fatalError()
+                        FAST.fatalError()
                     }
 
                 case .NonAdaptive:
@@ -747,17 +773,17 @@ func optimize
                         }
                         else {
                             Log.error("The missionLength parameter (mandatory for NonAdaptive execution) could not be initialized.")
-                            fatalError()
+                            FAST.fatalError()
                         }
 
                     } else {
                         Log.error("No model loaded for optimize scope '\(id)'. Cannot execute application in application execution mode \(runtime.runtimeKnobs.applicationExecutionMode.get()).")
-                        fatalError()
+                        FAST.fatalError()
                     }
             
                 default:
 
-                    fatalError("Attempt to execute in unsupported execution mode: \(runtime.runtimeKnobs.applicationExecutionMode.get()).")
+                    FAST.fatalError("Attempt to execute in unsupported execution mode: \(runtime.runtimeKnobs.applicationExecutionMode.get()).")
             }
 
         } else {
