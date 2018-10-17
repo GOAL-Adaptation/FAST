@@ -132,8 +132,7 @@ open class Model {
                         return r.contains(v)
                     } 
                     else {
-                        Log.error("Knob \(knobName) in model has value '\(knobValue)' of unsupported type: '\(type(of: knobValue))'.")
-                        FAST.fatalError()
+                        FAST.fatalError("Knob \(knobName) in model has value '\(knobValue)' of unsupported type: '\(type(of: knobValue))'.")
                     }
                 }
                 else {

@@ -74,12 +74,10 @@ fileprivate func startRestServer(using runtime: Runtime) -> (RestServer, Initial
                 return (server!, ips)
             }
             else {
-                logAndPostErrorToTh("Failed to parse InitializationParameters from response from post to TH/ready: \(initializationParametersJson).")
-                FAST.fatalError()
+                FAST.fatalError("Failed to parse InitializationParameters from response from post to TH/ready: \(initializationParametersJson).")
             }
         } else {
-            logAndPostErrorToTh("No response from TH/ready.")
-            FAST.fatalError()
+            FAST.fatalError("No response from TH/ready.")
         }
 
     }
@@ -154,8 +152,7 @@ func optimize
             return measureValue
         }
         else {
-            Log.error("No value for measure '\(measureName)' available in runtime. Valid measures are: \(runtime.getMeasures().keys).")
-            FAST.fatalError()
+            FAST.fatalError("No value for measure '\(measureName)' available in runtime. Valid measures are: \(runtime.getMeasures().keys).")
         }
     }
 
@@ -268,8 +265,7 @@ func optimize
                 lastComputedProfileEntry = ids.max() ?? -1
             }
             else {
-                Log.info("Invalid knob table found at '\(knobTablePath)'.")
-                FAST.fatalError()
+                FAST.fatalError("Invalid knob table found at '\(knobTablePath)'.")
             }
         }
         catch {
@@ -341,8 +337,7 @@ func optimize
                                 return measureStats.totalAverage
                             }
                             else {
-                                Log.error("No statistics for measure '\(measureName)' available in measuring device. Valid measures are: \(measuringDevice.stats.keys).")
-                                FAST.fatalError()
+                                FAST.fatalError("No statistics for measure '\(measureName)' available in measuring device. Valid measures are: \(measuringDevice.stats.keys).")
                             }
                         }
 
@@ -585,8 +580,7 @@ func optimize
                                 runtime.measure(measure, measureValue)
                             }
                             else {
-                                Log.error("Invalid model: missing values for measure '\(measure)'.")
-                                FAST.fatalError()
+                                FAST.fatalError("Invalid model: missing values for measure '\(measure)'.")
                             }
                         }
 
@@ -596,8 +590,7 @@ func optimize
                         return (initialSchedule, currentKnobSettings) 
                     }
                     else {
-                        Log.error("Attempt to execute in adaptive mode using controller with undefined model.")
-                        FAST.fatalError()
+                        FAST.fatalError("Attempt to execute in adaptive mode using controller with undefined model.")
                     }
 
                 case .NonAdaptive:
@@ -723,8 +716,7 @@ func optimize
 
         }
         else {
-            logAndPostErrorToTh("Invalid initalization parameters received from /ready endpoint.")
-            FAST.fatalError()
+            FAST.fatalError("Invalid initalization parameters received from /ready endpoint.")
         }
 
     }
@@ -757,13 +749,11 @@ func optimize
                             run(model: model, intent: intent, missionLength: missionLength, enforceEnergyLimit: enforceEnergyLimit)
                         }
                         else {
-                            Log.error("The  missionLength and enforceEnergyLimit parameters (mandatory for Adaptive execution) could not be initialized.")
-                            FAST.fatalError()
+                            FAST.fatalError("The  missionLength and enforceEnergyLimit parameters (mandatory for Adaptive execution) could not be initialized.")
                         }
 
                     } else {
-                        Log.error("No model loaded for optimize scope '\(id)'. Cannot execute application in application execution mode \(runtime.runtimeKnobs.applicationExecutionMode.get()).")
-                        FAST.fatalError()
+                        FAST.fatalError("No model loaded for optimize scope '\(id)'. Cannot execute application in application execution mode \(runtime.runtimeKnobs.applicationExecutionMode.get()).")
                     }
 
                 case .NonAdaptive:
@@ -777,13 +767,11 @@ func optimize
                             run(model: model, intent: intent, missionLength: missionLength, enforceEnergyLimit: false)
                         }
                         else {
-                            Log.error("The missionLength parameter (mandatory for NonAdaptive execution) could not be initialized.")
-                            FAST.fatalError()
+                            FAST.fatalError("The missionLength parameter (mandatory for NonAdaptive execution) could not be initialized.")
                         }
 
                     } else {
-                        Log.error("No model loaded for optimize scope '\(id)'. Cannot execute application in application execution mode \(runtime.runtimeKnobs.applicationExecutionMode.get()).")
-                        FAST.fatalError()
+                        FAST.fatalError("No model loaded for optimize scope '\(id)'. Cannot execute application in application execution mode \(runtime.runtimeKnobs.applicationExecutionMode.get()).")
                     }
             
                 default:

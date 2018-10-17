@@ -106,14 +106,12 @@ public class DictDatabase: TextApiModule, Database {
       let databaseString = readFile(withName: databaseFileNamePrefix, ofType: "\(databaseFileType)"),
       let jsonData = databaseString.data(using: .utf8)
     else {
-      Log.error("Could not read emulation database JSON from file : \(databaseFile).")
-      FAST.fatalError()
+      FAST.fatalError("Could not read emulation database JSON from file : \(databaseFile).")
     }
     guard
       let decodedDatabase = try? JSONDecoder().decode(Dicts.self, from: jsonData)
     else {
-      Log.error("Could not decode emulation database from file '\(databaseString)' contents: \(jsonData).")
-      FAST.fatalError()
+      FAST.fatalError("Could not decode emulation database from file '\(databaseString)' contents: \(jsonData).")
     }
     
     self.database = decodedDatabase
@@ -131,8 +129,7 @@ public class DictDatabase: TextApiModule, Database {
     if let databaseFile = initialize(type: String.self, name: "db", from: key) {
         self.init(databaseFile: databaseFile)
     } else {
-        Log.error("Failed to initialize emulation database from key '\(key)'.")
-        FAST.fatalError()
+        FAST.fatalError("Failed to initialize emulation database from key '\(key)'.")
     }
   }
 
@@ -209,8 +206,7 @@ public class DictDatabase: TextApiModule, Database {
       return database.numberOfInputsTraced
     }
     else {
-      Log.error("Attempt to count the number of traced inputs for a configuration '\(profileEntryId)' that was not traced. The \(database.tracedConfigurations.count) traced configurations are: \(database.tracedConfigurations).")
-      FAST.fatalError()
+      FAST.fatalError("Attempt to count the number of traced inputs for a configuration '\(profileEntryId)' that was not traced. The \(database.tracedConfigurations.count) traced configurations are: \(database.tracedConfigurations).")
     }
     
 
