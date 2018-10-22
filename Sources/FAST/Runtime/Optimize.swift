@@ -599,7 +599,7 @@ func optimize
                     let currentKnobSettings = intent.referenceKnobSettings()
                     runtime.controller = ConstantController(knobSettings: currentKnobSettings) 
                     runtime.setIntent(intent)        
-                    runtime.setModel(name: intent.name, model!)
+                    runtime.setModel(name: intent.name, currentModel: model!, untrimmedModel: model!)
 
                     // Initialize measures
                     for measure in intent.measures {

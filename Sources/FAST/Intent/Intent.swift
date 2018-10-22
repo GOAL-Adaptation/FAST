@@ -140,7 +140,7 @@ extension IntentSpec {
   /** If a model is loaded for this intent, compute the current measure window averages
       as an array in the same order as the array returned by measures(). */
   func measureWindowAverages(runtime: Runtime) -> [Double]? {
-    if let model = runtime.models[name] {
+    if let (currentModel, _ /* ignore original model */) = runtime.models[name] {
         guard let measuringDevice = runtime.measuringDevices[name] else {
             FAST.fatalError("No measuring device registered for intent \(name).")
         }
@@ -150,7 +150,7 @@ extension IntentSpec {
         var measureValueArray = [Double]()
         for measureName in self.measures {
             if let v = measureValuesDict[measureName] {
-                if model.measureNames.contains(measureName) {
+                if currentModel.measureNames.contains(measureName) {
                   measureValueArray.append(v)
                 }
                 else {

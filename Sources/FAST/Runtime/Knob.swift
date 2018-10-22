@@ -42,6 +42,42 @@ public class Knob<T> : IKnob {
         return self.value
     }
 
+    /** 
+     * Make knob controllable by the runtime, by making all configurations
+     * specificed by the knobs section of the active intent available to
+     * the controller.
+     */
+    public func control() {
+        setApplicationKnobFilter(forKnob: self.name, to: [])
+    }
+
+    /** 
+     * Make knob uncontrollable by the runtime, by making only those 
+     * configurations specificed by the knobs section of the active 
+     * intent available the controller, whose value for this knob are
+     * in the passed value array v, which defaults to a singleton array 
+     * containing the current value.
+     * 
+     * Examples: 
+     *   - restrict([1,2]) restricts the values for this knob to [1,2].
+     *   - restrict() restricts the values for this knob to [self.value].
+     */
+    public func restrict(_ vs: [T]? = nil) {
+        let values = vs == nil ? [self.value] : vs!
+        setApplicationKnobFilter(forKnob: self.name, to: values)
+    }
+
+    /** 
+     * Short-hand for restrict([v]).
+     * 
+     * Examples: 
+     *   - restrict(1) restricts the value for this knob to 1.
+     *   - restrict() restricts the value for this knob to self.value.
+     */
+    public func constant(_ v: T? = nil) {
+        restrict(v == nil ? nil : [v!])
+    }
+
     internal func set(_ newValue: T, setters: Bool = true) {
         if setters {
             // for the postSetter
@@ -64,4 +100,5 @@ public class Knob<T> : IKnob {
             FAST.fatalError("Tried to assign \(newValue) to a knob of type \(T.self).")
         }
     }
+    
 }

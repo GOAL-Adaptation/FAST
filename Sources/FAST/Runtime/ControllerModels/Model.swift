@@ -141,7 +141,14 @@ open class Model {
             }.reduce(true, { $0 && $1 })
         }
         
-        let filteredConfigurations = self.configurations.filter{ isInIntent($0) }
+        return trim(toSatisfy: isInIntent, "shrink to intent spec with knobs: \(spec.knobs)")
+
+    }
+
+    /** Trim model to contain only configurations that satisfy the passed filter. */
+    func trim(toSatisfy filter: (Configuration) -> Bool, _ filterDescription: String) -> Model {
+        
+        let filteredConfigurations = self.configurations.filter{ filter($0) }
         var filteredConfigurationsWithUpdatedIds: [Configuration] = []
         for configId in 0 ..< filteredConfigurations.count {
             filteredConfigurationsWithUpdatedIds.append(filteredConfigurations[configId].with(newId: configId))
@@ -151,8 +158,8 @@ open class Model {
         }
         
         if let ici = self.initialConfigurationIndex {
-            if !isInIntent(self.configurations[ici]) {
-                Log.warning("Initial configuration lost by shrinking to intent spec with knobs: \(spec.knobs). Using \(filteredConfigurations[0].knobSettings) instead.")
+            if !filter(self.configurations[ici]) {
+                Log.warning("Initial configuration lost by trimming to '\(filterDescription)'. Using \(filteredConfigurations[0].knobSettings) instead.")
                 return Model(filteredConfigurationsWithUpdatedIds, 0, measureNames)
             }
             else {
