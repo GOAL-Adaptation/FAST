@@ -195,7 +195,7 @@ class IntentPreservingController : Controller {
                               , window: window
                               , optType: intent.optimizationType
                               , ocb: objectiveFunctionAfterMissionLengthAndSceneImportance
-                              , initialModelEntryIdx: modelSortedByConstraintMeasure.initialConfigurationIndex!
+                              , initialModelEntryIdx: 0 // Always 0, since model passed above is sorted by the constraint measure 
                               )
 
             // Enable logging to standard output

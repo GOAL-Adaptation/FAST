@@ -24,7 +24,6 @@ import LoggerAPI
 open class Model {
 
     internal let configurations: [Configuration]
-    public let initialConfigurationIndex: Int?
     public let measureNames: [String]
 
     private let measureNameToIndexMap: [String: Int]
@@ -32,7 +31,7 @@ open class Model {
     /** Loads a model, consisting of two tables for knob- and measure values.
         The entries in these tables are assumed to be connected by an "id" column,
         that is, the number of rows in each table must match. */
-    public init(_ knobCSV: String, _ measureCSV: String, _ intent: IntentSpec, _ initialConfigurationIndex: Int = 0) {
+    public init(_ knobCSV: String, _ measureCSV: String, _ intent: IntentSpec) {
         let knobTable = CSwiftV(with: knobCSV)
         let measureTable = CSwiftV(with: measureCSV)
         assert(knobTable.rows.count == measureTable.rows.count, "Number of rows in knob and measure config files must match")
@@ -53,25 +52,21 @@ open class Model {
             configurations.append(Configuration(configId, knobSettings, measures))
         }
         self.configurations = configurations
-        self.initialConfigurationIndex = initialConfigurationIndex
         Log.exit("Initialized model.")
     }
 
-    internal init(_ configurations: [Configuration], _ initialConfigurationIndex: Int) {
-        Log.debug("Initializing Model with initialConfigurationIndex \(initialConfigurationIndex), and configurations \(configurations).")
-        assert(!configurations.isEmpty || (configurations.isEmpty && initialConfigurationIndex == -1))
+    internal init(_ configurations: [Configuration]) {
+        Log.debug("Initializing Model with configurations \(configurations).")
+        assert(!configurations.isEmpty)
         measureNames = configurations.first!.measureNames
         self.measureNameToIndexMap = Dictionary(Array(zip(measureNames, 0 ..< measureNames.count)))
         self.configurations = configurations
-        assert(0 <= initialConfigurationIndex && initialConfigurationIndex < configurations.count, "0  <= initialCondigurationIndex < |configurations|")
-        self.initialConfigurationIndex = initialConfigurationIndex
         assert(configurations.reduce(true, { $0 && self.measureNames == $1.measureNames }), "measure names must be the same for all configurations")
     }
 
-    private init(_ configurations: [Configuration], _ initialConfigurationIndex: Int?, _ measureNames: [String]) {
-        Log.debug("Initializing Model with initialConfigurationIndex \(String(describing: initialConfigurationIndex)), measureNames \(measureNames), and configurations \(configurations).")
+    private init(_ configurations: [Configuration], _ measureNames: [String]) {
+        Log.debug("Initializing Model with measureNames \(measureNames), and configurations \(configurations).")
         self.configurations = configurations
-        self.initialConfigurationIndex = initialConfigurationIndex
         self.measureNames = measureNames
         self.measureNameToIndexMap = Dictionary(Array(zip(measureNames, 0 ..< measureNames.count)))
     }
@@ -88,10 +83,6 @@ open class Model {
         return configurations[index].measureValues[measureNameToIndexMap[measureName]!]
     }
 
-    func getInitialConfiguration() -> Configuration? {
-        return configurations[initialConfigurationIndex!] // FIXME propagate nil
-    }
-
     func getFASTControllerModel() -> FASTControllerModel {
         return FASTControllerModel(measures: configurations.map{ $0.measureValues })
     }
@@ -100,23 +91,14 @@ open class Model {
     func sorted(by measureName: String) -> Model {
         assert(measureNames.contains(measureName), "invalid measure name \"\(measureName)\"")
         let measureIndex = measureNames.index(of: measureName)!
-        let sortedConfigurations = configurations.sorted(by: { (l: Configuration, r: Configuration) in
+        let sortedConfigurationsWithOriginalIds = configurations.sorted(by: { (l: Configuration, r: Configuration) in
             l.measureValues[measureIndex] < r.measureValues[measureIndex]
         })
         var sortedConfigurationsWithUpdatedIds: [Configuration] = []
-        for configId in 0 ..< sortedConfigurations.count {
-            sortedConfigurationsWithUpdatedIds.append(sortedConfigurations[configId].with(newId: configId))
+        for configId in 0 ..< sortedConfigurationsWithOriginalIds.count {
+            sortedConfigurationsWithUpdatedIds.append(sortedConfigurationsWithOriginalIds[configId].with(newId: configId))
         }
-        if let ici = initialConfigurationIndex {
-            let updatedInitialConfigurationIndex = sortedConfigurations.index(where: { $0.id == ici })
-            // Whenever the model is trimmed, the initial configuration may be lost, then just use the one with index 0
-            let alwaysDefinedUpdatedInitialConfigurationIndex = updatedInitialConfigurationIndex ?? 0
-            return Model(sortedConfigurations, alwaysDefinedUpdatedInitialConfigurationIndex, measureNames)
-        }
-        else {
-            // Whenever the model is trimmed, the initial configuration may be lost, then just use the one with index 0
-            return Model(sortedConfigurations, 0, measureNames)
-        }
+        return Model(sortedConfigurationsWithUpdatedIds, measureNames)
     }
 
     /** Make a model basd on this one, but only containing configurations matching those in the intent. */
@@ -147,7 +129,6 @@ open class Model {
 
     /** Trim model to contain only configurations that satisfy the passed filter. */
     func trim(toSatisfy filter: (Configuration) -> Bool, _ filterDescription: String) -> Model {
-        
         let filteredConfigurations = self.configurations.filter{ filter($0) }
         var filteredConfigurationsWithUpdatedIds: [Configuration] = []
         for configId in 0 ..< filteredConfigurations.count {
@@ -156,22 +137,7 @@ open class Model {
         if filteredConfigurationsWithUpdatedIds.count < self.configurations.count {
             Log.verbose("Trimmed controller model from \(self.configurations.count) to \(filteredConfigurationsWithUpdatedIds.count) configurations.")
         }
-        
-        if let ici = self.initialConfigurationIndex {
-            if !filter(self.configurations[ici]) {
-                Log.warning("Initial configuration lost by trimming to '\(filterDescription)'. Using \(filteredConfigurations[0].knobSettings) instead.")
-                return Model(filteredConfigurationsWithUpdatedIds, 0, measureNames)
-            }
-            else {
-                let updatedInitialConfigurationIndex = self.configurations.index(where: { $0.id == ici })
-                return Model(filteredConfigurationsWithUpdatedIds, updatedInitialConfigurationIndex, measureNames)
-            }
-        }
-        else {
-            // Whenever the model is trimmed, the initial configuration may be lost, then just use the one with index 0
-            return Model(filteredConfigurationsWithUpdatedIds, 0, measureNames)
-        }
-
+        return Model(filteredConfigurationsWithUpdatedIds, measureNames)
     }
     
     func toKnobTableCSV() -> String {
@@ -180,7 +146,6 @@ open class Model {
         return header + self.configurations.map{ 
             $0.toKnobTableLine(knobNames: knobNames) 
         }.joined(separator: "\n")
-            
     }
 
 }

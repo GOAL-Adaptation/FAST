@@ -557,7 +557,10 @@ func optimize
 
         }
 
-        func setUpControllerAndComputeInitialScheduleAndConfiguration() -> (Schedule,KnobSettings) {
+        func initializeControllerAndMeasuresAndGetInitialKnobSettings() -> KnobSettings {
+
+            resetMeasures()
+
             switch runtime.runtimeKnobs.applicationExecutionMode.get() {
                 
                 case .Adaptive:
@@ -569,12 +572,12 @@ func optimize
 
                         // Compute initial schedule that meets the active intent, by using the measure values of
                         // the reference configuration as an estimate of the first measurements.
-                        let currentConfiguration = controllerModel.getInitialConfiguration()!
-                        let currentKnobSettings = currentConfiguration.knobSettings
-                        let measureValuesOfReferenceConfiguration = Dictionary(Array(zip(currentConfiguration.measureNames, currentConfiguration.measureValues)))
+                        let initialConfiguration = controllerModel.configurations[0] // Always configuration 0 since FASTController assumes the model is sorted by the constraint measure
+                        let measureValuesOfInitialConfiguration = Dictionary(Array(zip(initialConfiguration.measureNames, initialConfiguration.measureValues)))
+                        
                         // Initialize measures
                         for measure in intent.measures {
-                            if let measureValue = measureValuesOfReferenceConfiguration[measure] {
+                            if let measureValue = measureValuesOfInitialConfiguration[measure] {
                                 runtime.measure(measure, measureValue)
                             }
                             else {
@@ -582,10 +585,8 @@ func optimize
                             }
                         }
 
-                        let initialSchedule = runtime.controller.getSchedule(intent, measureValuesOfReferenceConfiguration)
-                        Log.verbose("Computed initial schedule from model referece configuration window averages: \(measureValuesOfReferenceConfiguration).")
+                        return initialConfiguration.knobSettings
 
-                        return (initialSchedule, currentKnobSettings) 
                     }
                     else {
                         FAST.fatalError("Attempt to execute in adaptive mode using controller with undefined model.")
@@ -594,8 +595,8 @@ func optimize
                 case .NonAdaptive:
 
                     // Initialize the constant controller with the reference configuration from the intent
-                    let currentKnobSettings = intent.referenceKnobSettings()
-                    runtime.controller = ConstantController(knobSettings: currentKnobSettings) 
+                    let initialKnobSettings = intent.referenceKnobSettings()
+                    runtime.controller = ConstantController(knobSettings: initialKnobSettings) 
                     runtime.setIntent(intent)        
                     runtime.setModel(name: intent.name, currentModel: model!, untrimmedModel: model!)
 
@@ -604,10 +605,7 @@ func optimize
                         runtime.measure(measure, 0.0)
                     }
 
-                    Log.verbose("Using constant schedule computed by the controller based on using 0.0 as the value for all measures.")
-                    let schedule = runtime.controller.getSchedule(intent, runtime.getMeasures())
-                   
-                    return (schedule, currentKnobSettings)
+                    return initialKnobSettings
                 
                 default:
                     
@@ -620,13 +618,14 @@ func optimize
             runtime.energyLimit = computeEnergyLimit() // Initialize the runtime's energyLimit based on the model
         }
 
-        var (schedule, currentKnobSettings) = setUpControllerAndComputeInitialScheduleAndConfiguration()
-        runtime.schedule = schedule // Initialize the runtime's schedule
+        // For the first window, the runtime will execute in the initial configuration 
+        // (the initial value of currentKnobSettings), to obtain measures for this 
+        // configuration that can be used to correctly initialize the controller, at
+        // the first iteration of the second window.
+        var currentKnobSettings = initializeControllerAndMeasuresAndGetInitialKnobSettings()
         var lastKnobSettings = currentKnobSettings
-
+        runtime.schedule = Schedule(constant: currentKnobSettings)
         runtime.measure("currentConfiguration", Double(currentKnobSettings.kid)) // The id of the configuration given in the knobtable
-
-        resetMeasures()
 
         // Initialize measuring device, that will update measures based on the samplingPolicy
         let measuringDevice = MeasuringDevice(samplingPolicy, windowSize, intent.measures, runtime)
@@ -635,18 +634,22 @@ func optimize
         // Start the input processing loop
         loop( iterations: missionLength
             , preBody: {
-                // Request a new schedule if this is the first iteration of a window, 
-                // or if the schedule has been invalidated (e.g. by the /perturb endpoint)
+                // If this is the first iteration of any subsequent window, or if the schedule 
+                // has been invalidated (e.g. by the /perturb endpoint), request a new schedule.
                 if (iteration > 0 && iteration % windowSize == 0) || runtime.schedule == nil {
 
                     // If the controller deems the model is bad, and if online model updates
                     // have been enabled, request a new model from the machine learning module.
-                    let shouldRequestNewModel = schedule.oscillating
-                    if runtime.executeWithMachineLearning && shouldRequestNewModel {
-                        Log.verbose("Requesting new model from machine learning module at iteration \(iteration).")
-                        let lastWindowConfigIds = (0..<windowSize).map { schedule[$0].kid }
-                        let lastWindowMeasures = measuringDevice.stats.mapValues { $0.lastWindow }
-                        runtime.updateModelFromMachineLearning(id, lastWindowConfigIds, lastWindowMeasures)
+                    // NOTE: This will only happen if the schedule has not been set to nil by a 
+                    // call to the /perturb end-point.
+                    if let schedule = runtime.schedule {
+                        let shouldRequestNewModel = schedule.oscillating
+                        if runtime.executeWithMachineLearning && shouldRequestNewModel {
+                            Log.verbose("Requesting new model from machine learning module at iteration \(iteration).")
+                            let lastWindowConfigIds = (0..<windowSize).map { schedule[$0].kid }
+                            let lastWindowMeasures = measuringDevice.stats.mapValues { $0.lastWindow }
+                            runtime.updateModelFromMachineLearning(id, lastWindowConfigIds, lastWindowMeasures)
+                        }   
                     }
 
                     Log.debug("Computing schedule from window averages: \(measuringDevice.windowAverages()).")
