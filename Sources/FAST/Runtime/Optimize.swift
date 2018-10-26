@@ -538,13 +538,11 @@ func optimize
                             return energyLimit
                         }
                         else {
-                            Log.error("Model is missing the energyDelta measure. Can not compute energyLimit.")
-                            FAST.fatalError("")
+                            FAST.fatalError("Model is missing the energyDelta measure. Can not compute energyLimit.")
                         }
                     }
                     else {
-                        Log.error("No model loaded. Can not compute energyLimit.")
-                        FAST.fatalError("")
+                        FAST.fatalError("No model loaded. Can not compute energyLimit.")
                     }
 
                 case .NonAdaptive:
