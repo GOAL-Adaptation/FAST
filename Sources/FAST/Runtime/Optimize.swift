@@ -616,7 +616,9 @@ func optimize
             }
         }
         
-        runtime.energyLimit = computeEnergyLimit() // Initialize the runtime's energyLimit based on the model
+        if enforceEnergyLimit {
+            runtime.energyLimit = computeEnergyLimit() // Initialize the runtime's energyLimit based on the model
+        }
 
         var (schedule, currentKnobSettings) = setUpControllerAndComputeInitialScheduleAndConfiguration()
         runtime.schedule = schedule // Initialize the runtime's schedule
