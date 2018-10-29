@@ -28,10 +28,10 @@ extension Knob: TextApiModule {
         // Initialize the knob if initial value and name have been obtained successfully
         if let name  = key.last {
             if let value = newValue {
-                self.init(name, value, preSetter, postSetter)
+                self.init(name, value, false, preSetter, postSetter)
             } else { // Failed to initialize the knob
                 Log.verbose("Failed to initailze knob of type \(T.self) from key: \(key). Using default value: \(defaultValue).")
-                self.init(name, defaultValue, preSetter, postSetter)
+                self.init(name, defaultValue, false, preSetter, postSetter)
             }
         }
         else {

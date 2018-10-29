@@ -157,13 +157,11 @@ public class Compiler {
                 case .floatingPoint(let r, _):
                     return r
                 default: 
-                    Log.error("Unsupported literal: \(le).")
-                    FAST.fatalError()
+                    FAST.fatalError("Unsupported literal: \(le).")
             }
         }
         else {
-            Log.error("Expected literal in compileLiteral. Found: \(e).")
-            FAST.fatalError()
+            FAST.fatalError("Expected literal in compileLiteral. Found: \(e).")
         }
     }
 
@@ -205,8 +203,7 @@ public class Compiler {
                     } else if let eAsPrefixOpExpr = e as? PrefixOperatorExpression {
                             return compilePrefixOperatorExpression(eAsPrefixOpExpr, store)
                     } else {
-                        Log.error("Unsupported expression found in compileExpression: \(e) of type \(type(of: e)).")
-                        FAST.fatalError()
+                        FAST.fatalError("Unsupported expression found in compileExpression: \(e) of type \(type(of: e)).")
                     }
                 }
             }
@@ -220,8 +217,7 @@ public class Compiler {
             case .array(let elements):
                 return elements.map{ compileLiteral($0) }
             default: 
-                Log.error("Could not compile knob range in compileRange: \(range).")
-                FAST.fatalError()
+                FAST.fatalError("Could not compile knob range in compileRange: \(range).")
         }
     }
 
@@ -269,8 +265,7 @@ public class Compiler {
         switch e.prefixOperator {
             case "-": return { (measures: [Double]) in 0 - compiled(measures) }
             default:
-                Log.error("Unknown operator found in compilePrefixOperatorExpression: \(e.prefixOperator).")
-                FAST.fatalError()
+                FAST.fatalError("Unknown operator found in compilePrefixOperatorExpression: \(e.prefixOperator).")
         }
     }
 
@@ -291,18 +286,15 @@ public class Compiler {
                             return s
                         }
                         else {
-                            Log.error("Expected training set element string in compileTrainingSet. Found: \($0).")
-                            FAST.fatalError()
+                            FAST.fatalError("Expected training set element string in compileTrainingSet. Found: \($0).")
                         }
                     }
                 default: 
-                    Log.error("Unsupported training set descriptor found in compileTrainingSet: \(commands.kind).")
-                    FAST.fatalError()
+                    FAST.fatalError("Unsupported training set descriptor found in compileTrainingSet: \(commands.kind).")
             }
         }
         else {
-            Log.error("Could not compile training set descriptor found in compileTrainingSet: \(commandsExpr).")
-            FAST.fatalError()
+            FAST.fatalError("Could not compile training set descriptor found in compileTrainingSet: \(commandsExpr).")
         }
     }
 

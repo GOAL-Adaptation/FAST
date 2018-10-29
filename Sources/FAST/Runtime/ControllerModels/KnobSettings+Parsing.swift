@@ -11,8 +11,7 @@ func parseKnobSetting(setting: Any) -> Any {
                 return d
             }
             else {
-                Log.error("Could not parse knob setting \(setting) of type \(type(of: setting)).")
-                FAST.fatalError()
+                FAST.fatalError("Could not parse knob setting \(setting) of type \(type(of: setting)).")
             }
         }
     }
@@ -21,8 +20,7 @@ func parseKnobSetting(setting: Any) -> Any {
             return setting
         }
         else {
-            Log.error("Could not parse knob setting \(setting) of type \(type(of: setting)).")
-            FAST.fatalError()
+            FAST.fatalError("Could not parse knob setting \(setting) of type \(type(of: setting)).")
         }
     }
     return setting

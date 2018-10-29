@@ -72,8 +72,7 @@ class Emulator: TextApiModule, ClockMonitor, EnergyMonitor {
          let database = DictDatabase() {
         self.database = database
       } else {
-        Log.error("Could not initialize the Database.")
-        FAST.fatalError()
+        FAST.fatalError("Could not initialize the Database.")
       }
       self.application = application
       self.applicationInputId = applicationInput

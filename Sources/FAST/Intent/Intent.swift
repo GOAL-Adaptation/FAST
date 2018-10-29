@@ -140,10 +140,9 @@ extension IntentSpec {
   /** If a model is loaded for this intent, compute the current measure window averages
       as an array in the same order as the array returned by measures(). */
   func measureWindowAverages(runtime: Runtime) -> [Double]? {
-    if let model = runtime.models[name] {
+    if let (currentModel, _ /* ignore original model */) = runtime.models[name] {
         guard let measuringDevice = runtime.measuringDevices[name] else {
-            Log.error("No measuring device registered for intent \(name).")
-            FAST.fatalError()
+            FAST.fatalError("No measuring device registered for intent \(name).")
         }
         let measureValuesDict = measuringDevice.windowAverages()
         // FIXME Replace global measure store with custom ordered collection that avoids this conversion
@@ -151,17 +150,15 @@ extension IntentSpec {
         var measureValueArray = [Double]()
         for measureName in self.measures {
             if let v = measureValuesDict[measureName] {
-                if model.measureNames.contains(measureName) {
+                if currentModel.measureNames.contains(measureName) {
                   measureValueArray.append(v)
                 }
                 else {
-                  Log.error("Measure '\(measureName)', present in intent, but not in model.")
-                  FAST.fatalError()  
+                  FAST.fatalError("Measure '\(measureName)', present in intent, but not in model.")
                 }
             }
             else {
-                Log.error("Measure '\(measureName)', present in intent, has not been registered in the application.")
-                FAST.fatalError()
+                FAST.fatalError("Measure '\(measureName)', present in intent, has not been registered in the application.")
             }
         }
         return measureValueArray

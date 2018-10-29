@@ -46,6 +46,7 @@ public class Runtime {
 
         intents                  = [:]
         models                   = [:]
+        modelFilters             = [:]
         controller               = ConstantController()
         controllerLock           = NSLock()
 
@@ -122,7 +123,12 @@ public class Runtime {
     var knobSettersLock = NSLock()
 
     var intents: [String : IntentSpec] = [:]
-    var models: [String : Model] = [:]
+    // Map from intent name to a pair (m1,m2) of Models, where 
+    // - m1 is the currently active model, and 
+    // - m2 is the original, untrimmed model (before trimming w.r.t. intent and modelFilters)
+    var models: [String : (Model,Model)] = [:]
+    // Used to implement toggling of control for knobs
+    var modelFilters: [String : (Configuration) -> Bool] = [:]
 
     var controller: Controller = ConstantController()
     var controllerLock = NSLock()
@@ -165,8 +171,8 @@ public class Runtime {
         Log.info("Set intent for optimize scope '\(spec.name)' to: \(spec).")
     }
 
-    func setModel(name: String, _ model: Model) {
-        models[name] = model
+    func setModel(name: String, currentModel: Model, untrimmedModel: Model) {
+        models[name] = (currentModel, untrimmedModel)
         Log.info("Set model for optimize scope '\(name)'.")
     }
 
@@ -207,16 +213,13 @@ public class Runtime {
             let m = originalModel,
             let initJSON = m.toSetupJSON(id: id, intent: intent) else
         {
-            Log.error("Failed in converting initial model to JSON for ML mode.")
-            FAST.fatalError()
+            FAST.fatalError("Failed in converting initial model to JSON for ML mode.")
         }
         guard let newJSON = MLClient.setup(initJSON) else {
-            Log.error("Failed in getting an updated JSON from ML REST API.")
-            FAST.fatalError()
+            FAST.fatalError("Failed in getting an updated JSON from ML REST API.")
         }
         guard let newModel = Model(fromMachineLearning: newJSON, intent: intent) else {
-            Log.error("Failed in constructing an updated mode from ML JSON.")
-            FAST.fatalError()
+            FAST.fatalError("Failed in constructing an updated mode from ML JSON.")
         }
         return newModel
     
@@ -230,28 +233,22 @@ public class Runtime {
 
         let additionalArguments: [String: Any] = ["lastWindowMeasures": lastWindowMeasures]
         guard let currentIntent = self.intents[id] else {
-            Log.error("Attempt to update from machine learning module without existing intent specification.")
-            FAST.fatalError()
+            FAST.fatalError("Attempt to update from machine learning module without existing intent specification.")
         }
-        guard let currentModel = self.models[id] else {
-            Log.error("Attempt to update from machine learning module without existing controller model.")
-            FAST.fatalError()
+        guard let (_ /* current model will be recomputed */, currentUntrimmedModel) = self.models[id] else {
+            FAST.fatalError("Attempt to update from machine learning module without existing controller model.")
         }
-        guard let currentModelJSON = currentModel.toUpdateJSON(id: id, lastWindowConfigIds: lastWindowConfigIds, lastWindowMeasures: lastWindowMeasures) else {
-            Log.error("Failed in converting current model to JSON for ML mode.")
-            FAST.fatalError()
+        guard let currentUntrimmedModelJSON = currentUntrimmedModel.toUpdateJSON(id: id, lastWindowConfigIds: lastWindowConfigIds, lastWindowMeasures: lastWindowMeasures) else {
+            FAST.fatalError("Failed in converting current model to JSON for ML mode.")
         }
-        guard let newJSON = MLClient.update(currentModelJSON) else {
-            Log.error("Failed in getting an updated JSON from ML REST API.")
-            FAST.fatalError()
+        guard let newJSON = MLClient.update(currentUntrimmedModelJSON) else {
+            FAST.fatalError("Failed in getting an updated JSON from ML REST API.")
         }
         guard let newModel = Model(fromMachineLearning: newJSON, intent: currentIntent) else {
-            Log.error("Failed in constructing an updated mode from ML JSON.")
-            FAST.fatalError()
+            FAST.fatalError("Failed in constructing an updated mode from ML JSON.")
         }
         guard let intentPreservingController = self.controller as? IntentPreservingController else {
-            Log.error("Attempt to update model from machine learning module without an active IntentPreservingController.")
-            FAST.fatalError()
+            FAST.fatalError("Attempt to update model from machine learning module without an active IntentPreservingController.")
         }
         Log.debug("Reinitializing controller with new model from machine learning module.")
         self.reinitializeController(
@@ -360,7 +357,7 @@ public class Runtime {
             Log.debug("Calculating measurePredictions.")
             if 
                 let currentKnobSettingsId = getMeasure("currentConfiguration"), // kid of the currently active KnobSettings
-                let currentModel = models[appName] // Will be undefined when running in NonAdaptive mode, omitting this from the Status message
+                let (currentModel, _ /* ignore untrimmed model */) = models[appName] // Will be undefined when running in NonAdaptive mode, omitting this from the Status message
             {
                 if currentKnobSettingsId == -1 { // Running in NonAdaptive mode, use the first configuration in the current model
                     let firstConfiguration = currentModel.configurations[0];
@@ -516,28 +513,65 @@ public class Runtime {
 
     /** Intialize intent preserving controller with the given model, intent, missionLength and window. */
     func initializeController(_ model: Model, _ intent: IntentSpec, _ window: UInt32 = 20, _ missionLength: UInt64, _ enforceEnergyLimit: Bool, _ sceneImportance: Double? = nil) {
+        Log.debug("In preparation for initializing the controller, will now trim the model.")
         // Trim model with respect to the intent, to force the controller to choose only those
         // configurations that the user has specified there.
-        let trimmedModel = model.trim(to: intent)
+        let modelTrimmedToIntent = model.trim(to: intent)
+        Log.debug("Model trimmed to intent.")
+        // Further trim model with respect to the filters that have been registered in the runtime modelFilters array.
+        // These include application knob filters, that are used to implement toggling of control with respect
+        // to individual knobs using the Knob type's public API.
+        let modelTrimmedToBothIntentAndFilters = self.modelFilters.reduce(modelTrimmedToIntent, {
+            (m: Model, descriptionAndFilter: (String, (Configuration) -> Bool)) in 
+            let (description, filter) = descriptionAndFilter
+            return m.trim(toSatisfy: filter, description)
+        })
+        Log.debug("Model trimmed to registered filters. Will now initialize controller.")
         synchronized(controllerLock) {
-            if let c = IntentPreservingController(trimmedModel, intent, self, window, missionLength, self.energyLimit, enforceEnergyLimit, sceneImportance) {
+            if let c = IntentPreservingController(modelTrimmedToBothIntentAndFilters, intent, self, window, missionLength, self.energyLimit, enforceEnergyLimit, sceneImportance) {
                 setIntent(intent)
-                setModel(name: intent.name, trimmedModel)
+                setModel(name: intent.name, currentModel: modelTrimmedToBothIntentAndFilters, untrimmedModel: model)
                 controller = c
                 Log.info("Controller initialized.")
             }
             else {
-                Log.error("Controller failed to initialize.")
-                FAST.fatalError()
+                FAST.fatalError("Controller failed to initialize.")
             }
         }
     }
 
-    /** Intialize intent preserving controller with the intent, keeping the previous model and window */
-    public func reinitializeController(_ spec: IntentSpec, replacingCurrentModelWith newModel: Model? = nil, _ missionLength: UInt64?, _ enforceEnergyLimit: Bool?, _ sceneImportance: Double? = nil) {
+    /** 
+     * Reintialize intent preserving controller keeping the previous intent, model and window 
+     * This method can be used when self.modelFilters have changed, for example when 
+     * Knob.control() or Knob.restrict() have been called, and the active model should be
+     * filtered according t.
+     */
+    public func reinitializeController() {
         if let intentPreservingController = self.controller as? IntentPreservingController {
+            let currentIntent = intentPreservingController.intent
+            if 
+                let (_ /* currentModel will be recomputed */, untrimmedModel) = self.models[currentIntent.name] 
+            {
+                initializeController(untrimmedModel, currentIntent, self.controller.window, 
+                    intentPreservingController.missionLength,
+                    intentPreservingController.enforceEnergyLimit, 
+                    intentPreservingController.sceneImportance)
+            } else {
+                FAST.fatalError("Attempt to reinitialize controller based on a controller with an undefined model.")
+            }
+        } else {
+            FAST.fatalError("Attempt to reinitialize an unsupported controller.")
+        }
+    }
+
+    /** Reintialize intent preserving controller with the intent, keeping the previous model and window */
+    public func reinitializeController(_ spec: IntentSpec, replacingCurrentModelWith newModel: Model? = nil, _ missionLength: UInt64?, _ enforceEnergyLimit: Bool?, _ sceneImportance: Double? = nil) {
+        if 
+            let intentPreservingController = self.controller as? IntentPreservingController,
+            let (_ /* currentModel will be recomputed */, untrimmedModel) = self.models[spec.name]
+        {
             // Use the passed model if available, otherwise use the model of the active controller
-            var model = newModel ?? intentPreservingController.model!
+            var model = newModel ?? untrimmedModel
             initializeController(model, spec, controller.window, 
                 missionLength      ?? intentPreservingController.missionLength,
                 enforceEnergyLimit ?? intentPreservingController.enforceEnergyLimit, 
@@ -546,8 +580,7 @@ public class Runtime {
         else if let constantController = self.controller as? ConstantController {
             setIntent(spec)
         } else {
-            Log.error("Attempt to reinitialize controller based on a controller with an undefined model.")
-            FAST.fatalError()
+            FAST.fatalError("Attempt to reinitialize controller based on a controller with an undefined model.")
         }
     }
 
