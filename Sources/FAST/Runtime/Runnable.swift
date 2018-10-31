@@ -118,14 +118,21 @@ public func optimize(
     _ routine: @escaping () -> Void)
 {
 
-    struct StandardError: TextOutputStream {
+    // Initialize the logger
+    class StandardError: TextOutputStream {
         func write(_ text: String) {
             guard let data = text.data(using: String.Encoding.utf8) else { return }
             FileHandle.standardError.write(data)
         }
     }
     let logLevel = initialize(type: LoggerMessageType.self, name: "logLevel", from: ["proteus","runtime"], or: .verbose)
-    HeliumStreamLogger.use(logLevel, outputStream: StandardError())
+    let logToStandardError = initialize(type: Bool.self, name: "logToStandardError", from: ["proteus","runtime"], or: false)
+    if logToStandardError {
+        HeliumStreamLogger.use(logLevel, outputStream: StandardError())
+    }
+    else {
+        HeliumLogger.use(logLevel)
+    }
 
     // initialize runtime
     runtime = providedRuntime ?? Runtime.newRuntime()
