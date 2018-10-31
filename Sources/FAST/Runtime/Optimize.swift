@@ -631,6 +631,11 @@ func optimize
         let measuringDevice = MeasuringDevice(samplingPolicy, windowSize, intent.measures, runtime)
         runtime.measuringDevices[id] = measuringDevice
 
+        // Send status messages to the test harness on a separate thread using this queue
+        let sendStatusQueue = DispatchQueue(label: "sendStatus", attributes: .concurrent)
+        var timeOfLastStatus = NSDate().timeIntervalSince1970
+        let minimumSecondsBetweenStatuses = initialize(type: Double.self, name: "minimumSecondsBetweenStatuses", from: key, or: 0.0)
+
         // Start the input processing loop
         loop( iterations: missionLength
             , preBody: {
@@ -674,10 +679,14 @@ func optimize
             , postBody: {
                 measuringDevice.reportProgress()
                 let statusDictionary = runtime.statusDictionary()
-                Log.debug("\nCurrent status: \(convertToJsonSR4783(from: statusDictionary ?? [:])).\n")
-                if runtime.executeWithTestHarness {
-                    // FIXME handle error from request
-                    let _ = RestClient.sendRequest(to: "status", withBody: statusDictionary)
+                // Send a status to the test harness if enough time has elapsed since the last status
+                let timeNow = NSDate().timeIntervalSince1970
+                if runtime.executeWithTestHarness && timeNow >= timeOfLastStatus + minimumSecondsBetweenStatuses {
+                    sendStatusQueue.async(qos: .userInitiated) {
+                        // FIXME handle error from request
+                        let _ = RestClient.sendRequest(to: "status", withBody: statusDictionary)
+                    }
+                    timeOfLastStatus = timeNow
                 }
             }) 
         {
