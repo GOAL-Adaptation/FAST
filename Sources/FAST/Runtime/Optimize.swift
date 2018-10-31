@@ -678,10 +678,11 @@ func optimize
             }
             , postBody: {
                 measuringDevice.reportProgress()
-                let statusDictionary = runtime.statusDictionary()
                 // Send a status to the test harness if enough time has elapsed since the last status
                 let timeNow = NSDate().timeIntervalSince1970
                 if runtime.executeWithTestHarness && timeNow >= timeOfLastStatus + minimumSecondsBetweenStatuses {
+                    let statusDictionary = runtime.statusDictionary()
+                    Log.debug("\nCurrent status: \(convertToJsonSR4783(from: statusDictionary ?? [:])).\n")
                     sendStatusQueue.async(qos: .userInitiated) {
                         // FIXME handle error from request
                         let _ = RestClient.sendRequest(to: "status", withBody: statusDictionary)
