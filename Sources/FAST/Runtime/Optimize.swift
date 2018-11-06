@@ -632,7 +632,7 @@ func optimize
         runtime.measuringDevices[id] = measuringDevice
 
         // Send status messages to the test harness on a separate thread using this queue
-        let sendStatusQueue = DispatchQueue(label: "sendStatus", attributes: .concurrent)
+        let sendStatusQueue = DispatchQueue(label: "sendStatus")
         var timeOfLastStatus = NSDate().timeIntervalSince1970
         let minimumSecondsBetweenStatuses = initialize(type: Double.self, name: "minimumSecondsBetweenStatuses", from: key, or: 0.0)
 
@@ -683,7 +683,7 @@ func optimize
                 if runtime.executeWithTestHarness && timeNow >= timeOfLastStatus + minimumSecondsBetweenStatuses {
                     let statusDictionary = runtime.statusDictionary()
                     Log.debug("\nCurrent status: \(convertToJsonSR4783(from: statusDictionary ?? [:])).\n")
-                    sendStatusQueue.async(qos: .userInitiated) {
+                    sendStatusQueue.async {
                         // FIXME handle error from request
                         let _ = RestClient.sendRequest(to: "status", withBody: statusDictionary)
                     }
