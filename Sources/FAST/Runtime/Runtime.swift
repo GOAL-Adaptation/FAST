@@ -340,6 +340,11 @@ public class Runtime {
                     (measureName: String, stats: Statistics) in
                     (measureName, stats.asJson)
                 })
+            let measureStatisticsPerKnobSettings: [String : [String : [String: Double]]] =
+                Dictionary(self.measuringDevices[appName]!.stats.map {
+                    (measureName: String, stats: Statistics) in
+                    (measureName, stats.asJson)
+                })
 
             Log.debug("Creating arguments dictionary.")
             var arguments : [String : Any] =
@@ -353,25 +358,13 @@ public class Runtime {
                 , "verdictComponents"        : toArrayOfPairDicts(verdictComponents)
                 ]
 
-            // The measure values that the controller associates with the current configuration
+            // The measure values that the controller associates with the current configuration through the controller model.
+            // Note: This will only be defined when running in Adaptive or MachineLearning mode.
             Log.debug("Calculating measurePredictions.")
-            if 
-                let currentKnobSettingsId = getMeasure("currentConfiguration"), // kid of the currently active KnobSettings
-                let (currentModel, _ /* ignore untrimmed model */) = models[appName] // Will be undefined when running in NonAdaptive mode, omitting this from the Status message
-            {
-                if currentKnobSettingsId == -1 { // Running in NonAdaptive mode, use the first configuration in the current model
-                    let firstConfiguration = currentModel.configurations[0];
-                    arguments["measurePredictions"] = zip( firstConfiguration.measureNames
-                                                         , firstConfiguration.measureValues
-                                                         ).map{ [ "name" : $0, "value" : $1 ] }
-                }
-                else { // Running in Adaptive mode, use the current configuration
-                    if let currentConfiguration = currentModel.configurations.first(where: { $0.knobSettings.kid == Int(currentKnobSettingsId) }) {
-                        arguments["measurePredictions"] = zip( currentConfiguration.measureNames
-                                                             , currentConfiguration.measureValues
-                                                             ).map{ [ "name" : $0, "value" : $1 ] }
-                    }
-               }
+            if let currentConfiguration = getCurrentConfiguration() {
+                arguments["measurePredictions"] = zip( currentConfiguration.measureNames
+                                                     , currentConfiguration.measureValues
+                                                     ).map{ [ "name" : $0, "value" : $1 ] }
             }
 
             Log.debug("Done with statusDictionary, returning results.")
@@ -624,6 +617,32 @@ public class Runtime {
     func getMeasures() -> [String : Double] {
         return synchronized(measuresLock) {
             return measures
+        }
+    }
+
+    /** Get the current Configuration */
+    func getCurrentConfiguration() -> Configuration? {
+        let appName = application!.name
+        switch self.runtimeKnobs.applicationExecutionMode.get() {
+            // Get current configuration from model
+            case .Adaptive, .MachineLearning:
+                if 
+                    let currentKnobSettingsId = getMeasure("currentConfiguration"), // kid of the currently active KnobSettings
+                    let (currentModel, _ /* ignore untrimmed model */) = models[appName] // Will be defined when running in Adaptive/MachineLearning mode
+                {
+                    if let currentConfiguration = currentModel.configurations.first(where: { $0.knobSettings.kid == Int(currentKnobSettingsId) }) {
+                        return currentConfiguration
+                    }
+                    else {
+                        FAST.fatalError("Current configuration with id \(currentKnobSettingsId) not found in current model \(currentModel).")
+                    }
+                }
+                else {
+                    FAST.fatalError("Can not get current configuration, no model defined for '\(appName)'.")
+                }
+            // Current configuration not defined in model
+            default:
+                return nil 
         }
     }
 

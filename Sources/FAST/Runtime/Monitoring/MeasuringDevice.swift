@@ -7,7 +7,10 @@ class MeasuringDevice {
     private var samplingPolicy: SamplingPolicy
     private unowned var runtime: Runtime
 
+    // Overall statistics, across all inputs/configurations
     var stats = [String : Statistics]()
+    // Per-KnobSettings (configuration) statistics
+    var statsPerKnobSettings = [String : [KnobSettings : Statistics]]()
 
     init(_ samplingPolicy: SamplingPolicy, _ windowSize: UInt32, _ applicationMeasures: [String], _ runtime: Runtime) {
         self.windowSize = windowSize
@@ -18,6 +21,7 @@ class MeasuringDevice {
         
         for m in Array(Set(applicationMeasures + runtime.runtimeAndSystemMeasures)).sorted() {
             stats[m] = Statistics(measure: m, windowSize: Int(windowSize))
+            statsPerKnobSettings[m] = [KnobSettings : Statistics]()
         }
     }
 
@@ -25,6 +29,20 @@ class MeasuringDevice {
         for (m,s) in stats {
             if let measure = runtime.getMeasure(m) {
                 s.observe(measure)
+                // If running in Adaptive or MachineLearning mode, track statistics per configuration
+                if 
+                    let currentConfiguration = runtime.getCurrentConfiguration(),
+                    var perKnobSettingsStatsForM = statsPerKnobSettings[m]
+                {
+                    if let statsForCurrentKnobSettings = perKnobSettingsStatsForM[currentConfiguration.knobSettings] {
+                        statsForCurrentKnobSettings.observe(measure)
+                    }
+                    else {
+                        let statsForCurrentKnobSettings = Statistics(measure: m, windowSize: Int(windowSize))
+                        perKnobSettingsStatsForM[currentConfiguration.knobSettings] = statsForCurrentKnobSettings
+                        statsForCurrentKnobSettings.observe(measure)
+                    }
+                }
             }
         }
     }
