@@ -22,9 +22,7 @@ public protocol IntentSpec {
 
   var measures: [String]  { get }
 
-  var constraint: Double { get }
-
-  var constraintName: String { get }
+  var constraints: [String : Double] { get }
 
   var costOrValue: ([Double]) -> Double { get }
 
@@ -119,8 +117,7 @@ extension IntentSpec {
     var intentJson: [String : Any] = [
         "name"               : name,
         "optimizationType"   : optimizationType == .minimize ? "min" : "max",
-        "constraintVariable" : constraintName,
-        "constraintValue"    : constraint
+        "constraintValue"    : constraints
     ]
 
     // If the current objective function value is not Double.nan, insert a property for it into the JSON object.
@@ -174,13 +171,14 @@ extension IntentSpec {
   }
 
   func isEverythingExceptConstraitValueIdentical(to spec: IntentSpec?) -> Bool {
+    assert(constraints.count == 1, "This function could only apply to uniconstraint case.")
     guard let other = spec else { return false }
     guard
       Set(measures) == Set(other.measures), // measures
       knobs.count == other.knobs.count, Set(knobs.keys) == Set(other.knobs.keys), // knobs
       objectiveFunctionRawString == other.objectiveFunctionRawString, // objective function
       optimizationType == other.optimizationType, // optimization type
-      constraintName == other.constraintName // constraint name
+      constraints.keys.first! == other.constraints.keys.first! // constraint names
     else { return false }
     for key in knobs.keys {
       if

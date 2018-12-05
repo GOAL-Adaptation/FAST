@@ -83,6 +83,14 @@ open class Model {
     func getMeasureValue(_ index: Int, measureName: String) -> Double {
         return configurations[index].measureValues[measureNameToIndexMap[measureName]!]
     }
+    
+	func getDomainArray() -> [UInt32] {
+        return (configurations.map{UInt32($0.id)})
+    }
+
+    func getMeasureVectorFunction() -> (UInt32) -> [Double] {
+        return {(id: UInt32) in self.configurations[Int(id)].measureValues}
+    }
 
     func getFASTControllerModel() -> FASTControllerModel {
         return FASTControllerModel(measures: configurations.map{ $0.measureValues })

@@ -24,8 +24,9 @@ class IntentPreservingController : Controller {
          , _ sceneImportance: Double? 
          ) 
     {
+        assert(intent.constraints.count == 1, "FAST Controller only work in uniconstraint case.")
 
-        let modelSortedByConstraintMeasure = model.sorted(by: intent.constraintName)
+        let modelSortedByConstraintMeasure = model.sorted(by: intent.constraints.keys.first!)
 
         self.model              = modelSortedByConstraintMeasure
         self.window             = window
@@ -35,7 +36,7 @@ class IntentPreservingController : Controller {
         self.enforceEnergyLimit = enforceEnergyLimit
         self.sceneImportance    = sceneImportance
 
-        if let constraintMeasureIdx = modelSortedByConstraintMeasure.measureNames.index(of: intent.constraintName) {
+        if let constraintMeasureIdx = modelSortedByConstraintMeasure.measureNames.index(of: intent.constraints.keys.first!) {
             
             // TODO Gather statistics about how many configurations are filtered by each test parameter
             
@@ -141,8 +142,8 @@ class IntentPreservingController : Controller {
                     var (qualityMin,qualityMax): (Double,Double) = (Double.infinity,-Double.infinity)
                     for upper in 0 ..< model.configurations.count {
                         for lower in 0 ..< model.configurations.count {
-                            let constraintUpper = model.getMeasureValue(upper, measureName: intent.constraintName)
-                            let constraintLower = model.getMeasureValue(lower, measureName: intent.constraintName)
+                            let constraintUpper = model.getMeasureValue(upper, measureName: intent.constraints.keys.first!)
+                            let constraintLower = model.getMeasureValue(lower, measureName: intent.constraints.keys.first!)
                             let qualityUpper = model.getMeasureValue(upper, measureName: "quality")
                             let qualityLower = model.getMeasureValue(lower, measureName: "quality")
                             // Proportion of time that should be spent in the lower configuration
@@ -159,7 +160,7 @@ class IntentPreservingController : Controller {
                     return (qualityMin,qualityMax)
                 }
 
-                let (qualityMin,qualityMax) = computeAchievableQualityRange(constraintGoal: intent.constraint)
+                let (qualityMin,qualityMax) = computeAchievableQualityRange(constraintGoal: intent.constraints.values.first!)
 
                 let sufficientQuality = qualityMin + importance * (qualityMax - qualityMin)
 
@@ -190,7 +191,7 @@ class IntentPreservingController : Controller {
 
             self.fastController =
                 FASTController( model: modelSortedByConstraintMeasure.getFASTControllerModel()
-                              , constraint: intent.constraint
+                              , constraint: intent.constraints.values.first!
                               , constraintMeasureIdx: constraintMeasureIdx
                               , window: window
                               , optType: intent.optimizationType
@@ -203,7 +204,7 @@ class IntentPreservingController : Controller {
 
         }
         else {
-            Log.error("Intent inconsistent with active model: could not match constraint name '\(intent.constraintName)' stated in intent with a measure name in the active model, whose measures are: \(model.measureNames). ")
+            Log.error("Intent inconsistent with active model: could not match constraint name '\(intent.constraints.keys.first!)' stated in intent with a measure name in the active model, whose measures are: \(model.measureNames). ")
             exit(1)
             return nil
         }

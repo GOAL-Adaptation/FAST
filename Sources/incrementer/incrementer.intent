@@ -1,7 +1,6 @@
 knobs       threshold             = [200000,400000,600000,800000,1000000] reference 1000000
             step                  = [1,2,3,4]                             reference 1
             utilizedCores         = [1,2,3,4]                             reference 4
-            utilizedCoreFrequency = [300,400,600,1200]                    reference 1200
 
 measures    energy           : Double // System measure
             energyDelta      : Double // System measure
@@ -11,6 +10,6 @@ measures    energy           : Double // System measure
             operations       : Double // Application measure
             quality          : Double // Application measure
 
-intent      incrementer min(((operations * operations) / 2.0)) such that performance == 50.0
+intent      incrementer max((1.0 / (operations * operations))) such that quality == 50000.0 and performance == 5.0 
 
 trainingSet []

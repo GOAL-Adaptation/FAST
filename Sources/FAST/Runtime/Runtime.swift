@@ -314,7 +314,7 @@ public class Runtime {
                     (intentName, measuringDevice) in
                     let intentSpec = intents[intentName]!
                     let windowAverages = measuringDevice.windowAverages()
-                    let constraintVariableValue = windowAverages[intentSpec.constraintName]!
+                    let constraintVariableValue = windowAverages[intentSpec.constraints.keys.first!]!
                     var components =
                         [ "constraintVariableValue" : constraintVariableValue as Any ]
                     if 
@@ -324,8 +324,8 @@ public class Runtime {
                         components["objectiveFunction"]           = objectiveFunction
                         components["objectiveFunctionExpression"] = objectiveFunctionExpression
                     }
-                    components["constraintGoal"]   = intentSpec.constraint
-                    components["constraintName"]   = intentSpec.constraintName
+                    components["constraintGoal"]   = intentSpec.constraints.values.first!
+                    components["constraintName"]   = intentSpec.constraints.keys.first!
                     components["optimizationType"] = intentSpec.optimizationType == .minimize ? "min" : "max"
                     return ( intentName, components )
                 })
@@ -532,14 +532,42 @@ public class Runtime {
         })
         Log.debug("Model trimmed to registered filters. Will now initialize controller.")
         synchronized(controllerLock) {
-            if let c = IntentPreservingController(modelTrimmedToBothIntentAndFilters, intent, self, window, missionLength, self.energyLimit, enforceEnergyLimit, sceneImportance) {
-                setIntent(intent)
-                setModel(name: intent.name, currentModel: modelTrimmedToBothIntentAndFilters, untrimmedModel: model)
-                controller = c
-                Log.info("Controller initialized.")
-            }
-            else {
-                FAST.fatalError("Controller failed to initialize.")
+            switch intent.constraints.count {
+            case 1:    
+                if let c = IntentPreservingController(modelTrimmedToBothIntentAndFilters, intent, self, window, missionLength, self.energyLimit, enforceEnergyLimit, sceneImportance) {
+                    setIntent(intent)
+                    setModel(name: intent.name, currentModel: modelTrimmedToBothIntentAndFilters, untrimmedModel: model)
+                    controller = c
+                    Log.info("Controller initialized.")
+                }
+                else {
+                    FAST.fatalError("Controller failed to initialize.")
+                }
+
+            case 2...:    
+                if let c = MulticonstrainedIntentPreservingController(modelTrimmedToBothIntentAndFilters, intent, window) {
+                    setIntent(intent)
+                    setModel(name: intent.name, currentModel: modelTrimmedToBothIntentAndFilters, untrimmedModel: model)
+                    controller = c
+                    Log.info("Controller initialized.")
+                }
+                else {
+                    FAST.fatalError("Controller failed to initialize.")
+                }
+
+            case 0:
+                if let c = UnconstrainedIntentPreservingController(modelTrimmedToBothIntentAndFilters, intent, window) {
+                    setIntent(intent)
+                    setModel(name: intent.name, currentModel: modelTrimmedToBothIntentAndFilters, untrimmedModel: model)
+                    controller = c
+                    Log.info("Controller initialized.")
+                }
+                else {
+                    FAST.fatalError("Controller failed to initialize.")
+                }
+
+            default:
+                FAST.fatalError("Intent doesn't havae any constraint initialized.")
             }
         }
     }
@@ -595,8 +623,8 @@ public class Runtime {
       }
       if spec.isEverythingExceptConstraitValueIdentical(to: intents[spec.name]) {
         // FIXME Also check that missionLength didnt change
-        Log.verbose("Knob or measure sets of the new intent are identical to those of the previous intent. Setting the constraint goal of the existing controller to '\(spec.constraint)'.")
-        intentPreservingController.fastController.setConstraint(spec.constraint)
+        Log.verbose("Knob or measure sets of the new intent are identical to those of the previous intent. Setting the constraint goal of the existing controller to '\(spec.constraints.values.first!)'.")
+        intentPreservingController.fastController.setConstraint(spec.constraints.values.first!)
         setIntent(spec)
       }
       else {

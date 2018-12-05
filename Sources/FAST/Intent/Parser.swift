@@ -96,26 +96,31 @@ public class MeasureSection : Expression {
 /**
  * An intent declaration consists of a name, 
  * an optimization type (maximize or minimize), an expression to be optimized,
- * a constraint name, and a constraint expression.
+ * an array of constraint names, and an array of constraint expressions.
  */
 public class IntentDecl : Expression {
     public var name: String
     public var optimizationType : FASTControllerOptimizationType
     public var optimizedExpr: Expression
-    public var constraintName: String
-    public var constraint:Expression
+    public var constraints: [String : Expression]
 
     public init(name: String, optimizationType : FASTControllerOptimizationType,
-        optimizedExpr: Expression, constraintName: String, constraint:Expression) {
+        optimizedExpr: Expression, constraints: [String : Expression]) {
         self.name = name
         self.optimizationType = optimizationType
         self.optimizedExpr = optimizedExpr
-        self.constraintName = constraintName
-        self.constraint = constraint
+        self.constraints = constraints
+    }
+    
+	public init(name: String, optimizationType : FASTControllerOptimizationType, optimizedExpr: Expression) {
+        self.name = name
+        self.optimizationType = optimizationType
+        self.optimizedExpr = optimizedExpr
+        self.constraints = [:]
     }
 
     public var textDescription: String {
-        return "IntentDecl(\(name), \(optimizationType), \(optimizedExpr), \(constraintName), \(constraint))"
+        return "IntentDecl(\(name), \(optimizationType), \(optimizedExpr), \(constraints))"
     }
 
     public var lexicalParent: ASTNode? = nil
@@ -289,14 +294,26 @@ class IntentParser : Parser {
                 let optimizationType = (optimizer == "max") ? FASTControllerOptimizationType.maximize : FASTControllerOptimizationType.minimize
                 let optimizedExpr = try super.parseExpression(config: config)
                 if _lexer.look().kind == .rightParen,
-              case .identifier(let suchKeyword, _) = _lexer.look(ahead: 1).kind, suchKeyword == "such",
-              case .identifier(let thatKeyword, _) = _lexer.look(ahead: 2).kind, thatKeyword == "that",
-              case .identifier(let constraintName, _) = _lexer.look(ahead: 3).kind,
-                    _lexer.look(ahead: 4).kind == .binaryOperator("==") {
-                        _lexer.advance(by: 5)
-                        let constraint = try super.parseExpression(config: config)
+                   case .identifier(let myKeyword, _) = _lexer.look(ahead: 1).kind, myKeyword == "trainingSet" {
+					   _lexer.advance(by: 1)
+                       return IntentDecl(name: intentName, optimizationType: optimizationType, optimizedExpr: optimizedExpr)
+                } else if _lexer.look().kind == .rightParen,
+                          case .identifier(let suchKeyword, _) = _lexer.look(ahead: 1).kind, suchKeyword == "such",
+                          case .identifier(let thatKeyword, _) = _lexer.look(ahead: 2).kind, thatKeyword == "that",
+                          case .identifier(let constraintName, _) = _lexer.look(ahead: 3).kind, 
+                          _lexer.look(ahead: 4).kind == .binaryOperator("==") {
+                    _lexer.advance(by: 5)
+                    let constraintValue = try super.parseExpression(config: config)
+                    var constraints: [String : Expression] = [constraintName : constraintValue]
+                    while case .identifier(let andKeyword, _) = _lexer.look().kind, andKeyword == "and",
+                          case .identifier(let constraintName, _) = _lexer.look(ahead: 1).kind, 
+                          _lexer.look(ahead: 2).kind == .binaryOperator("==") {
+                    _lexer.advance(by: 3)
+                        let constraintValue = try super.parseExpression(config: config)
+                        constraints[constraintName] = constraintValue
+					}
                         return IntentDecl(name: intentName, optimizationType : optimizationType,
-                                        optimizedExpr: optimizedExpr, constraintName: constraintName, constraint: constraint)
+                                   optimizedExpr: optimizedExpr, constraints: constraints)
                 } else {
                     FAST.fatalError("expected right parenthesis followed by 'such that', a measure name, and '=='. Found: \(_lexer.look().kind).")
                 }
