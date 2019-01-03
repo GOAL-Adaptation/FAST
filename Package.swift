@@ -16,8 +16,8 @@ let package = Package(
     .package(url: "git@github.mit.edu:proteus/FASTController", .exact("1.0.3")),
     .package(url: "https://github.com/PerfectlySoft/Perfect-HTTPServer", .exact("3.0.10")),
     .package(url: "git@github.mit.edu:proteus/swift-ast", .exact("0.2.0")),
-    .package(url: "git@github.mit.edu:yy45-1/UnconstrainedOptimizer", .exact("0.0.3")),
-    .package(url: "git@github.mit.edu:yy45-1/MulticonstrainedOptimizer", .exact("0.0.2")),
+    .package(url: "git@github.mit.edu:proteus/UnconstrainedOptimizer", .exact("0.0.3")),
+    .package(url: "git@github.mit.edu:proteus/MulticonstrainedOptimizer", .exact("0.0.2")),
   ],
   targets: [
     .target(name: "FAST", dependencies: [
