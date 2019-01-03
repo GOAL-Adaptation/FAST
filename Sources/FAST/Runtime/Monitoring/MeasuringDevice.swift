@@ -21,13 +21,14 @@ class MeasuringDevice {
         self.applicationMeasures = applicationMeasures
         self.samplingPolicy = samplingPolicy
         self.runtime = runtime
-        samplingPolicy.registerSampler(sample)
         
-        sortedMeasureNames = Array(Set(applicationMeasures + runtime.runtimeAndSystemMeasures)).sorted()
-        for m in sortedMeasureNames {
+        self.sortedMeasureNames = Array(Set(applicationMeasures + runtime.runtimeAndSystemMeasures)).sorted()
+        for m in self.sortedMeasureNames {
             stats[m] = Statistics(measure: m, windowSize: Int(windowSize))
             statsPerKnobSettings[m] = [KnobSettings : Statistics]()
         }
+        
+        samplingPolicy.registerSampler(sample)
     }
 
     public func sample() {
