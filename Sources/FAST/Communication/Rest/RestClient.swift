@@ -12,8 +12,8 @@
 import Foundation
 import LoggerAPI
 
-enum Request {
-  enum Method: String {
+public enum Request {
+  public enum Method: String {
     case post
     case get
   }
@@ -25,17 +25,17 @@ enum Request {
 fileprivate let key = ["proteus","client","rest"]
 
 /** Functions for interacting with RESTful APIs */
-class RestClient {
+public class RestClient {
 
-    static let serverProtocol = initialize(type: String.self, name: "serverProtocol", from: key, or: "http")
-    static let serverAddress  = initialize(type: String.self, name: "serverAddress" , from: key, or: "127.0.0.1")
-    static let serverPort     = initialize(type: UInt16.self, name: "serverPort"    , from: key, or: 80)
+    public static let serverProtocol = initialize(type: String.self, name: "serverProtocol", from: key, or: "http")
+    public static let serverAddress  = initialize(type: String.self, name: "serverAddress" , from: key, or: "127.0.0.1")
+    public static let serverPort     = initialize(type: UInt16.self, name: "serverPort"    , from: key, or: 80)
 
     /**
      * Successful requests with empty response bodies return `[:]`.
      * Requests that result in an error return `nil`. 
      */
-    static func sendRequest
+    public static func sendRequest
         ( to         endpoint : String
         , over       protocl  : String          = serverProtocol  
         , at         path     : String          = serverAddress
