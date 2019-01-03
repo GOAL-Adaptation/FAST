@@ -340,10 +340,12 @@ public class Runtime {
                     (measureName: String, stats: Statistics) in
                     (measureName, stats.asJson)
                 })
-            let measureStatisticsPerKnobSettings: [String : [String : [String: Double]]] =
-                Dictionary(self.measuringDevices[appName]!.stats.map {
-                    (measureName: String, stats: Statistics) in
-                    (measureName, stats.asJson)
+            let measureStatisticsPerKnobSettings: [String: [String : [String: Double]]] =
+                Dictionary(self.measuringDevices[appName]!.statsPerKnobSettings.map {
+                    kv in
+                    let measureName = kv.0
+                    let perKnobSettingsStats: [KnobSettings: Statistics] = kv.1
+                    return (measureName, Dictionary(perKnobSettingsStats.map{ (String($0.0.kid), $0.1.asJson) }))
                 })
 
             Log.debug("Creating arguments dictionary.")
@@ -358,13 +360,22 @@ public class Runtime {
                 , "verdictComponents"        : toArrayOfPairDicts(verdictComponents)
                 ]
 
-            // The measure values that the controller associates with the current configuration through the controller model.
-            // Note: This will only be defined when running in Adaptive or MachineLearning mode.
-            Log.debug("Calculating measurePredictions.")
-            if let currentConfiguration = getCurrentConfiguration() {
-                arguments["measurePredictions"] = zip( currentConfiguration.measureNames
-                                                     , currentConfiguration.measureValues
-                                                     ).map{ [ "name" : $0, "value" : $1 ] }
+            let applicationExecutionMode = self.runtimeKnobs.applicationExecutionMode.get()
+            let isControllerModelAvailable = applicationExecutionMode == .Adaptive || applicationExecutionMode == .MachineLearning
+
+            if isControllerModelAvailable {
+                // The measure values that the controller associates with the current configuration through the controller model.
+                // Note: This will only be defined when running in Adaptive or MachineLearning mode.
+                Log.debug("Calculating measurePredictions.")
+                let currentConfiguration = getCurrentConfiguration()!
+                arguments["measurePredictions"] = 
+                    zip( currentConfiguration.measureNames
+                       , currentConfiguration.measureValues
+                       ).map{ [ "name" : $0, "value" : $1 ] }
+
+                Log.debug("Creating measureStatisticsPerKnobSettings")
+                arguments["measureStatisticsPerKnobSettings"] = 
+                    measureStatisticsPerKnobSettings
             }
 
             Log.debug("Done with statusDictionary, returning results.")

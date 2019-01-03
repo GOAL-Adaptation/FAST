@@ -1,3 +1,5 @@
+import Foundation
+
 /* Periodically sample measures, according to the samplingPolicy passed at
    initialization, and compute statistics for them. */
 class MeasuringDevice {
@@ -7,6 +9,8 @@ class MeasuringDevice {
     private var samplingPolicy: SamplingPolicy
     private unowned var runtime: Runtime
 
+    private let sortedMeasureNames: [String]!
+    
     // Overall statistics, across all inputs/configurations
     var stats = [String : Statistics]()
     // Per-KnobSettings (configuration) statistics
@@ -19,7 +23,8 @@ class MeasuringDevice {
         self.runtime = runtime
         samplingPolicy.registerSampler(sample)
         
-        for m in Array(Set(applicationMeasures + runtime.runtimeAndSystemMeasures)).sorted() {
+        sortedMeasureNames = Array(Set(applicationMeasures + runtime.runtimeAndSystemMeasures)).sorted()
+        for m in sortedMeasureNames {
             stats[m] = Statistics(measure: m, windowSize: Int(windowSize))
             statsPerKnobSettings[m] = [KnobSettings : Statistics]()
         }
