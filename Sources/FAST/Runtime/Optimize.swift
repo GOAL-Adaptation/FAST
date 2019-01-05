@@ -256,13 +256,18 @@ func optimize
 
         // Returns the highest id present in the knob table, 
         // used to continue interrupted profiling runs.
-        var lastComputedProfileEntry: Int = -1
+        var lastComputedProfileEntry: Int = -2
         do {
             let knobFileString = try String(contentsOf: URL(fileURLWithPath: knobTablePath), encoding: .utf8)
             let knobCSV = CSwiftV(with: knobFileString)
             if let indexOfIdColumn = knobCSV.headers.index(where: { $0 == "id" }) {
                 let ids = knobCSV.rows.map{ Int($0[indexOfIdColumn])! }
-                lastComputedProfileEntry = ids.max() ?? -1
+                if let idsMax = ids.max() { // got at least one knob configuration.
+                    lastComputedProfileEntry = idsMax
+                }
+                else { // only has the header row.
+                    lastComputedProfileEntry = -1 
+                }
             }
             else {
                 FAST.fatalError("Invalid knob table found at '\(knobTablePath)'.")
@@ -284,8 +289,8 @@ func optimize
                         return "\(id)\(rest.reduce( "", { l,r in "\(l),\(r)" }))\n"
                     }
 
-                    // Output headers for tables
-                    if lastComputedProfileEntry < 0 {
+                    // Output headers for tables only when there is no headers
+                    if lastComputedProfileEntry < -1 {
                         let knobTableHeader = makeRow(id: "id", rest: knobNames)
                         knobTableOutputStream.write(knobTableHeader, maxLength: knobTableHeader.count)
                         let measureTableHeader = makeRow(id: "id", rest: measureNames)
