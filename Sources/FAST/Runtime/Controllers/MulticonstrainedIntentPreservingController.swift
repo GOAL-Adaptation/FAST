@@ -62,12 +62,6 @@ class MulticonstrainedIntentPreservingController : Controller {
         }
 
         let schedule = multiconstrainedLinearOptimizer.computeSchedule(window: window) // FIXME Pass meaningful tag for logging
-       
-        print("We have schedule '\(schedule)'.")
-
-        multiconstrainedLinearOptimizer.printProgram()
-
-        //print("CSV: \(self.model).")
 
         assert(schedule.count == window, "The size of schedule is \(schedule.count) and the window size has to be \(window)")
 
