@@ -23,16 +23,21 @@ class MulticonstrainedIntentPreservingController : Controller {
         self.model = sortedModel
         self.window = window
         self.intent = intent
+		let sizeOfConfigurations = model.getSizeOfConfigurations()
 		let domain = sortedModel.getDomainArray().makeIterator()
         let constraintMeasureIdxs = [String](intent.constraints.keys).map { sortedModel.measureNames.index(of: $0) }
-        if (constraintMeasureIdxs.flatMap{ $0 }).count == constraintMeasureIdxs.count {
+        var constraintBounds =  ([Double](intent.constraints.values))
+        constraintBounds.append(Double(window))
+        var constraintCoefficients = (constraintMeasureIdxs.map { c in domain.map { k in model[Int(k)].measureValues[c!] } })
+        constraintCoefficients.append([Double](repeating: 1.0, count: sizeOfConfigurations))
+  	    if (constraintMeasureIdxs.flatMap{ $0 }).count == constraintMeasureIdxs.count {
             self.multiconstrainedLinearOptimizer =
                 MulticonstrainedLinearOptimizer<Double>( 
                     objectiveFunction: {(id: UInt32) -> Double in intent.costOrValue(model.getMeasureVectorFunction()(id))},
 	        		domain: domain,
                     optimizationType: optimizationType,
-                    constraintBounds: [Double](intent.constraints.values),
-                    constraintCoefficients: constraintMeasureIdxs.map { c in domain.map { k in model[Int(k)].measureValues[c!] } }
+                    constraintBounds: constraintBounds,
+                    constraintCoefficients: constraintCoefficients 
                     )
         }
         else {
@@ -40,7 +45,7 @@ class MulticonstrainedIntentPreservingController : Controller {
             exit(1)
             return nil
         }
-    }
+    } 
 
     func getSchedule(_ intent: IntentSpec, _ measureValues: [String : Double]) -> Schedule {
         // FIXME Replace global measure store with custom ordered collection that avoids this conversion
@@ -59,6 +64,12 @@ class MulticonstrainedIntentPreservingController : Controller {
         let schedule = multiconstrainedLinearOptimizer.computeSchedule(window: window) // FIXME Pass meaningful tag for logging
        
         print("We have schedule '\(schedule)'.")
+
+        multiconstrainedLinearOptimizer.printProgram()
+
+        //print("CSV: \(self.model).")
+
+        assert(schedule.count == window, "The size of schedule is \(schedule.count) and the window size has to be \(window)")
 
         return Schedule({ (i: UInt32) -> KnobSettings in
             return self.model![Int(schedule[Int(i)])].knobSettings},

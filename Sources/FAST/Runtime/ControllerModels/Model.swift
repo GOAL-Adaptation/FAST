@@ -83,7 +83,9 @@ open class Model {
     func getMeasureValue(_ index: Int, measureName: String) -> Double {
         return configurations[index].measureValues[measureNameToIndexMap[measureName]!]
     }
-    
+   
+    func getSizeOfConfigurations() -> Int {return configurations.count}
+
 	func getDomainArray() -> [UInt32] {
         return (configurations.map{UInt32($0.id)})
     }
