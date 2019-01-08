@@ -20,6 +20,7 @@ import LoggerAPI
 internal class Statistics {
 
     private var measure: String
+    private let description: String?
 
     /* Total statistics */
     private var _totalAverage: Double = 0
@@ -100,8 +101,9 @@ internal class Statistics {
         .reversed())
     }
 
-    init(measure: String, windowSize: Int) {
+    init(measure: String, windowSize: Int, description: String? = nil) {
         self.measure = measure
+        self.description = description
         precondition(windowSize > 0, "Window size must be positive")
         window = Array(repeating: Double.nan, count: windowSize)
     }
@@ -151,7 +153,12 @@ internal class Statistics {
             window[windowHead] = value
             windowHead = (windowHead + 1) % windowSize
         }
-        Log.verbose("Statistics for \(measure). Last observed value: \(lastObservedValue), window average: \(windowAverage), total average: \(totalAverage), total variance: \(totalVariance).")
+        if let d = description {
+            Log.debug("Statistics for \(measure) \(d). Last observed value: \(lastObservedValue), window average: \(windowAverage), total average: \(totalAverage), total variance: \(totalVariance).")
+        }
+        else {
+            Log.verbose("Statistics for \(measure). Last observed value: \(lastObservedValue), window average: \(windowAverage), total average: \(totalAverage), total variance: \(totalVariance).")
+        }
         return value
     }
 

@@ -44,7 +44,7 @@ class MeasuringDevice {
                         statsForCurrentKnobSettings.observe(measure)
                     }
                     else {
-                        let statsForCurrentKnobSettings = Statistics(measure: m, windowSize: Int(windowSize))
+                        let statsForCurrentKnobSettings = Statistics(measure: m, windowSize: Int(windowSize), description: "at configuration \(currentConfiguration.id)")
                         perKnobSettingsStatsForM[currentConfiguration.knobSettings] = statsForCurrentKnobSettings
                         statsPerKnobSettings[m] = perKnobSettingsStatsForM
                         statsForCurrentKnobSettings.observe(measure)
