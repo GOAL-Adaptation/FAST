@@ -633,8 +633,11 @@ func optimize
 
         // Send status messages to the test harness on a separate thread using this queue
         let sendStatusQueue = DispatchQueue(label: "sendStatus")
+
+        // Output status to console if enough time has elapsed, and unless proteus_runtime_suppressStatus is 'true'
         var timeOfLastStatus = NSDate().timeIntervalSince1970
         let minimumSecondsBetweenStatuses = initialize(type: Double.self, name: "minimumSecondsBetweenStatuses", from: key, or: 0.0)
+        let suppressStatus                = initialize(type: Bool.self,   name: "suppressStatus",                from: key, or: false)
 
         // Start the input processing loop
         loop( iterations: missionLength
@@ -680,12 +683,14 @@ func optimize
                 measuringDevice.reportProgress()
                 // Send a status to the test harness if enough time has elapsed since the last status
                 let timeNow = NSDate().timeIntervalSince1970
-                if runtime.executeWithTestHarness && timeNow >= timeOfLastStatus + minimumSecondsBetweenStatuses {
+                if !suppressStatus && timeNow >= timeOfLastStatus + minimumSecondsBetweenStatuses {
                     let statusDictionary = runtime.statusDictionary()
                     Log.debug("\nCurrent status: \(convertToJsonSR4783(from: statusDictionary ?? [:])).\n")
-                    sendStatusQueue.async {
-                        // FIXME handle error from request
-                        let _ = RestClient.sendRequest(to: "status", withBody: statusDictionary)
+                    if runtime.executeWithTestHarness {
+                        sendStatusQueue.async {
+                            // FIXME handle error from request
+                            let _ = RestClient.sendRequest(to: "status", withBody: statusDictionary)
+                        }
                     }
                     timeOfLastStatus = timeNow
                 }
