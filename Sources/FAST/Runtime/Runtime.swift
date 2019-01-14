@@ -324,7 +324,7 @@ public class Runtime {
                         components["objectiveFunction"]           = objectiveFunction
                         components["objectiveFunctionExpression"] = objectiveFunctionExpression
                     }
-                    components["constraintGoal"]   = intentSpec.constraints.values.first!
+                    components["constraintGoal"]   = (intentSpec.constraints.values.first!).0
                     components["constraintName"]   = intentSpec.constraints.keys.first!
                     components["optimizationType"] = intentSpec.optimizationType == .minimize ? "min" : "max"
                     return ( intentName, components )
@@ -623,8 +623,8 @@ public class Runtime {
       }
       if spec.isEverythingExceptConstraitValueIdentical(to: intents[spec.name]) {
         // FIXME Also check that missionLength didnt change
-        Log.verbose("Knob or measure sets of the new intent are identical to those of the previous intent. Setting the constraint goal of the existing controller to '\(spec.constraints.values.first!)'.")
-        intentPreservingController.fastController.setConstraint(spec.constraints.values.first!)
+        Log.verbose("Knob or measure sets of the new intent are identical to those of the previous intent. Setting the constraint goal of the existing controller to '\((spec.constraints.values.first!).0)'.")
+        intentPreservingController.fastController.setConstraint((spec.constraints.values.first!).0)
         setIntent(spec)
       }
       else {

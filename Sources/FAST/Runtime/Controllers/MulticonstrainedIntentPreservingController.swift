@@ -26,7 +26,7 @@ class MulticonstrainedIntentPreservingController : Controller {
 		let sizeOfConfigurations = model.getSizeOfConfigurations()
 		let domain = sortedModel.getDomainArray().makeIterator()
         let constraintMeasureIdxs = [String](intent.constraints.keys).map { sortedModel.measureNames.index(of: $0) }
-        var constraintBounds =  ([Double](intent.constraints.values))
+        var constraintBounds =  [Double](intent.constraints.values.map { $0.0 })
         constraintBounds.append(Double(window))
         var constraintCoefficients = (constraintMeasureIdxs.map { c in domain.map { k in model[Int(k)].measureValues[c!] } })
         constraintCoefficients.append([Double](repeating: 1.0, count: sizeOfConfigurations))

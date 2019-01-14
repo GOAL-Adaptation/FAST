@@ -160,7 +160,7 @@ class IntentPreservingController : Controller {
                     return (qualityMin,qualityMax)
                 }
 
-                let (qualityMin,qualityMax) = computeAchievableQualityRange(constraintGoal: intent.constraints.values.first!)
+                let (qualityMin,qualityMax) = computeAchievableQualityRange(constraintGoal: (intent.constraints.values.first!).0)
 
                 let sufficientQuality = qualityMin + importance * (qualityMax - qualityMin)
 
@@ -191,7 +191,7 @@ class IntentPreservingController : Controller {
 
             self.fastController =
                 FASTController( model: modelSortedByConstraintMeasure.getFASTControllerModel()
-                              , constraint: intent.constraints.values.first!
+                              , constraint: (intent.constraints.values.first!).0
                               , constraintMeasureIdx: constraintMeasureIdx
                               , window: window
                               , optType: intent.optimizationType

@@ -22,7 +22,7 @@ public protocol IntentSpec {
 
   var measures: [String]  { get }
 
-  var constraints: [String : Double] { get }
+  var constraints: [String : (Double, ConstraintType)] { get }
 
   var costOrValue: ([Double]) -> Double { get }
 
@@ -32,6 +32,10 @@ public protocol IntentSpec {
 
   var objectiveFunctionRawString: String? { get }
 
+}
+
+public enum ConstraintType{
+  case lessOrEqualTo, equalTo, greaterOrEqualTo 
 }
 
 extension IntentSpec {

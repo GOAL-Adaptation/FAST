@@ -82,7 +82,7 @@ public class Compiler {
             let name             : String
             let knobs            : [String : ([Any], Any)]
             let measures         : [String]
-            let constraints      : [String : Double]
+            let constraints      : [String : (Double, ConstraintType)]
             let costOrValue      : ([Double]) -> Double
             let optimizationType : FASTControllerOptimizationType
             let trainingSet      : [String]
@@ -92,7 +92,7 @@ public class Compiler {
         init( name             : String
                 , knobs            : [String : ([Any], Any)]
                 , measures         : [String]
-                , constraints      : [String : Double]
+                , constraints      : [String : (Double, ConstraintType)]
                 , costOrValue      : @escaping ([Double]) -> Double
                 , optimizationType : FASTControllerOptimizationType
                 , trainingSet      : [String]
@@ -238,8 +238,8 @@ public class Compiler {
     }
     
     /** Extract multiple constraints from a parsed intent specification.  */
-    internal func compileConstraints(_ intentExpr: IntentExpression) -> [String : Double] {
-        return intentExpr.intentSection.intentDecl.constraints.mapValues({ compileTypedLiteral($0)! })
+    internal func compileConstraints(_ intentExpr: IntentExpression) -> [String : (Double, ConstraintType)] {
+        return intentExpr.intentSection.intentDecl.constraints.mapValues({ (compileTypedLiteral($0.0)!, $0.1) })
     }
 
     /** Translate a binary operator expression into a SWIFT expression. */
