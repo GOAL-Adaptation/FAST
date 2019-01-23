@@ -37,24 +37,43 @@
 		],
 		"intent": {
 			"name": "incrementer",
-			"optimizationType": "min",
+			"optimizationType": "max",
 			"objectiveFunction": {			
                 "operator": "/",
                 "leftExpression": {
-                    "operator": "*",
-                    "leftExpression": {
-                        "variableName": "operations"
-                    },
-                    "rightExpression": {
-                        "variableName": "operations"
-                    }
+					"literal": 1.0
                 },
                 "rightExpression": {
-                    "literal": 2.0
+					"operator": "*",
+					"leftExpression": {
+						"variableName": "operations"
+					},
+					"rightExpression": {
+						"variableName": "operations"
+					}
                 }
 			},
-			"constraintVariable": "performance",
-			"constraintValue": 50.0
+			"constraint": {
+				"operator": "and",
+				"leftPredicate": {
+					"operator": "<=",
+					"leftExpression": {
+						"variableName": "quality"
+					},
+					"rightExpression": {
+						"literal": 50000.0
+					}
+				},
+				"rightPredicate": {
+					"operator": "<=",
+					"leftExpression": {
+						"variableName": "performance"
+					},
+					"rightExpression": {
+						"literal": 5.0
+					}
+				}
+			}
 		}
 	},
 	"availableCores" : 4,

@@ -223,6 +223,26 @@ public class RestServer {
 
     }
 
+    /** Show the constraint predicate AST expressed by the JSON parameter as a string. */
+    static func mkPredicateString(from json: [String: Any]) -> String {
+        guard 
+            let opAny = json["operator"],
+            let op = opAny as? String
+        else {
+            FAST.fatalError("Unable to extract operator from predicate: \(json).")
+        }
+        switch op {
+            case "and":
+                return mkPredicateString(from: json["leftPredicate"]!   as! [String: Any]) +
+                       " and " +
+                       mkPredicateString(from: json["rightPredicate"]!  as! [String: Any])
+            default:
+                return mkExpressionString(from: json["leftExpression"]!  as! [String: Any]) +
+                        op +
+                        mkExpressionString(from: json["rightExpression"]! as! [String: Any])
+        }
+    }
+
     /** Extract intent components from JSON messahge and inject them into string template. */
     static func mkIntentString(from json: [String: Any]) -> String {
         // FIXME Use (definitions section of) Swagger specification to validate the input,
@@ -241,8 +261,10 @@ public class RestServer {
         let intentName               = intent["name"]!               as! String
         let intentOptimizationType   = intent["optimizationType"]!   as! String
         let intentObjectiveFunction  = intent["objectiveFunction"]!  as! [String: Any]
-        let intentConstraintVariable = intent["constraintVariable"]! as! String
-        let intentConstraintValue    = intent["constraintValue"]!    as! Double
+        let intentConstraint         = intent["constraint"]!         as! [String: Any]
+
+        let intentConstraintString = mkPredicateString(from: intentConstraint)
+
         let measuresString: String = measures.map {
             "\($0["name"]! as! String): Double"
         }.joined(separator:"\n\t")
@@ -261,7 +283,7 @@ public class RestServer {
             "knobs \(knobsString) \n" +
             "measures \(measuresString) \n" +
             "intent \(intentName) \(intentOptimizationType)(\(intentObjectiveFunctionString)) " +
-                "such that \(intentConstraintVariable) == \(intentConstraintValue) \n" +
+                "such that \(intentConstraintString) \n" +
             "trainingSet []"
     }
 
