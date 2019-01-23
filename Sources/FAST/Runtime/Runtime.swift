@@ -673,7 +673,7 @@ public class Runtime {
                         return currentConfiguration
                     }
                     else {
-                        FAST.fatalError("Current configuration with id \(currentKnobSettingsId) not found in current model \(currentModel).")
+                        FAST.fatalError("Configuration with id \(currentKnobSettingsId) (the current configuration id) not found in current model, which contains configurations with ids: '\(currentModel.configurations.map{$0.knobSettings.kid})'. Intent specification may be inconsistent with the model.")
                     }
                 }
                 else {
