@@ -76,7 +76,7 @@ class FastRestServer : RestServer {
                     Log.debug("Perturbation changed intent in a way that produced valid knob ranges. Reinitializing controller and invalidating current schedule.")
                     // Reinitialize the controller with the new intent
                     // NOTE: During the initialization of perturbation, perturbation.missionIntent has been filtered with respect to the scenario knobs!
-                    runtime.reinitializeController(perturbation.missionIntent, perturbation.missionLength, perturbation.enforceEnergyLimit, perturbation.sceneImportance)
+                    runtime.reinitializeController(perturbation.missionIntent, perturbation.missionLength)
                     runtime.schedule = nil // invalidate current schedule
                 }
                 else {

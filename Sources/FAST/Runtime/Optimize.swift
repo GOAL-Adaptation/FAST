@@ -139,8 +139,6 @@ func optimize
                 return 1.0 / measureGetter("latency")
             case "powerConsumption": 
                 return measureGetter("energyDelta") / measureGetter("latency")
-            case "energyRemaining":
-                return measureGetter("energyLimit") - measureGetter("energy")
             default:
                 return measureGetter(measureName)
         }
@@ -205,12 +203,6 @@ func optimize
                     computeDerivedMeasure("performance", runtimeMeasureValueGetter)) // seconds per iteration
                 runtime.measure("powerConsumption", 
                     computeDerivedMeasure("powerConsumption", runtimeMeasureValueGetter)) // rate of energy
-                // If running in Adaptive mode, the energyLimit is defined
-                if let theEnergyLimit = runtime.energyLimit {
-                    runtime.measure("energyLimit", Double(theEnergyLimit))
-                    runtime.measure("energyRemaining", 
-                        computeDerivedMeasure("energyRemaining", runtimeMeasureValueGetter))
-                } 
             }
             else {
                 Log.debug("Zero time passed between two measurements of time. The performance and powerConsumption measures cannot be computed.")
@@ -495,7 +487,7 @@ func optimize
 
     }
 
-    func run(model: Model?, intent: IntentSpec, missionLength: UInt64, enforceEnergyLimit: Bool) {
+    func run(model: Model?, intent: IntentSpec, missionLength: UInt64) {
 
         Log.info("Running optimize scope \(id).")
 
@@ -504,66 +496,6 @@ func optimize
         let model = runtime.executeWithMachineLearning 
                   ? runtime.requestInitialModelFromMachineLearning(id: id, activeIntent: intent, originalModel: model)
                   : model
-
-        /** 
-         * Compute the energyLimit as the amount of energy that must be available 
-         * to the system when it starts, to complete the missionLength assuming that 
-         * it is always executing in the most energy-inefficient configuration, that 
-         * is, the one with the highest energyDelta.
-         */
-        func computeEnergyLimit() -> UInt64? {
-
-            switch runtime.runtimeKnobs.applicationExecutionMode.get() {
-                
-                case .Adaptive, .MachineLearning:
-
-                    if let controllerModel = model {
-                        let modelSortedByEnergyDeltaMeasure = controllerModel.sorted(by: "energyDelta")
-                        if 
-                            let energyDeltaMeasureIdx            = modelSortedByEnergyDeltaMeasure.measureNames.index(of: "energyDelta"),
-                            let modelEnergyDeltaMaxConfiguration = modelSortedByEnergyDeltaMeasure.configurations.last,
-                            let modelEnergyDeltaMinConfiguration = modelSortedByEnergyDeltaMeasure.configurations.first
-                        {
-                            let modelEnergyDeltaMaxDouble = modelEnergyDeltaMaxConfiguration.measureValues[energyDeltaMeasureIdx]
-                            let modelEnergyDeltaMinDouble = modelEnergyDeltaMinConfiguration.measureValues[energyDeltaMeasureIdx]
-
-                            if modelEnergyDeltaMinDouble == 0.0 {
-                                FAST.fatalError("Model minimum energyDelta measure is 0.0. Can not compute energyLimit.")
-                            }
-
-                            let modelEnergyDeltaMax = UInt64(modelEnergyDeltaMaxDouble)
-                            let modelEnergyDeltaMin = UInt64(modelEnergyDeltaMinDouble)
-
-                            if modelEnergyDeltaMin == 0 {
-                                Log.error("Minimum energyDelta found in active controller model is 0. Energy limit computation will fail!")
-                            }
-                            
-                            let energyLimit = modelEnergyDeltaMax * missionLength
-                            let maxMissionLength = energyLimit / modelEnergyDeltaMin
-
-                            Log.verbose("An energyLimit of \(energyLimit) was computed based on a missionLength of \(missionLength) and least energy-efficient model configuration with energyDelta \(modelEnergyDeltaMax). Maximum missionLength with this energyLimit is \(maxMissionLength)")
-
-                            return energyLimit
-                        }
-                        else {
-                            FAST.fatalError("Model is missing the energyDelta measure. Can not compute energyLimit.")
-                        }
-                    }
-                    else {
-                        FAST.fatalError("No model loaded. Can not compute energyLimit.")
-                    }
-
-                case .NonAdaptive:
-
-                    Log.verbose("Executing in NonAdaptive mode, no energyLimit computed.")
-                    return nil
-
-                default:
-                    
-                    FAST.fatalError("Attempt to execute in unsupported execution mode: \(runtime.runtimeKnobs.applicationExecutionMode.get()).")
-            }
-
-        }
 
         func initializeControllerAndMeasuresAndGetInitialKnobSettings() -> KnobSettings {
 
@@ -576,7 +508,7 @@ func optimize
                     if let controllerModel = model {
 
                         // Initialize the controller with the knob-to-mesure model, intent and window size
-                        runtime.initializeController(controllerModel, intent, windowSize, missionLength, enforceEnergyLimit)
+                        runtime.initializeController(controllerModel, intent, windowSize, missionLength)
 
                         // Compute initial schedule that meets the active intent, by using the measure values of
                         // the reference configuration as an estimate of the first measurements.
@@ -620,10 +552,6 @@ func optimize
                     FAST.fatalError("Attempt to execute in unsupported execution mode: \(runtime.runtimeKnobs.applicationExecutionMode.get()).")
 
             }
-        }
-        
-        if enforceEnergyLimit {
-            runtime.energyLimit = computeEnergyLimit() // Initialize the runtime's energyLimit based on the model
         }
 
         // For the first window, the runtime will execute in the initial configuration 
@@ -721,9 +649,6 @@ func optimize
 
             // FIXME Read a model corresponding to the initialized application,
             //       intent, and input stream.
-            // NOTE  If missionLength is to be enforced (ips.initialConditions.enforceEnergyLimit)
-            //       then load a model that has been filtered to keep only configurations that
-            //       exhibit a strictly isotonic relationship between energyDelta and quality.
             var model: Model
             if let modelFromTestHarness = ips.model {
                 Log.info("Received model as part of the inialization parameters.")
@@ -731,7 +656,7 @@ func optimize
             }
             else {
                 Log.info("No model received as part of the inialization parameters, will read the model from file.")
-                model = runtime.readModelFromFile(id, intent: ips.initialConditions.missionIntent, readTradeoffFilteredModel: ips.initialConditions.enforceEnergyLimit)!
+                model = runtime.readModelFromFile(id, intent: ips.initialConditions.missionIntent)!
             }
 
             Log.debug("Using initialization parameters from test harness: \(ips.asDict()).")
@@ -746,7 +671,7 @@ func optimize
             Log.verbose("Setting application execution model to \(applicationExecutionMode).")
             runtime.runtimeKnobs.applicationExecutionMode.set(applicationExecutionMode)
 
-            run(model: model, intent: ips.initialConditions.missionIntent, missionLength: ips.initialConditions.missionLength, enforceEnergyLimit: ips.initialConditions.enforceEnergyLimit)
+            run(model: model, intent: ips.initialConditions.missionIntent, missionLength: ips.initialConditions.missionLength)
 
         }
         else {
@@ -777,13 +702,12 @@ func optimize
                         Log.info("Model loaded for optimize scope \(id).")
 
                         if 
-                            let missionLength      = initialize(type: UInt64.self, name: "missionLength"     , from: key),
-                            let enforceEnergyLimit = initialize(type: Bool.self  , name: "enforceEnergyLimit", from: key)
+                            let missionLength      = initialize(type: UInt64.self, name: "missionLength"     , from: key)
                         {
-                            run(model: model, intent: intent, missionLength: missionLength, enforceEnergyLimit: enforceEnergyLimit)
+                            run(model: model, intent: intent, missionLength: missionLength)
                         }
                         else {
-                            FAST.fatalError("The  missionLength and enforceEnergyLimit parameters (mandatory for Adaptive execution) could not be initialized.")
+                            FAST.fatalError("The missionLength parameter (mandatory for Adaptive execution) could not be initialized.")
                         }
 
                     } else {
@@ -797,8 +721,7 @@ func optimize
                         if 
                             let missionLength = initialize(type: UInt64.self, name: "missionLength", from: key)
                         {
-                            // energyLimit not defined or enforced
-                            run(model: model, intent: intent, missionLength: missionLength, enforceEnergyLimit: false)
+                            run(model: model, intent: intent, missionLength: missionLength)
                         }
                         else {
                             FAST.fatalError("The missionLength parameter (mandatory for NonAdaptive execution) could not be initialized.")

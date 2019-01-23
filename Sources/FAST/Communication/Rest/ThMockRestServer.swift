@@ -48,8 +48,6 @@ class ThMockRestServer : RestServer {
         , "availableCores"         : 3
         , "availableCoreFrequency" : 2000000
         , "missionLength"          : 567
-        , "enforceEnergyLimit"     : false
-        , "sceneImportance"        : 0.0
         ]
 
     static let initializationParameters: [String : Any] =

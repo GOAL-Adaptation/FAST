@@ -85,7 +85,7 @@ public class Runtime {
     // Names of measures registered by the runtime. 
     // Along with the systemMeasures registered by the architecture, these are reserved measure names.
     let runtimeMeasures = 
-        ["windowSize", "iteration", "latency", "energyDelta", "energy", "energyLimit", "energyRemaining", "runningTime", "performance", "powerConsumption", "currentConfiguration"]
+        ["windowSize", "iteration", "latency", "energyDelta", "energy", "runningTime", "performance", "powerConsumption", "currentConfiguration"]
 
     func resetRuntimeMeasures(windowSize: UInt32) {
         self.measure("windowSize", Double(windowSize))
@@ -93,8 +93,6 @@ public class Runtime {
         self.measure("latency", 0.0) // latency in seconds
         self.measure("energyDelta", 0.0) // energy per iteration
         self.measure("energy", 0.0) // energy since application started or was last reset
-        self.measure("energyLimit", Double(self.energyLimit ?? 0)) // energyDelta of most energy-inefficient configuration times initial mission length 
-        self.measure("energyRemaining", Double(self.energyLimit ?? 0)) // runtime.energyLimit - energy 
         self.measure("runningTime", 0.0) // running time in seconds
         self.measure("performance", 0.0) // seconds per iteration
         self.measure("powerConsumption", 0.0) // rate of energy
@@ -137,14 +135,6 @@ public class Runtime {
 
     var schedule: Schedule? = nil
 
-    // The amount of energy that the system is provisioned with at the start of a mission, 
-    // which is assumed to be enough to operate in the configuration with the highest 
-    // energyDelta for the entire initial missionLength.
-    // NOTE: Is only nil until it is initialized during the computation of the initial schedule
-    //       in Optimize.setUpControllerAndComputeInitialScheduleAndConfigurationAndEnergyLimit, 
-    //       and should be safe to unwrap at any time during Adaptve executions.
-    var energyLimit: UInt64? = nil
-
     /**
      * Read it from the file system. The intent will be loaded from a file whose
      * name is <APPLICATION_PATH>/<ID>.intent, where <APPLICATION_PATH> is the
@@ -182,8 +172,8 @@ public class Runtime {
      * <APPLICATION_PATH>/<ID>.measuretable where <APPLICATION_PATH> is the
      * location of the application and <ID> is the value of the id parameter.
      */
-    func readModelFromFile(_ id: String, intent: IntentSpec, readTradeoffFilteredModel: Bool = false) -> Model? {
-        let tableSuffix = readTradeoffFilteredModel ? "table.filtered" : "table"
+    func readModelFromFile(_ id: String, intent: IntentSpec) -> Model? {
+        let tableSuffix = "table"
         if let knobCSV = readFile(withName: id, ofType: "knob\(tableSuffix)") {
             if let measureCSV = readFile(withName: id, ofType: "measure\(tableSuffix)") {
                 return Model(knobCSV, measureCSV, intent)
@@ -254,9 +244,7 @@ public class Runtime {
         self.reinitializeController(
             currentIntent, 
             replacingCurrentModelWith: newModel, 
-            intentPreservingController.missionLength,
-            intentPreservingController.enforceEnergyLimit,
-            intentPreservingController.sceneImportance
+            intentPreservingController.missionLength
         )
 
     }
@@ -516,7 +504,7 @@ public class Runtime {
     }
 
     /** Intialize intent preserving controller with the given model, intent, missionLength and window. */
-    func initializeController(_ model: Model, _ intent: IntentSpec, _ window: UInt32 = 20, _ missionLength: UInt64, _ enforceEnergyLimit: Bool, _ sceneImportance: Double? = nil) {
+    func initializeController(_ model: Model, _ intent: IntentSpec, _ window: UInt32 = 20, _ missionLength: UInt64) {
         Log.debug("In preparation for initializing the controller, will now trim the model.")
         // Trim model with respect to the intent, to force the controller to choose only those
         // configurations that the user has specified there.
@@ -534,7 +522,7 @@ public class Runtime {
         synchronized(controllerLock) {
             switch intent.constraints.count {
             case 1:    
-                if let c = IntentPreservingController(modelTrimmedToBothIntentAndFilters, intent, self, window, missionLength, self.energyLimit, enforceEnergyLimit, sceneImportance) {
+                if let c = IntentPreservingController(modelTrimmedToBothIntentAndFilters, intent, self, window, missionLength) {
                     setIntent(intent)
                     setModel(name: intent.name, currentModel: modelTrimmedToBothIntentAndFilters, untrimmedModel: model)
                     controller = c
@@ -585,9 +573,7 @@ public class Runtime {
                 let (_ /* currentModel will be recomputed */, untrimmedModel) = self.models[currentIntent.name] 
             {
                 initializeController(untrimmedModel, currentIntent, self.controller.window, 
-                    intentPreservingController.missionLength,
-                    intentPreservingController.enforceEnergyLimit, 
-                    intentPreservingController.sceneImportance)
+                    intentPreservingController.missionLength)
             } else {
                 FAST.fatalError("Attempt to reinitialize controller based on a controller with an undefined model.")
             }
@@ -597,7 +583,7 @@ public class Runtime {
     }
 
     /** Reintialize intent preserving controller with the intent, keeping the previous model and window */
-    public func reinitializeController(_ spec: IntentSpec, replacingCurrentModelWith newModel: Model? = nil, _ missionLength: UInt64?, _ enforceEnergyLimit: Bool?, _ sceneImportance: Double? = nil) {
+    public func reinitializeController(_ spec: IntentSpec, replacingCurrentModelWith newModel: Model? = nil, _ missionLength: UInt64?) {
         if 
             let intentPreservingController = self.controller as? IntentPreservingController,
             let (_ /* currentModel will be recomputed */, untrimmedModel) = self.models[spec.name]
@@ -605,9 +591,7 @@ public class Runtime {
             // Use the passed model if available, otherwise use the model of the active controller
             var model = newModel ?? untrimmedModel
             initializeController(model, spec, controller.window, 
-                missionLength      ?? intentPreservingController.missionLength,
-                enforceEnergyLimit ?? intentPreservingController.enforceEnergyLimit, 
-                sceneImportance    ?? intentPreservingController.sceneImportance)
+                missionLength      ?? intentPreservingController.missionLength)
         } 
         else if let constantController = self.controller as? ConstantController {
             setIntent(spec)
@@ -616,7 +600,7 @@ public class Runtime {
         }
     }
 
-    public func changeIntent(_ spec: IntentSpec, _ missionLength: UInt64? = nil, _ enforceEnergyLimit: Bool? = nil, _ sceneImportance: Double? = nil) {
+    public func changeIntent(_ spec: IntentSpec, _ missionLength: UInt64? = nil) {
       guard let intentPreservingController = controller as? IntentPreservingController else {
         Log.error("Active controller type '\(type(of: controller))' does not support change of intent.")
         return
@@ -630,9 +614,7 @@ public class Runtime {
       else {
         Log.verbose("Reinitializing the controller for `\(spec.name)`.")
         reinitializeController(spec, 
-            missionLength      ?? intentPreservingController.missionLength, 
-            enforceEnergyLimit ?? intentPreservingController.enforceEnergyLimit, 
-            sceneImportance    ?? intentPreservingController.sceneImportance)
+            missionLength      ?? intentPreservingController.missionLength)
       }
     }
 
@@ -698,12 +680,8 @@ public class Runtime {
     /** Set scenario knobs according to perturbation */
     func setScenarioKnobs(accordingTo perturbation: Perturbation) {
         var newSettings: [String : [String : Any]] = [
-            "missionLength":      ["missionLength":      perturbation.missionLength],
-            "enforceEnergyLimit": ["enforceEnergyLimit": perturbation.enforceEnergyLimit], 
+            "missionLength":      ["missionLength":      perturbation.missionLength]
         ]
-        if let sceneImportance = perturbation.sceneImportance {
-            newSettings["sceneImportance"] = ["sceneImportance": sceneImportance]
-        }
         self.scenarioKnobs.setStatus(newSettings: newSettings)
         self.setKnob("availableCores",         to: perturbation.availableCores)
         self.setKnob("availableCoreFrequency", to: perturbation.availableCoreFrequency)

@@ -54,8 +54,6 @@ clean:
 
 rebuild: clean build
 
-execute:              export proteus_runtime_enforceEnergyLimit               := false
-execute:              export proteus_runtime_sceneImportance                  := 0.0
 execute:              export proteus_runtime_address                          := 0.0.0.0
 execute:              export proteus_client_rest_serverAddress                := brass-th
 execute:              export proteus_client_rest_serverPort                   := 8080

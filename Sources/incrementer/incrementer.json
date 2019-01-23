@@ -59,7 +59,5 @@
 	},
 	"availableCores" : 4,
 	"availableCoreFrequency" : 1200,
-	"missionLength" : 100,
-	"enforceEnergyLimit" : false,
-	"sceneImportance" : 0.0
+	"missionLength" : 100
 }
