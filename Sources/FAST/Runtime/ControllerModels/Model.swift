@@ -149,14 +149,13 @@ open class Model {
     /** Trim model to contain only configurations that satisfy the passed filter. */
     func trim(toSatisfy filter: (Configuration) -> Bool, _ filterDescription: String) -> Model {
         let filteredConfigurations = self.configurations.filter{ filter($0) }
-        var filteredConfigurationsWithUpdatedIds: [Configuration] = []
-        for configId in 0 ..< filteredConfigurations.count {
-            filteredConfigurationsWithUpdatedIds.append(filteredConfigurations[configId].with(newId: configId))
+        if filteredConfigurations.count < self.configurations.count {
+            Log.verbose("Trimmed controller model from \(self.configurations.count) to \(filteredConfigurations.count) configurations.")
         }
-        if filteredConfigurationsWithUpdatedIds.count < self.configurations.count {
-            Log.verbose("Trimmed controller model from \(self.configurations.count) to \(filteredConfigurationsWithUpdatedIds.count) configurations.")
+        else {
+            Log.verbose("Controller model not affected by filter, no configurations trimmed.")
         }
-        return Model(filteredConfigurationsWithUpdatedIds, measureNames)
+        return Model(filteredConfigurations, measureNames)
     }
     
     func toKnobTableCSV() -> String {
