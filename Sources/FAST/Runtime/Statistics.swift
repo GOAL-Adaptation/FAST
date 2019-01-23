@@ -33,6 +33,20 @@ internal class Statistics {
     private var windowIsComplete: Bool = false
     private var windowLock: NSLock = NSLock()
 
+    /**
+     * Last observed value
+     */
+    var lastObservedValue: Double {
+        get {
+            if totalCount == 0 {
+                return Double.nan
+            }
+            else {
+                return window[((windowHead + windowSize) - 1) % windowSize]
+            }
+        }
+    }
+
     /** Cumulative average, computed over all observations.
      *  Note: Unlike Welford incremental variance, define average 
      *        as the single available observation when the number 
@@ -137,7 +151,7 @@ internal class Statistics {
             window[windowHead] = value
             windowHead = (windowHead + 1) % windowSize
         }
-        Log.verbose("Statistics for \(measure). Total average: \(totalAverage), total variance: \(totalVariance), window average: \(windowAverage).")
+        Log.verbose("Statistics for \(measure). Last observed value: \(lastObservedValue), window average: \(windowAverage), total average: \(totalAverage), total variance: \(totalVariance).")
         return value
     }
 
@@ -145,9 +159,10 @@ internal class Statistics {
     var asJson: [String : Double] {
         get {
             return 
-                [ "totalVariance" : totalVariance
-                , "totalAverage"  : totalAverage
-                , "windowAverage" : windowAverage 
+                [ "totalVariance"     : totalVariance
+                , "totalAverage"      : totalAverage
+                , "windowAverage"     : windowAverage 
+                , "lastObservedValue" : lastObservedValue
                 ]
         }
     }
