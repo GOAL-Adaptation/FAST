@@ -266,8 +266,7 @@ components:
             - name
             - optimizationType
             - objectiveFunction
-            - constraintVariable
-            - constraintValue
+            - constraints
           properties:
             name:
               type: string
@@ -280,9 +279,8 @@ components:
                 An arithmetic expression over the measures declared in the measures
                 parameter of the enclosing IntentSpecification.
               $ref: '#/components/schemas/Expression'
-            constraintVariable:
-              description: The name of a measure.
-              type: string
+            constraint:
+              $ref: '#/components/schemas/Predicate'
             constraintValue:
               type: number
 
@@ -367,6 +365,48 @@ components:
           $ref: '#/components/schemas/Expression'
         rightExpression:
           $ref: '#/components/schemas/Expression'
+
+    Predicate:
+      type: object
+      required:
+        - predicate
+      properties:
+        predicate: 
+          oneOf:
+            - $ref: '#/components/schemas/PredicateBinaryRelation'
+            - $ref: '#/components/schemas/PredicateBinaryOperator'
+
+    PredicateBinaryRelation:
+      type: object
+      required:
+        - operator
+        - leftExpression
+        - rightExpression
+      properties:
+        operator:
+          enum:
+            - '=='
+            - '<='
+            - '>='
+        leftExpression:
+          $ref: '#/components/schemas/Expression'
+        rightExpression:
+          $ref: '#/components/schemas/Expression'
+
+    PredicateBinaryOperator:
+      type: object
+      required:
+        - operator
+        - leftPredicate
+        - rightPredicate
+      properties:
+        operator:
+          enum:
+            - 'and'
+        leftPredicate:
+          $ref: '#/components/schemas/Predicate'
+        rightPredicate:
+          $ref: '#/components/schemas/Predicate'
 
     #### End JSON FAST ISL Intent Types ###
 
