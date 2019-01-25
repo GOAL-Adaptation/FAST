@@ -41,13 +41,14 @@ open class Model {
         self.measureNameToIndexMap = Dictionary(Array(zip(intent.measures, 0 ..< intent.measures.count)))
         assert(!intent.measures.map{ measureNonIdHeaders.contains($0) }.contains(false), "All measures in the intent must also be present in the model.")
         var configurations: [Configuration] = []
-        for configId in 0 ..< knobTable.rows.count {
-            let knobNameValuePairs = Array(zip(knobNames, knobTable.rows[configId].dropFirst().map{ parseKnobSetting(setting: $0) }))
+        for rowNumber in 0 ..< knobTable.rows.count {
+            let configId = Int(knobTable.rows[rowNumber].first!)!
+            let knobNameValuePairs = Array(zip(knobNames, knobTable.rows[rowNumber].dropFirst().map{ parseKnobSetting(setting: $0) }))
             let knobSettings = KnobSettings(kid: configId, [String:Any](knobNameValuePairs))
             var measures = [String : Double]()
             for m in measureNames {
                 let indexOfM = measureNonIdHeaders.index(of: m)! 
-                measures[m] = Double(measureTable.rows[configId].dropFirst()[indexOfM])! // FIXME Add error handling
+                measures[m] = Double(measureTable.rows[rowNumber].dropFirst()[indexOfM])! // FIXME Add error handling
             }
             configurations.append(Configuration(configId, knobSettings, measures))
         }
