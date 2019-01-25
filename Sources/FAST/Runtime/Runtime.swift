@@ -301,10 +301,7 @@ public class Runtime {
                 Dictionary(measuringDevices.map{
                     (intentName, measuringDevice) in
                     let intentSpec = intents[intentName]!
-                    let windowAverages = measuringDevice.windowAverages()
-                    let constraintVariableValue = windowAverages[intentSpec.constraints.keys.first!]!
-                    var components =
-                        [ "constraintVariableValue" : constraintVariableValue as Any ]
+                    var components = [String : Any]()
                     if 
                         let objectiveFunction           = intentSpec.currentCostOrValue(runtime: self),
                         let objectiveFunctionExpression = intentSpec.objectiveFunctionRawString
@@ -312,9 +309,18 @@ public class Runtime {
                         components["objectiveFunction"]           = objectiveFunction
                         components["objectiveFunctionExpression"] = objectiveFunctionExpression
                     }
-                    components["constraintGoal"]   = (intentSpec.constraints.values.first!).0
-                    components["constraintName"]   = intentSpec.constraints.keys.first!
                     components["optimizationType"] = intentSpec.optimizationType == .minimize ? "min" : "max"
+                    let windowAverages = measuringDevice.windowAverages()
+                    components["constraints"] = intentSpec.constraints.map {
+                        (constraintVariable: String, valueAndType: (Double, ConstraintType)) -> [String : Any] in 
+                        let (constraintValue, constraintType) = valueAndType
+                        return [
+                            "variable" : constraintVariable,
+                            "goal"     : constraintValue,
+                            "value"    : windowAverages[constraintVariable]!,
+                            "type"     : constraintType.rawValue
+                        ]
+                    }
                     return ( intentName, components )
                 })
 
