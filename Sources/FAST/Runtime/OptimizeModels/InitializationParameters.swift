@@ -7,7 +7,7 @@ struct InitializationParameters {
     }
 
     enum ApplicationName {
-        case radar, x264, capsule, incrementer
+        case radar, x264, capsule, incrementer, flightTestScenario7
     }
 
     let architecture             : ArchitectureName
