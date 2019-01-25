@@ -34,8 +34,8 @@ public protocol IntentSpec {
 
 }
 
-public enum ConstraintType{
-  case lessOrEqualTo, equalTo, greaterOrEqualTo 
+public enum ConstraintType : String {
+  case lessOrEqualTo = "<=", equalTo = "==", greaterOrEqualTo = ">="
 }
 
 extension IntentSpec {
