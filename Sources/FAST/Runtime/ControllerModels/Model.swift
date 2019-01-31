@@ -114,7 +114,15 @@ open class Model {
                         return r.contains(v)
                     } 
                     else {
-                        FAST.fatalError("Knob \(knobName) in model has value '\(knobValue)' of unsupported type: '\(type(of: knobValue))'.")
+                        if 
+                            let v = knobValue as? String,
+                            let r = knobRange as? [String] 
+                        {
+                            return r.contains(v)
+                        } 
+                        else {
+                            FAST.fatalError("Knob \(knobName) in model has value '\(knobValue)' of unsupported type: '\(type(of: knobValue))'.")
+                        }
                     }
                 }
                 else {

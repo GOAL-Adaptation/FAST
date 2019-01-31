@@ -156,6 +156,8 @@ public class Compiler {
                     return i
                 case .floatingPoint(let r, _):
                     return r
+                case .staticString(let s, _):
+                    return s
                 default: 
                     FAST.fatalError("Unsupported literal: \(le).")
             }
