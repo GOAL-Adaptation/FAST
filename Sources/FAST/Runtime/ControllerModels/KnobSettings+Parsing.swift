@@ -11,7 +11,13 @@ func parseKnobSetting(setting: Any) -> Any {
                 return d
             }
             else {
-                FAST.fatalError("Could not parse knob setting \(setting) of type \(type(of: setting)).")
+                // The profiler serializes String type knob values within angle brackets
+                if s.prefix(1) == "<" && s.suffix(1) == ">" && s.count > 2 {
+                    return String(s.dropFirst().dropLast())
+                }
+                else { 
+                    FAST.fatalError("Could not parse knob setting \(setting) of type \(type(of: setting)).")
+                }
             }
         }
     }

@@ -327,7 +327,15 @@ func optimize
                         }
 
                         // Output profile entry as line in knob table
-                        let knobValues = knobNames.map{ knobSettings.settings[$0]! }
+                        func serializeKnobValue(_ v : Any) -> String {
+                            switch v {
+                                case let vString as String:
+                                    return "<\(vString)>"
+                                default:
+                                    return "\(v)"
+                            }
+                        }
+                        let knobValues = knobNames.map{ serializeKnobValue(knobSettings.settings[$0]!) }
                         let knobTableLine = makeRow(id: i, rest: knobValues)
                         knobTableOutputStream.write(knobTableLine, maxLength: knobTableLine.characters.count)
 
