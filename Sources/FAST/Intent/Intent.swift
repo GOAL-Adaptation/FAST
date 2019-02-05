@@ -195,6 +195,11 @@ extension IntentSpec {
         let otherValues = other.knobs[key]?.0 as? [Double], let otherRefValue = other.knobs[key]?.1 as? Double
       {
         guard values == otherValues && refValue == otherRefValue else { return false }
+      } else if
+        let values = self.knobs[key]?.0 as? [String], let refValue = self.knobs[key]?.1 as? String,
+        let otherValues = other.knobs[key]?.0 as? [String], let otherRefValue = other.knobs[key]?.1 as? String
+      {
+        guard values == otherValues && refValue == otherRefValue else { return false }
       } else {
         return false
       }
