@@ -523,7 +523,7 @@ public class Runtime {
             let (description, filter) = descriptionAndFilter
             return m.trim(toSatisfy: filter, description)
         })
-        Log.debug("Model trimmed to registered filters. Will now initialize controller.")
+        Log.debug("Model trimmed to registered filters. Will now initialize controller for intent with \(intent.constraints.count) constraints.")
         synchronized(controllerLock) {
             switch intent.constraints.count {
             case 1:    
@@ -531,10 +531,10 @@ public class Runtime {
                     setIntent(intent)
                     setModel(name: intent.name, currentModel: modelTrimmedToBothIntentAndFilters, untrimmedModel: model)
                     controller = c
-                    Log.info("Controller initialized.")
+                    Log.info("IntentPreservingController initialized.")
                 }
                 else {
-                    FAST.fatalError("Controller failed to initialize.")
+                    FAST.fatalError("IntentPreservingController failed to initialize.")
                 }
 
             case 2...:    
@@ -542,10 +542,10 @@ public class Runtime {
                     setIntent(intent)
                     setModel(name: intent.name, currentModel: modelTrimmedToBothIntentAndFilters, untrimmedModel: model)
                     controller = c
-                    Log.info("Controller initialized.")
+                    Log.info("MulticonstrainedIntentPreservingController initialized.")
                 }
                 else {
-                    FAST.fatalError("Controller failed to initialize.")
+                    FAST.fatalError("MulticonstrainedIntentPreservingController failed to initialize.")
                 }
 
             case 0:
@@ -553,10 +553,10 @@ public class Runtime {
                     setIntent(intent)
                     setModel(name: intent.name, currentModel: modelTrimmedToBothIntentAndFilters, untrimmedModel: model)
                     controller = c
-                    Log.info("Controller initialized.")
+                    Log.info("UnconstrainedIntentPreservingController initialized.")
                 }
                 else {
-                    FAST.fatalError("Controller failed to initialize.")
+                    FAST.fatalError("UnconstrainedIntentPreservingController failed to initialize.")
                 }
 
             default:
