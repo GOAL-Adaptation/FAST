@@ -508,7 +508,7 @@ func optimize
                     if let controllerModel = model {
 
                         // Initialize the controller with the knob-to-mesure model, intent and window size
-                        runtime.initializeController(controllerModel, intent, windowSize, missionLength)
+                        runtime.initializeController(controllerModel, intent, windowSize)
 
                         // Compute initial schedule that meets the active intent, by using the measure values of
                         // the reference configuration as an estimate of the first measurements.

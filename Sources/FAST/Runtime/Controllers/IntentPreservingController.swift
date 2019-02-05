@@ -9,13 +9,10 @@ class IntentPreservingController : Controller {
     let fastController     : FASTController
     let intent             : IntentSpec
 
-    let missionLength      : UInt64
-
     init?( _ model: Model
          , _ intent: IntentSpec
          , _ runtime: Runtime
          , _ window: UInt32
-         , _ missionLength: UInt64
          ) 
     {
         assert(intent.constraints.count == 1, "FAST Controller only work in uniconstraint case.")
@@ -25,7 +22,6 @@ class IntentPreservingController : Controller {
         self.model              = modelSortedByConstraintMeasure
         self.window             = window
         self.intent             = intent
-        self.missionLength      = missionLength
 
         if let constraintMeasureIdx = modelSortedByConstraintMeasure.measureNames.index(of: intent.constraints.keys.first!) {
             

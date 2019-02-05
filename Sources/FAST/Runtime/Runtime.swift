@@ -243,8 +243,7 @@ public class Runtime {
         Log.debug("Reinitializing controller with new model from machine learning module.")
         self.reinitializeController(
             currentIntent, 
-            replacingCurrentModelWith: newModel, 
-            intentPreservingController.missionLength
+            replacingCurrentModelWith: newModel
         )
 
     }
@@ -509,8 +508,8 @@ public class Runtime {
       }
     }
 
-    /** Intialize intent preserving controller with the given model, intent, missionLength and window. */
-    func initializeController(_ model: Model, _ intent: IntentSpec, _ window: UInt32 = 20, _ missionLength: UInt64) {
+    /** Intialize intent preserving controller with the given model, intent, and window. */
+    func initializeController(_ model: Model, _ intent: IntentSpec, _ window: UInt32 = 20) {
         Log.debug("In preparation for initializing the controller, will now trim the model.")
         // Trim model with respect to the intent, to force the controller to choose only those
         // configurations that the user has specified there.
@@ -528,7 +527,7 @@ public class Runtime {
         synchronized(controllerLock) {
             switch intent.constraints.count {
             case 1:    
-                if let c = IntentPreservingController(modelTrimmedToBothIntentAndFilters, intent, self, window, missionLength) {
+                if let c = IntentPreservingController(modelTrimmedToBothIntentAndFilters, intent, self, window) {
                     setIntent(intent)
                     setModel(name: intent.name, currentModel: modelTrimmedToBothIntentAndFilters, untrimmedModel: model)
                     controller = c
@@ -578,8 +577,7 @@ public class Runtime {
             if 
                 let (_ /* currentModel will be recomputed */, untrimmedModel) = self.models[currentIntent.name] 
             {
-                initializeController(untrimmedModel, currentIntent, self.controller.window, 
-                    intentPreservingController.missionLength)
+                initializeController(untrimmedModel, currentIntent, self.controller.window)
             } else {
                 FAST.fatalError("Attempt to reinitialize controller based on a controller with an undefined model.")
             }
@@ -589,15 +587,13 @@ public class Runtime {
     }
 
     /** Reintialize intent preserving controller with the intent, keeping the previous model and window */
-    public func reinitializeController(_ spec: IntentSpec, replacingCurrentModelWith newModel: Model? = nil, _ missionLength: UInt64?) {
+    public func reinitializeController(_ spec: IntentSpec, replacingCurrentModelWith newModel: Model? = nil) {
         if 
-            let intentPreservingController = self.controller as? IntentPreservingController,
             let (_ /* currentModel will be recomputed */, untrimmedModel) = self.models[spec.name]
         {
             // Use the passed model if available, otherwise use the model of the active controller
             var model = newModel ?? untrimmedModel
-            initializeController(model, spec, controller.window, 
-                missionLength      ?? intentPreservingController.missionLength)
+            initializeController(model, spec, controller.window)   
         } 
         else if let constantController = self.controller as? ConstantController {
             setIntent(spec)
@@ -612,15 +608,13 @@ public class Runtime {
         return
       }
       if spec.isEverythingExceptConstraitValueIdentical(to: intents[spec.name]) {
-        // FIXME Also check that missionLength didnt change
         Log.verbose("Knob or measure sets of the new intent are identical to those of the previous intent. Setting the constraint goal of the existing controller to '\((spec.constraints.values.first!).0)'.")
         intentPreservingController.fastController.setConstraint((spec.constraints.values.first!).0)
         setIntent(spec)
       }
       else {
         Log.verbose("Reinitializing the controller for `\(spec.name)`.")
-        reinitializeController(spec, 
-            missionLength      ?? intentPreservingController.missionLength)
+        reinitializeController(spec)
       }
     }
 
