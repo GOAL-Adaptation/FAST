@@ -72,7 +72,11 @@ class FastRestServer : RestServer {
 
                 runtime.setScenarioKnobs(accordingTo: perturbation)
 
-                if perturbation.scenarioChanged {
+                guard let intentBeforePerturbation = runtime.intents[perturbation.missionIntent.name] else {
+                    FAST.fatalError("Perturbation intent name '\(perturbation.missionIntent.name)' does not correspond to any registered application name. Known applications are: '\(runtime.intents.keys)'.")
+                }
+
+                if perturbation.scenarioChanged || !intentBeforePerturbation.isEqual(to: perturbation.missionIntent) {
                     Log.debug("Perturbation changed intent in a way that produced valid knob ranges. Reinitializing controller and invalidating current schedule.")
                     // Reinitialize the controller with the new intent
                     runtime.reinitializeController(perturbation.missionIntent)
