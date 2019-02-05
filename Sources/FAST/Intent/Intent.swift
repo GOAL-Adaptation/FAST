@@ -174,24 +174,42 @@ extension IntentSpec {
     return measureWindowAverages(runtime: runtime).map({ costOrValue($0) })
   }
 
+  func isEqual (to other: IntentSpec) -> Bool {
+     return self.compare(to: other, compareConstraintValues: true)
+  }
+
   func isEverythingExceptConstraitValueIdentical(to spec: IntentSpec?) -> Bool {
-    assert(constraints.count == 1, "This function could only apply to uniconstraint case.")
     guard let other = spec else { return false }
+    return self.compare(to: other, compareConstraintValues: false)
+  }
+
+  /** 
+   * Compare this IntentSpec to another, using objectiveFunctionRawString to compare 
+   * objective functions, since the function itself is not Equatable.
+   * Constraint values are only compared if compareConstraintValues is true.
+   */
+  private func compare(to other: IntentSpec, compareConstraintValues: Bool) -> Bool {
     guard
-      Set(measures) == Set(other.measures), // measures
-      knobs.count == other.knobs.count, Set(knobs.keys) == Set(other.knobs.keys), // knobs
-      objectiveFunctionRawString == other.objectiveFunctionRawString, // objective function
-      optimizationType == other.optimizationType, // optimization type
-      constraints.keys.first! == other.constraints.keys.first! // constraint names
+      Set(self.measures) == Set(other.measures), // measures
+      self.knobs.count == other.knobs.count, Set(self.knobs.keys) == Set(other.knobs.keys), // knobs
+      self.objectiveFunctionRawString == other.objectiveFunctionRawString, // objective function
+      self.optimizationType == other.optimizationType, // optimization type
+      Set(self.constraints.keys) == Set(other.constraints.keys) // constraint variable names
     else { return false }
-    for key in knobs.keys {
+    for constraintVariableName in self.constraints.keys {
+      let (lhsValue,lhsType) = self.constraints[constraintVariableName]!
+      let (rhsValue,rhsType) = other.constraints[constraintVariableName]!
+      if lhsType != rhsType { return false }
+      if compareConstraintValues && lhsValue != rhsValue { return false }
+    }
+    for key in self.knobs.keys {
       if
-        let values = knobs[key]?.0 as? [Int], let refValue = knobs[key]?.1 as? Int,
+        let values = self.knobs[key]?.0 as? [Int], let refValue = self.knobs[key]?.1 as? Int,
         let otherValues = other.knobs[key]?.0 as? [Int], let otherRefValue = other.knobs[key]?.1 as? Int
       {
         guard values == otherValues && refValue == otherRefValue else { return false }
       } else if
-        let values = knobs[key]?.0 as? [Double], let refValue = knobs[key]?.1 as? Double,
+        let values = self.knobs[key]?.0 as? [Double], let refValue = self.knobs[key]?.1 as? Double,
         let otherValues = other.knobs[key]?.0 as? [Double], let otherRefValue = other.knobs[key]?.1 as? Double
       {
         guard values == otherValues && refValue == otherRefValue else { return false }
@@ -207,7 +225,7 @@ extension IntentSpec {
     return true
   }
 
-  // Used by application running in NonAdpative mode to initialze the KnobSettings for the ConstantController
+  /** Used by application running in NonAdpative mode to initialze the KnobSettings for the ConstantController */
   func referenceKnobSettings() -> KnobSettings {
     return KnobSettings(kid: -1, Dictionary(self.knobs.map{ 
       (knobName: String, rangeAndReferenceValue: ([Any], Any)) in 
