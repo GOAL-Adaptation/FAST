@@ -603,19 +603,19 @@ public class Runtime {
     }
 
     public func changeIntent(_ spec: IntentSpec, _ missionLength: UInt64? = nil) {
-      guard let intentPreservingController = controller as? IntentPreservingController else {
-        Log.error("Active controller type '\(type(of: controller))' does not support change of intent.")
-        return
-      }
-      if spec.isEverythingExceptConstraitValueIdentical(to: intents[spec.name]) {
-        Log.verbose("Knob or measure sets of the new intent are identical to those of the previous intent. Setting the constraint goal of the existing controller to '\((spec.constraints.values.first!).0)'.")
-        intentPreservingController.fastController.setConstraint((spec.constraints.values.first!).0)
-        setIntent(spec)
-      }
-      else {
-        Log.verbose("Reinitializing the controller for `\(spec.name)`.")
-        reinitializeController(spec)
-      }
+        if !(controller is IntentPreservingController || controller is MulticonstrainedIntentPreservingController) {
+            Log.error("Active controller type '\(type(of: controller))' does not support change of intent.")
+            return
+        }
+        if spec.isEverythingExceptConstraitValueIdentical(to: intents[spec.name]) && controller is IntentPreservingController {
+            Log.verbose("Knob or measure sets of the new intent are identical to those of the previous intent. Setting the constraint goal of the existing controller to '\((spec.constraints.values.first!).0)'.")
+            (controller as! IntentPreservingController).fastController.setConstraint((spec.constraints.values.first!).0)
+            setIntent(spec)
+        }
+        else {
+            Log.verbose("Reinitializing the controller for `\(spec.name)`.")
+            reinitializeController(spec)
+        }
     }
 
     /** Update the value of name in the global measure store and return that value */
