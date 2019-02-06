@@ -190,22 +190,30 @@ func optimize
             // Compute the latency and energyDelta, and if both are greater than 0, record them and their derived measures
             let latency: Double = timeAfter - timeBefore                
             let energyDelta: Double = systemEnergyAfter - systemEnergyBefore
-            if latency > 0.0 && energyDelta > 0.0 {
-
+            if latency > 0.0 {
                 runningTime += latency
-                energy += energyDelta
-
                 runtime.measure("latency", latency) // latency in seconds
-                runtime.measure("energyDelta", energyDelta) // energy per iteration
-                runtime.measure("energy", energy) // energy since application started or was last reset
                 runtime.measure("runningTime", runningTime) // running time in seconds
                 runtime.measure("performance", 
                     computeDerivedMeasure("performance", runtimeMeasureValueGetter)) // seconds per iteration
+            }
+            else {
+                Log.debug("Zero time spent in this iteration. The performance measure cannot be computed and won't be updated. The latency and runningTime measures won't be updated.")
+            }
+            if energyDelta > 0.0 {
+                energy += energyDelta
+                runtime.measure("energyDelta", energyDelta) // energy per iteration
+                runtime.measure("energy", energy) // energy since application started or was last reset
+            }
+            else {
+                Log.debug("Zero energy spent in this iteration. The energyDelta and energy measures won't be updated.")
+            }
+            if latency > 0.0 && energyDelta > 0.0 {
                 runtime.measure("powerConsumption", 
                     computeDerivedMeasure("powerConsumption", runtimeMeasureValueGetter)) // rate of energy
             }
             else {
-                Log.debug("Zero time passed between two measurements of time. The performance and powerConsumption measures cannot be computed.")
+                Log.debug("Zero time and or energy spent in this iteration (latency: \(latency), energyDelta: \(energyDelta)). The powerConsumption measure cannot be computed and won't be updated.")
             }
             Log.debug("optimize.loop.updateMeasuresEnd")
         }
