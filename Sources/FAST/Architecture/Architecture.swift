@@ -92,7 +92,7 @@ extension ClockAndEnergyArchitecture {
       while true {
         runtime.measure("time", self.clockMonitor.readClock())
         runtime.measure("systemEnergy", Double(self.energyMonitor.readEnergy()))
-        usleep(5) // Register system measures every five microseconds
+        usleep(1000) // Register system measures every 1 milisecond
       }
     }
   }
