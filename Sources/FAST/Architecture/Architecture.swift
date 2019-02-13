@@ -87,14 +87,6 @@ extension ClockAndEnergyArchitecture {
     runtime.isSystemMeasuresRegistered = true
 
     Log.debug("ClockAndEnergyArchitecture.registerSystemMeasures_1 for \(self) clockMonitor = \(self.clockMonitor) energyMonitor = \(self.energyMonitor)")
-    
-    DispatchQueue.global(qos: .utility).async {
-      while true {
-        runtime.measure("time", self.clockMonitor.readClock())
-        runtime.measure("systemEnergy", Double(self.energyMonitor.readEnergy()))
-        usleep(1000) // Register system measures every 1 milisecond
-      }
-    }
   }
 }
 

@@ -164,6 +164,17 @@ func optimize
              , _ body:   @escaping () -> Void
              ) {
 
+        func readTimeAndSystemEnergy() {
+            guard 
+                let anyArchitecture = runtime.architecture,
+                let architecture = anyArchitecture as? ClockAndEnergyArchitecture
+            else {
+                FAST.fatalError("Attempt to read time and system energy, but no compatible architecture was initialized.")
+            }
+            runtime.measure("time", architecture.clockMonitor.readClock())
+            runtime.measure("systemEnergy", Double(architecture.energyMonitor.readEnergy()))
+        }
+
         /** Execute preBody, execute body, update measures provided by runtime, and update postBody. */
         func executeBodyAndComputeMeasures() {
             Log.debug("optimize.loop.updateMeasuresBegin")
@@ -173,15 +184,18 @@ func optimize
             iteration += 1
             // Note that one less iteration is left to be processed when in scripted mode
             runtime.decrementScriptedCounter()
-            // Run preparatory code for this iteration, e.g. to reconfigure the system using a controller
-            preBody()
             // Record values of time and energy before executing the loop body
+            readTimeAndSystemEnergy()
             let systemEnergyBefore = runtime.getMeasure("systemEnergy")!
             let timeBefore = runtime.getMeasure("time")! // begin measuring latency
+            // Run preparatory code for this iteration, e.g. to reconfigure the system using a controller
+            preBody()
             // Run the loop body
             body()
             // Run wrap-up code for this iteration, e.g. to report progress to a measuring device
             postBody()
+            // Record values of time and energy after executing the loop body
+            readTimeAndSystemEnergy()
             let timeAfter = runtime.getMeasure("time")! // stop measuring latency
             let systemEnergyAfter = runtime.getMeasure("systemEnergy")! // stop measuring energy
             // Measure the iteration counter
