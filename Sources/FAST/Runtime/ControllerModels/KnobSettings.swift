@@ -33,6 +33,7 @@ class KnobSettings: Hashable, Codable, CustomStringConvertible {
         for (name, value) in settings {
             runtime.setKnob(name, to: value)
         }
+        runtime.currentKnobSettings = self
         Log.debug("Applied knob settings.")
     }
 

@@ -119,6 +119,8 @@ public class Runtime {
 
     var knobSetters: [String : (Any) -> Void] = [:]
     var knobSettersLock = NSLock()
+    // Used to find the index of the current configuration for use by the controller
+    var currentKnobSettings: KnobSettings? = nil
 
     var intents: [String : IntentSpec] = [:]
     // Map from intent name to a pair (m1,m2) of Models, where 

@@ -30,6 +30,14 @@ class IntentPreservingController : Controller {
             let constraint = (intent.constraints.values.first!).0
             let optType = intent.optimizationType
 
+            // Find the index in the sorted model of the configuration that will be active when getSchedule() is first called.
+            guard let currentKnobSettings = runtime.currentKnobSettings else {
+                FAST.fatalError("Can not initialize IntentPreservingController (at iteration \(runtime.getMeasure("iteration"))) without knowledge of current knob settings.")
+            }
+            guard let initialModelEntryIdx = modelSortedByConstraintMeasure.configurations.index(where: { $0.knobSettings == currentKnobSettings }) else {
+                FAST.fatalError("Current configuration (at iteration \(runtime.getMeasure("iteration"))) with the following knob settings missing from model '\(currentKnobSettings)'.")
+            }
+
             Log.debug("Initializing FASTController with constraint: '\(constraint)', constraintMeasureIdx: '\(constraintMeasureIdx)', window: '\(window)', objectiveFunctionRawString: '\(objectiveFunctionRawString)'.")
             self.fastController =
                 FASTController( model: modelSortedByConstraintMeasure.getFASTControllerModel()
@@ -38,7 +46,7 @@ class IntentPreservingController : Controller {
                               , window: window
                               , optType: optType
                               , ocb: intent.costOrValue
-                              , initialModelEntryIdx: 0 // Always 0, since model passed above is sorted by the constraint measure 
+                              , initialModelEntryIdx: initialModelEntryIdx
                               )
 
             // Enable logging to standard output
