@@ -54,6 +54,10 @@ class MeasuringDevice {
         }
     }
 
+    public func values() -> [String : Double] {
+        return Dictionary(stats.map{ (n,s) in (n, s.lastObservedValue) })
+    }
+
     public func windowAverages() -> [String : Double] {
         return Dictionary(stats.map{ (n,s) in (n, s.windowAverage) })
     }

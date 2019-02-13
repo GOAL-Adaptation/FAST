@@ -309,14 +309,14 @@ public class Runtime {
                         components["objectiveFunctionExpression"] = objectiveFunctionExpression
                     }
                     components["optimizationType"] = intentSpec.optimizationType == .minimize ? "min" : "max"
-                    let windowAverages = measuringDevice.windowAverages()
+                    let measureValues = measuringDevice.values()
                     components["constraints"] = intentSpec.constraints.map {
-                        (constraintVariable: String, valueAndType: (Double, ConstraintType)) -> [String : Any] in 
-                        let (constraintValue, constraintType) = valueAndType
+                        (constraintVariable: String, goalAndType: (Double, ConstraintType)) -> [String : Any] in 
+                        let (constraintGoal, constraintType) = goalAndType
                         return [
                             "variable" : constraintVariable,
-                            "goal"     : constraintValue,
-                            "value"    : windowAverages[constraintVariable]!,
+                            "goal"     : constraintGoal,
+                            "value"    : measureValues[constraintVariable]!,
                             "type"     : constraintType.rawValue
                         ]
                     }
