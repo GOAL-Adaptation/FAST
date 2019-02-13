@@ -607,11 +607,7 @@ public class Runtime {
             Log.error("Active controller type '\(type(of: controller))' does not support change of intent.")
             return
         }
-        if spec.isEverythingExceptConstraitValueIdentical(to: intents[spec.name]) && controller is IntentPreservingController {
-            Log.verbose("Knob or measure sets of the new intent are identical to those of the previous intent. Setting the constraint goal of the existing controller to '\((spec.constraints.values.first!).0)'.")
-            (controller as! IntentPreservingController).fastController.setConstraint((spec.constraints.values.first!).0)
-            setIntent(spec)
-        }
+        /* TODO Re-introduce approach to preserving controller state whenever only the constraint goal has changed (at least for the IntentPreservingController) */
         else {
             Log.verbose("Reinitializing the controller for `\(spec.name)`.")
             reinitializeController(spec)
