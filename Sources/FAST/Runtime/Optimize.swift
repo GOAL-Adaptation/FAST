@@ -234,6 +234,7 @@ func optimize
 
         // Wait for the system measures to be read
         while runtime.getMeasure("time") == nil || runtime.getMeasure("systemEnergy") == nil {
+            readTimeAndSystemEnergy()
             usleep(10000) // sleep 10ms
         }
 
