@@ -23,14 +23,20 @@ class IntentPreservingController : Controller {
         self.window             = window
         self.intent             = intent
 
-        if let constraintMeasureIdx = modelSortedByConstraintMeasure.measureNames.index(of: intent.constraints.keys.first!) {
-            
+        if 
+            let constraintMeasureIdx = modelSortedByConstraintMeasure.measureNames.index(of: intent.constraints.keys.first!),
+            let objectiveFunctionRawString = intent.objectiveFunctionRawString
+        {    
+            let constraint = (intent.constraints.values.first!).0
+            let optType = intent.optimizationType
+
+            Log.debug("Initializing FASTController with constraint: '\(constraint)', constraintMeasureIdx: '\(constraintMeasureIdx)', window: '\(window)', objectiveFunctionRawString: '\(objectiveFunctionRawString)'.")
             self.fastController =
                 FASTController( model: modelSortedByConstraintMeasure.getFASTControllerModel()
-                              , constraint: (intent.constraints.values.first!).0
+                              , constraint: constraint
                               , constraintMeasureIdx: constraintMeasureIdx
                               , window: window
-                              , optType: intent.optimizationType
+                              , optType: optType
                               , ocb: intent.costOrValue
                               , initialModelEntryIdx: 0 // Always 0, since model passed above is sorted by the constraint measure 
                               )
@@ -40,9 +46,7 @@ class IntentPreservingController : Controller {
 
         }
         else {
-            Log.error("Intent inconsistent with active model: could not match constraint name '\(intent.constraints.keys.first!)' stated in intent with a measure name in the active model, whose measures are: \(model.measureNames). ")
-            exit(1)
-            return nil
+            FAST.fatalError("Intent inconsistent with active model: could not match constraint name '\(intent.constraints.keys.first!)' stated in intent with a measure name in the active model, whose measures are: \(model.measureNames). ")
         }
     }
 
