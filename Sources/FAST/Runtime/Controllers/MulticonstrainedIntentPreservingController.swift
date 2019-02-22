@@ -41,18 +41,34 @@ class MulticonstrainedIntentPreservingController : Controller {
         var constraintCoefficientsEqualTo = (constraintMeasureIdxsEQ.map { c in domain.map { k in model[Int(k)].measureValues[c!] } })
         constraintCoefficientsEqualTo.append([Double](repeating: 1.0, count: sizeOfConfigurations)) 
         if (constraintMeasureIdxs.flatMap{ $0 }).count == constraintMeasureIdxs.count {
-            self.multiconstrainedLinearOptimizer =
-                MulticonstrainedLinearOptimizer<Double>( 
-                    objectiveFunction: {(id: UInt32) -> Double in intent.costOrValue(model.getMeasureVectorFunction()(id))},
-	        		domain: domain,
-                    optimizationType: optimizationType,
-                    constraintBoundslt: constraintBoundsLessOrEqualTo,
-                    constraintBoundsgt: constraintBoundsGreaterOrEqualTo,
-                    constraintBoundseq: constraintBoundsEqualTo,
-                    constraintCoefficientslt: constraintCoefficientsLessOrEqualTo,
-                    constraintCoefficientsgt: constraintCoefficientsGreaterOrEqualTo,
-                    constraintCoefficientseq: constraintCoefficientsEqualTo
-                    )
+            switch intent.optimizationType { 
+            case .maximize:
+				self.multiconstrainedLinearOptimizer =
+					MulticonstrainedLinearOptimizer<Double>( 
+						objectiveFunction: {(id: UInt32) -> Double in intent.costOrValue(model.getMeasureVectorFunction()(id))},
+						domain: domain,
+						optimizationType: .maximize,
+						constraintBoundslt: constraintBoundsLessOrEqualTo,
+						constraintBoundsgt: constraintBoundsGreaterOrEqualTo,
+						constraintBoundseq: constraintBoundsEqualTo,
+						constraintCoefficientslt: constraintCoefficientsLessOrEqualTo,
+						constraintCoefficientsgt: constraintCoefficientsGreaterOrEqualTo,
+						constraintCoefficientseq: constraintCoefficientsEqualTo
+                        )
+            case .minimize:
+				self.multiconstrainedLinearOptimizer =
+					MulticonstrainedLinearOptimizer<Double>( 
+						objectiveFunction: {(id: UInt32) -> Double in -(intent.costOrValue(model.getMeasureVectorFunction()(id)))},
+						domain: domain,
+						optimizationType: .maximize,
+						constraintBoundslt: constraintBoundsLessOrEqualTo,
+						constraintBoundsgt: constraintBoundsGreaterOrEqualTo,
+						constraintBoundseq: constraintBoundsEqualTo,
+						constraintCoefficientslt: constraintCoefficientsLessOrEqualTo,
+						constraintCoefficientsgt: constraintCoefficientsGreaterOrEqualTo,
+						constraintCoefficientseq: constraintCoefficientsEqualTo
+                        )
+            }
         }
         else {
             Log.error("Intent inconsistent with active model: could not match constraint name '\(intent.constraints.keys)' stated in intent with a measure name in the active model, whose measures are: \(model.measureNames). ")
