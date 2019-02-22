@@ -35,9 +35,9 @@ class ThMockRestServer : RestServer {
     /* Dictionary representations of canned messages */
 
     static let intent =
-        "knobs       k1 = [1,2,3,4,5]   reference 5     \n" +
-        "            k2 = [1,2,3,4]     reference 4     \n" +
-        "            k3 = [1.1,2.2,3.3] reference 3.3   \n" +
+        "knobs       k1 from [1,2,3,4, 5 reference]     \n" +
+        "            k2 from [1,2,3,4 reference]       \n" +
+        "            k3 from [1.1,2.2,3.3 reference]   \n" +
         "measures    m1: Double                         \n" +
         "            m2: Double                         \n" +
         "intent      intent max(m1) such that m2 == 0.0 \n" +
