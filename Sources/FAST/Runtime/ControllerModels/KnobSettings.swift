@@ -52,8 +52,13 @@ class KnobSettings: Hashable, Codable, CustomStringConvertible {
                 if !settings.contains { key, value  in (key == knobName) && (value as? Double == knobValue as? Double)} {
                     return false
                 }
+            case is String:
+                if !settings.contains { key, value  in (key == knobName) && (value as? String == knobValue as? String)} {
+                    return false
+                }
             default:
-                return false
+                let knobValueType = type(of: knobValue)
+                FAST.fatalError("Cannot compare knob values of type \(knobValueType)!")
             }
         }
         return true
