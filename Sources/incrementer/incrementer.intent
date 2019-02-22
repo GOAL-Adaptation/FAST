@@ -1,7 +1,7 @@
-knobs       threshold             = [200000,400000,600000,800000,1000000] reference 1000000
-            step                  = [1,2,3,4]                             reference 1
-            utilizedCores         = [1,2,3,4]                             reference 4
-            utilizedCoreFrequency = [300,400,600,1200]                    reference 1200
+knobs       threshold             from [200000 , 400000, 600000, 800000, 1000000 reference] 
+            step                  from ["1" reference, "2", "3", "4"]                             
+            utilizedCores         from [1, 4 reference, 2, 3 ]                             
+            utilizedCoreFrequency from [300, 400, 1200 reference, 600]                   
 
 measures    energy           : Double // System measure
             energyDelta      : Double // System measure
