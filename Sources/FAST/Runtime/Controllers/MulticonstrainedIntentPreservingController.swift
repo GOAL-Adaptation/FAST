@@ -25,19 +25,33 @@ class MulticonstrainedIntentPreservingController : Controller {
         self.intent = intent
 		let sizeOfConfigurations = model.getSizeOfConfigurations()
 		let domain = sortedModel.getDomainArray().makeIterator()
+ 		let constraintsLessOrEqualTo = intent.constraints.filter {$0.1.1 == .lessOrEqualTo}
+ 		let constraintsGreaterOrEqualTo = intent.constraints.filter {$0.1.1 == .greaterOrEqualTo}
+ 		let constraintsEqualTo = intent.constraints.filter {$0.1.1 == .equalTo}
         let constraintMeasureIdxs = [String](intent.constraints.keys).map { sortedModel.measureNames.index(of: $0) }
-        var constraintBounds =  [Double](intent.constraints.values.map { $0.0 })
-        constraintBounds.append(Double(window))
-        var constraintCoefficients = (constraintMeasureIdxs.map { c in domain.map { k in model[Int(k)].measureValues[c!] } })
-        constraintCoefficients.append([Double](repeating: 1.0, count: sizeOfConfigurations))
-  	    if (constraintMeasureIdxs.flatMap{ $0 }).count == constraintMeasureIdxs.count {
+        let constraintMeasureIdxsLEQ = [String](constraintsLessOrEqualTo.keys).map { sortedModel.measureNames.index(of: $0) }
+        let constraintMeasureIdxsGEQ = [String](constraintsGreaterOrEqualTo.keys).map { sortedModel.measureNames.index(of: $0) }
+        let constraintMeasureIdxsEQ = [String](constraintsEqualTo.keys).map { sortedModel.measureNames.index(of: $0) }
+        var constraintBoundsLessOrEqualTo =  [Double](constraintsLessOrEqualTo.values.map { $0.0 })
+        var constraintBoundsGreaterOrEqualTo =  [Double](constraintsGreaterOrEqualTo.values.map { $0.0 })
+        var constraintBoundsEqualTo =  [Double](constraintsEqualTo.values.map { $0.0 })
+        constraintBoundsEqualTo.append(Double(window))
+        var constraintCoefficientsLessOrEqualTo = (constraintMeasureIdxsLEQ.map { c in domain.map { k in model[Int(k)].measureValues[c!] } })
+        var constraintCoefficientsGreaterOrEqualTo = (constraintMeasureIdxsGEQ.map { c in domain.map { k in model[Int(k)].measureValues[c!] } })
+        var constraintCoefficientsEqualTo = (constraintMeasureIdxsEQ.map { c in domain.map { k in model[Int(k)].measureValues[c!] } })
+        constraintCoefficientsEqualTo.append([Double](repeating: 1.0, count: sizeOfConfigurations)) 
+        if (constraintMeasureIdxs.flatMap{ $0 }).count == constraintMeasureIdxs.count {
             self.multiconstrainedLinearOptimizer =
                 MulticonstrainedLinearOptimizer<Double>( 
                     objectiveFunction: {(id: UInt32) -> Double in intent.costOrValue(model.getMeasureVectorFunction()(id))},
 	        		domain: domain,
                     optimizationType: optimizationType,
-                    constraintBounds: constraintBounds,
-                    constraintCoefficients: constraintCoefficients 
+                    constraintBoundslt: constraintBoundsLessOrEqualTo,
+                    constraintBoundsgt: constraintBoundsGreaterOrEqualTo,
+                    constraintBoundseq: constraintBoundsEqualTo,
+                    constraintCoefficientslt: constraintCoefficientsLessOrEqualTo,
+                    constraintCoefficientsgt: constraintCoefficientsGreaterOrEqualTo,
+                    constraintCoefficientseq: constraintCoefficientsEqualTo
                     )
         }
         else {

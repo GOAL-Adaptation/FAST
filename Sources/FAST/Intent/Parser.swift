@@ -301,34 +301,42 @@ class IntentParser : Parser {
                           case .identifier(let suchKeyword, _) = _lexer.look(ahead: 1).kind, suchKeyword == "such",
                           case .identifier(let thatKeyword, _) = _lexer.look(ahead: 2).kind, thatKeyword == "that",
                           case .identifier(let constraintName, _) = _lexer.look(ahead: 3).kind { 
-                    if _lexer.look(ahead: 4).kind == .binaryOperator("<=") {
+                    if case .identifier(let myKeyword, _) = _lexer.look(ahead: 6).kind, myKeyword == "trainingSet"  {
+                        if _lexer.look(ahead: 4).kind == .binaryOperator("==") {
+                            _lexer.advance(by: 5)
+                            let constraintValue = try super.parseExpression(config: config)
+                            var constraints: [String : (Expression, ConstraintType)] = [constraintName : (constraintValue, .equalTo)] 
+                            return IntentDecl(name: intentName, optimizationType : optimizationType,
+                                      optimizedExpr: optimizedExpr, constraints: constraints)
+                        }
+                        else {
+                            FAST.fatalError("expected a measure name followed by '==' if there is only one constraint. Found: \(_lexer.look(ahead: 4).kind).")
+                        }
+                    } else if case .binaryOperator(let constraintType) = _lexer.look(ahead: 4).kind,
+                              constraintType == "<=" || constraintType == "==" || constraintType == ">=" { 
                         _lexer.advance(by: 5)
                         let constraintValue = try super.parseExpression(config: config)
-                        var constraints: [String : (Expression, ConstraintType)] = [constraintName : (constraintValue, .lessOrEqualTo)]
+                        var constraints: [String : (Expression, ConstraintType)] = [constraintName : (constraintValue, ConstraintType(rawValue: constraintType)!)]
                         while case .identifier(let andKeyword, _) = _lexer.look().kind, andKeyword == "and",
                               case .identifier(let constraintName, _) = _lexer.look(ahead: 1).kind {
-                            if _lexer.look(ahead: 2).kind == .binaryOperator("<=") {
+                            if case .binaryOperator(let constraintType) = _lexer.look(ahead: 2).kind, 
+                               constraintType == "<=" || constraintType == "==" || constraintType == ">=" { 
                                 _lexer.advance(by: 3)
                                 let constraintValue = try super.parseExpression(config: config)
-                                constraints[constraintName] = (constraintValue, .lessOrEqualTo)
-					        }
+                                constraints[constraintName] = (constraintValue, ConstraintType(rawValue: constraintType)!)
+                            }
                             else {
-                                FAST.fatalError("expected a measure name followed by '<='. Found: \(_lexer.look(ahead: 2).kind).")
+                                FAST.fatalError("expected a measure name followed by '>=' or '==' or '<='. Found: \(_lexer.look(ahead: 2).kind).")
 							}
                         }
                         return IntentDecl(name: intentName, optimizationType : optimizationType,
                                   optimizedExpr: optimizedExpr, constraints: constraints)
-                    } else if _lexer.look(ahead: 4).kind == .binaryOperator("==") {
-                        _lexer.advance(by: 5)
-                        let constraintValue = try super.parseExpression(config: config)
-                        var constraints: [String : (Expression, ConstraintType)] = [constraintName : (constraintValue, .equalTo)] 
-                        return IntentDecl(name: intentName, optimizationType : optimizationType,
-                                  optimizedExpr: optimizedExpr, constraints: constraints)
+
                     } else {                    	
-                        FAST.fatalError("expected a measure name followed by '==' or '<='. Found: \(_lexer.look(ahead: 4).kind).")
+                        FAST.fatalError("expected a measure name followed by '>=' or '==' or '<='. Found: \(_lexer.look(ahead: 4).kind).")
                     }
                 } else {
-                    FAST.fatalError("expected right parenthesis followed by 'such that', a measure name, and '==' or '<='. Found: \(_lexer.look().kind).")
+                    FAST.fatalError("expected right parenthesis followed by 'such that', a measure name, and '>=', '==' or '<='. Found: \(_lexer.look().kind).")
                 }
             } else {
                 FAST.fatalError("expected 'max' or 'min' followed by a left parenthesis. Found: \(_lexer.look().kind).")
