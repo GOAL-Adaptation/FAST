@@ -49,15 +49,15 @@ class CompilerTests: XCTestCase {
         /* Knobs */
 
         let (stepRange, stepReference) = spec.knobs["step"]!
-        XCTAssertEqual(1, stepReference as! Int)
-        let stepRangeExpected = [1,2,3,4]
+        XCTAssertEqual("1", stepReference as! String)
+        let stepRangeExpected = ["1", "2", "3", "4"]
         for i in 0 ..< stepRangeExpected.count {
-            XCTAssertEqual(stepRangeExpected[i], stepRange[i] as! Int)
+            XCTAssertEqual(stepRangeExpected[i], stepRange[i] as! String)
         }
 
         let (thresholdRange, thresholdReference) = spec.knobs["threshold"]!
         XCTAssertEqual(1000000, thresholdReference as! Int)
-        let thresholdRangeExpected = [200000,400000,600000,800000,1000000]
+        let thresholdRangeExpected = [200000, 400000, 600000, 800000, 1000000]
         for i in 0 ..< thresholdRangeExpected.count {
             XCTAssertEqual(thresholdRangeExpected[i], thresholdRange[i] as! Int)
         }
