@@ -251,9 +251,13 @@ public class RestServer {
         let knobsString: String = knobs.map {
             knob in
             let name  = knob["name"]! as! String
-            let range = (knob["range"]! as! [Any]).map{ "\($0)" }.joined(separator: ",")
             let referenceValue = knob["referenceValue"]!
-            return "\(name) = [\(range)] reference \(referenceValue)"
+            let knobRange = knob["range"]! as! [Any]
+            let knobRangeMap = referenceValue is String ? knobRange.map{ "\"\($0)\"" } : knobRange.map{ "\($0)" }
+            let refValString = referenceValue is String ? "\"\(referenceValue)\"" : "\(referenceValue)"
+            let knobRangeMapRef = knobRangeMap.map{ "\($0)" == refValString ? "\($0) reference": $0 }
+            let rangeRef = knobRangeMapRef.joined(separator: ",")
+            return "\(name) from [\(rangeRef)]" 
         }.joined(separator:"\n\t")
         let intentObjectiveFunctionString = mkExpressionString(from: intentObjectiveFunction)
 

@@ -3,13 +3,13 @@
 		"knobs": [
 			{
 				"name": "threshold",
-				"range": [200000,400000,600000,800000,1000000],
+				"range": [200000, 400000, 600000, 800000, 1000000],
 				"referenceValue": 1000000
 			},
 			{
 				"name": "step",
-				"range": [1,2,3,4],
-				"referenceValue": 1
+				"range": ["1", "2", "3", "4"],
+				"referenceValue": "1"
 			}
 		],
 		"measures": [
