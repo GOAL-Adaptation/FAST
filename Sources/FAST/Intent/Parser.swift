@@ -209,28 +209,66 @@ class IntentParser : Parser {
 
     /* Knob Section */
 
+    // knobRange :: [ (knobExp ,)*  knobExp reference  (, knobExp )* ]
+    func parseKnobRange(config: ParserExpressionConfig = ParserExpressionConfig())
+    throws -> (Expression, Expression) {
+        let lookedRange = _lexer.look().sourceRange
+        let startLocation = lookedRange.start
+        if case.leftSquare = _lexer.look().kind {
+            _lexer.advance(by:1)
+            var refExpr: Expression?
+            var exprs = [Expression]()
+            repeat {
+                let expr = try super.parseExpression(config: config)
+                exprs.append(expr)
+                if case .identifier(let myKeyword, _) = _lexer.look().kind, myKeyword == "reference" {
+                    if let refExpr2 = refExpr {
+                        FAST.fatalError("Multiple 'reference' values found in knob range.")
+                    }
+                    refExpr = expr
+                    _lexer.advance(by:1)
+                }
+                if case.rightSquare = _lexer.look().kind {
+                    let endLocation = getEndLocation()
+                    let arrayExpr = LiteralExpression(kind: .array(exprs))
+                    arrayExpr.setSourceRange(startLocation, endLocation)
+                    _lexer.advance(by:1)
+                    if let goodRefExpr = refExpr {
+                        return (arrayExpr, goodRefExpr)
+                    }
+                    else {
+                        FAST.fatalError("No 'reference' value found in knob range.")
+                    }                    
+                }
+                else if case.comma = _lexer.look().kind {
+                    _lexer.advance(by:1)
+                }
+                else {
+                    FAST.fatalError("Expected ',' or ']'. Found: \(_lexer.look().kind).")
+                }
+            } while true
+        } else {
+            FAST.fatalError("Expected '['. Found: \(_lexer.look().kind).")
+        }
+    }
+
+    // knobDecl :: id from knobRange
     func parseKnobDecl(config: ParserExpressionConfig = ParserExpressionConfig())
     throws -> KnobDecl {
         if case .identifier(let knobName, _) = _lexer.look().kind {
             _lexer.advance(by:1)
-            if case.assignmentOperator = _lexer.look().kind {
+            if case .identifier(let fromKeyword, _) = _lexer.look().kind, fromKeyword == "from"  {
                 _lexer.advance(by:1)
-                let knobValue = try super.parseExpression(config: config)
-                if case .identifier(let myKeyword, _) = _lexer.look().kind, myKeyword == "reference" {
-                    _lexer.advance(by:1)
-                    let referenceExpr = try super.parseExpression(config: config)
+                let (knobValue, referenceExpr) = try parseKnobRange(config: config)
                 return KnobDecl(name: knobName, range: knobValue, reference: referenceExpr)
-                } else {
-                FAST.fatalError("Expected 'reference'. Found: \(_lexer.look().kind).")
-                }
             } else {
-                FAST.fatalError("Expected '=' after knob name. Found: \(_lexer.look().kind).")
+                FAST.fatalError("Expected 'from' after knob name. Found: \(_lexer.look().kind).")
             }
         } else {
             FAST.fatalError("Expected a knob name. Found: \(_lexer.look().kind).")
         }
     }
-
+    
     func parseKnobSection(config: ParserExpressionConfig = ParserExpressionConfig())
     throws -> KnobSection {
                 _lexer.advance(by: 1)
