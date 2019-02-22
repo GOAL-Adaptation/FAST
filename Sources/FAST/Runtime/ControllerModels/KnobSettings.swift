@@ -37,7 +37,7 @@ class KnobSettings: Hashable, Codable, CustomStringConvertible {
     }
 
     /**
-    * Assume knob value is of type Int or Double, return true
+    * Assume knob value is of type Int, Double, or String, return true
     * iff this.settings contains the given otherSettings.
     * Used in filtering knob settings from a given array of KnobSettings.
     */
