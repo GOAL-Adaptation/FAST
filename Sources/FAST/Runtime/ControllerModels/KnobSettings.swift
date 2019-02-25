@@ -6,7 +6,7 @@ class KnobSettings: Hashable, Codable, CustomStringConvertible {
     let settings: [String : Any]
 
     let hashValue: Int
-    
+
     init(kid: Int, _ settings: [String : Any]) {
         self.kid = kid
         self.settings = settings
@@ -23,7 +23,7 @@ class KnobSettings: Hashable, Codable, CustomStringConvertible {
                 hash = hash ^ knobValue.hashValue &* 16777619
             }
             else {
-                FAST.fatalError("Can not compute hash for knob value '\(settings[knobName])' of type '\(type(of: settings[knobName]))'.")            
+                FAST.fatalError("Can not compute hash for knob value '\(settings[knobName])' of type '\(type(of: settings[knobName]))'.")
             }
         }
         self.hashValue = hash
@@ -76,22 +76,82 @@ class KnobSettings: Hashable, Codable, CustomStringConvertible {
         case hashValue
     }
 
-    required init(from decoder: Decoder) throws {
-        let values = try decoder.container(keyedBy: CodingKeys.self)
-        kid = try values.decode(Int.self, forKey: .kid)
-        // TODO Generalize to handle other knob values than Int:s
-        settings = try values.decode([String: Int].self, forKey: .settings)
-        hashValue = try values.decode(Int.self, forKey: .hashValue)
+    enum SupportedKnobType: String, Codable {
+        case string, int, double
     }
 
+    class Wrapper : Codable {
+        let v : Any
+        let t : SupportedKnobType
+        enum CodingKeys: String, CodingKey {
+           case v, t
+        }
+        init(_ v: Any) {
+            self.v = v
+            switch v {
+                case is Int:
+                    t = .int
+                case is Double:
+                    t = .double
+                case is String:
+                    t = .string
+                default:
+                    FAST.fatalError("Knob values can only be Int, Double, or String.")
+            }
+        }
+        required init(from decoder: Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            t = try container.decode(SupportedKnobType.self, forKey: .t)
+            switch t {
+                case .int:
+                    v = try container.decode(Int.self, forKey: .v)
+                case .double:
+                    v = try container.decode(Double.self, forKey: .v)
+                case .string:
+                    v = try container.decode(String.self, forKey: .v)
+                default:
+                    FAST.fatalError("Decoding only supported for knob values of type Int, Double, or String.")
+            }
+        }
+        public func encode(to encoder: Encoder) throws {
+            var container = encoder.container(keyedBy: CodingKeys.self)
+            try container.encode(t as SupportedKnobType, forKey: .t)
+            switch v {
+                case let tv as Int:
+                    try container.encode(tv, forKey: .v)
+                case let tv as Double:
+                    try container.encode(tv, forKey: .v)
+                case let tv as String:
+                    try container.encode(tv, forKey: .v)
+                default:
+                    FAST.fatalError("Encoding only supported for knob values of type Int, Double, or String.")
+            }
+        }
+    }
+
+    // Property settings = [String: Any] needs to be encoded as [String: Wrapper], since Any is not encodable
     public func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(kid, forKey: .kid)
-        guard let intSettings = settings as? [String : Int] else {
-            FAST.fatalError("Serializing non-integer knob values is not implemented.")
+        var wrappedSettings = [String : Wrapper]()
+        for k in settings.keys {
+            wrappedSettings[k] = Wrapper(settings[k]!)
         }
-        try container.encode(intSettings, forKey: .settings)
+        try container.encode(wrappedSettings, forKey: .settings)
         try container.encode(hashValue, forKey: .hashValue)
+    }
+
+    // Since property settings is encoded as [String: Wrapper], it needs to be unwrapped.
+    required init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        kid = try values.decode(Int.self, forKey: .kid)
+        let wrappedSettings = try values.decode([String: Wrapper].self, forKey: .settings)
+        var unwrappedSettings = [String : Any]()
+        for k in wrappedSettings.keys {
+            unwrappedSettings[k] = wrappedSettings[k]!.v
+        }
+        self.settings = unwrappedSettings
+        hashValue = try values.decode(Int.self, forKey: .hashValue)
     }
 
 }
