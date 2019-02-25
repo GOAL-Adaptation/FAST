@@ -133,10 +133,7 @@ class KnobSettings: Hashable, Codable, CustomStringConvertible {
     public func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(kid, forKey: .kid)
-        var wrappedSettings = [String : Wrapper]()
-        for k in settings.keys {
-            wrappedSettings[k] = Wrapper(settings[k]!)
-        }
+        let wrappedSettings = Dictionary(settings.map{ ($0.key, Wrapper($0.value)) })
         try container.encode(wrappedSettings, forKey: .settings)
         try container.encode(hashValue, forKey: .hashValue)
     }
@@ -146,11 +143,7 @@ class KnobSettings: Hashable, Codable, CustomStringConvertible {
         let values = try decoder.container(keyedBy: CodingKeys.self)
         kid = try values.decode(Int.self, forKey: .kid)
         let wrappedSettings = try values.decode([String: Wrapper].self, forKey: .settings)
-        var unwrappedSettings = [String : Any]()
-        for k in wrappedSettings.keys {
-            unwrappedSettings[k] = wrappedSettings[k]!.v
-        }
-        self.settings = unwrappedSettings
+        self.settings = Dictionary(wrappedSettings.map{ ($0.key, $0.value.v) })
         hashValue = try values.decode(Int.self, forKey: .hashValue)
     }
 
