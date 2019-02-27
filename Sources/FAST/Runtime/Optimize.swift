@@ -154,6 +154,43 @@ func optimize
         }
     }
 
+    /**
+     * Gather timing statistics about various segments of code.
+     * The "timers" dictionary is populated with timers, with labels such
+     * as "preBody" and "body", to provide low-level performance debugging 
+     * information.
+     */
+    var timers = [String:Double]()
+    func startMeasuring(_ label: String) {
+        timers["_" + label] = NSDate().timeIntervalSince1970
+    }
+    func stopMeasuring(_ label: String) {
+        guard let timeOfLastStartMeasuring = timers["_" + label] else {
+            FAST.fatalError("Runtime error: timer '\(label)' stopped before it was started!")
+        }
+        let timerSoFar = timers[label] ?? 0.0
+        timers[label] = timerSoFar + (NSDate().timeIntervalSince1970 - timeOfLastStartMeasuring)
+    }
+    func logTimingReport() {
+        let longestLabelLength = timers.keys.map{ k in k.count }.max()
+        let wholeExecutionTimer = timers["wholeExecution"]
+        if 
+            let lll = longestLabelLength,
+            let we  = wholeExecutionTimer
+        {
+            let prefixLength = "Timer '".count + 2
+            for (timerLabel,timerValue) in Array(timers).sorted(by: { t1,t2 in t1 < t2 }) {
+                if timerLabel.first! != "_" { // Ignore internal timers
+                    let labelString = "Timer '\(timerLabel)':".padding(toLength: prefixLength + lll, withPad: " ", startingAt: 0)
+                    let percentage = timerValue / we
+                    let timerValueString = String(format: "%.3f", timerValue)
+                    let percentageString = String(format: "%.0f", 100*(timerValue / we))
+                    Log.debug("\(labelString)\(timerValueString)s ~ \(percentageString)%")
+                }
+            }
+        }
+    }
+
     /** 
      * Loop body for a given number of iterations (or infinitely, if iterations == nil) 
      * Note: The overhead of preBody and postBody are excluded measures.
@@ -177,6 +214,8 @@ func optimize
 
         /** Execute preBody, execute body, update measures provided by runtime, and update postBody. */
         func executeBodyAndComputeMeasures() {
+
+            startMeasuring("beforePreBody")
             Log.debug("optimize.loop.updateMeasuresBegin")
             // When in scripted mode, block until a post to the /process endpoint
             runtime.waitForRestCallToIncrementScriptedCounter()
@@ -188,12 +227,24 @@ func optimize
             readTimeAndSystemEnergy()
             let systemEnergyBefore = runtime.getMeasure("systemEnergy")!
             let timeBefore = runtime.getMeasure("time")! // begin measuring latency
+            stopMeasuring("beforePreBody")
+
+            startMeasuring("preBody")
             // Run preparatory code for this iteration, e.g. to reconfigure the system using a controller
             preBody()
+            stopMeasuring("preBody")
+            
+            startMeasuring("body")
             // Run the loop body
             body()
+            stopMeasuring("body")
+
+            startMeasuring("postBody")
             // Run wrap-up code for this iteration, e.g. to report progress to a measuring device
             postBody()
+            stopMeasuring("postBody")
+
+            startMeasuring("afterPostBody")
             // Record values of time and energy after executing the loop body
             readTimeAndSystemEnergy()
             let timeAfter = runtime.getMeasure("time")! // stop measuring latency
@@ -230,6 +281,8 @@ func optimize
                 Log.debug("Zero time and or energy spent in this iteration (latency: \(latency), energyDelta: \(energyDelta)). The powerConsumption measure cannot be computed and won't be updated.")
             }
             Log.debug("optimize.loop.updateMeasuresEnd")
+            stopMeasuring("afterPostBody")
+
         }
 
         // Wait for the system measures to be read
@@ -238,6 +291,7 @@ func optimize
             usleep(10000) // sleep 10ms
         }
 
+        startMeasuring("wholeExecution")
         if let initialMissionLength = iterations {
             Log.verbose("Starting execution bounded by missionLength parameter to \(initialMissionLength) iterations.")
             while !shouldTerminate() && !runtime.shouldTerminate && UInt64(runtime.getMeasure("iteration")!) < runtime.scenarioKnobs.missionLength.get() {
@@ -251,6 +305,9 @@ func optimize
             }
             Log.verbose("Ending execution unbounded by missionLength parameter.")
         }
+        stopMeasuring("wholeExecution")
+
+        logTimingReport()
     }
 
     func profile(intent: IntentSpec, exhaustive: Bool = true) {
@@ -604,6 +661,7 @@ func optimize
         // Start the input processing loop
         loop( iterations: missionLength
             , preBody: {
+
                 // If this is the first iteration of any subsequent window, or if the schedule 
                 // has been invalidated (e.g. by the /perturb endpoint), request a new schedule.
                 if (iteration > 0 && iteration % windowSize == 0) || runtime.schedule == nil {
@@ -640,6 +698,7 @@ func optimize
                     runtime.schedule = runtime.controller.getSchedule(runtime.intents[id]!, measuringDevice.windowAverages())
 
                 }
+                startMeasuring("preBody > knobActuation")
                 if runtime.runtimeKnobs.applicationExecutionMode.get() == ApplicationExecutionMode.Adaptive {
                     
                     currentKnobSettings = runtime.schedule![iteration % windowSize]
@@ -654,22 +713,30 @@ func optimize
                     }
 
                 }
+                stopMeasuring("preBody > knobActuation")
             }
             , postBody: {
+                
+                startMeasuring("postBody > reportProgress")
                 measuringDevice.reportProgress()
+                stopMeasuring("postBody > reportProgress")
+                
+                startMeasuring("postBody > logStatus")
                 // Send a status to the test harness if enough time has elapsed since the last status
                 let timeNow = NSDate().timeIntervalSince1970
                 if !suppressStatus && timeNow >= timeOfLastStatus + minimumSecondsBetweenStatuses {
                     let statusDictionary = runtime.statusDictionary()
                     Log.debug("\nCurrent status: \(convertToJsonSR4783(from: statusDictionary ?? [:])).\n")
                     if runtime.executeWithTestHarness {
-                        sendStatusQueue.async {
-                            // FIXME handle error from request
-                            let _ = RestClient.sendRequest(to: "status", withBody: statusDictionary)
-                        }
+                        // sendStatusQueue.async {
+                        //     // FIXME handle error from request
+                        //     let _ = RestClient.sendRequest(to: "status", withBody: statusDictionary)
+                        // }
                     }
                     timeOfLastStatus = timeNow
                 }
+                stopMeasuring("postBody > logStatus")
+
             }) 
         {
             startTime = ProcessInfo.processInfo.systemUptime // reset, in case something paused execution between iterations
