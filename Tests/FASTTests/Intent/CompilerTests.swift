@@ -71,12 +71,29 @@ class CompilerTests: XCTestCase {
         /* Intent */
 
         XCTAssertEqual("incrementer", spec.name)
-        XCTAssertEqual(50.0         , spec.constraint)
-        XCTAssertEqual("performance", spec.constraintName)
+
+        // Constraints
+        guard let (qualityConstraintValue, qualityConstraintType) = spec.constraints["quality"] else {
+            XCTFail("Failed to parse quality constraint from intent.")
+            return
+        }
+        XCTAssertEqual(qualityConstraintValue, 50000.0)
+        XCTAssertEqual(qualityConstraintType, ConstraintType.lessOrEqualTo)
+        
+        guard let (performanceConstraintValue, performanceConstraintType) = spec.constraints["performance"] else {
+            XCTFail("Failed to parse performance constraint from intent.")
+            return
+        }
+        XCTAssertEqual(performanceConstraintValue, 5.0)
+        XCTAssertEqual(performanceConstraintType, ConstraintType.lessOrEqualTo)
+
+        // Objective function
                                                     // Note: this list must contain all the measures listed in incrementer.intent, but in alphabetical order
                                                     // ["energy", "energyDelta", "latency", "operations", "performance", "powerConsumption", "quality"]
-        XCTAssertEqual(4.5          , spec.costOrValue([13.0     , 7.0          , 1.0/50.0 , 3.0         , 50.0         , 11.0             , 1.0/2.0  ])) // 4.5 == (3.0*3.0)/2.0
-        XCTAssertEqual(.minimize    , spec.optimizationType)
+        XCTAssertEqual(1.0/9.0      , spec.costOrValue([13.0     , 7.0          , 1.0/50.0 , 3.0         , 50.0         , 11.0             , 1.0/9.0  ])) // 0.111... == 1.0/(3.0*3.0)
+        
+        // Optimization type
+        XCTAssertEqual(.maximize    , spec.optimizationType)
 
         /* Training set */
 

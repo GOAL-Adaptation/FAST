@@ -6,8 +6,6 @@ struct Perturbation {
     let availableCores         : UInt16
     let availableCoreFrequency : UInt64
     let missionLength          : UInt64
-    let enforceEnergyLimit     : Bool
-    let sceneImportance        : Double?
 
     let scenarioChanged        : Bool
 
@@ -15,29 +13,11 @@ struct Perturbation {
         if 
             let availableCores         = extract(type: UInt16.self, name: "availableCores"        , json: json),
             let availableCoreFrequency = extract(type: UInt64.self, name: "availableCoreFrequency", json: json),
-            let missionLength          = extract(type: UInt64.self, name: "missionLength"         , json: json),
-            let enforceEnergyLimit     = extract(type: Bool.self  , name: "enforceEnergyLimit"    , json: json)
+            let missionLength          = extract(type: UInt64.self, name: "missionLength"         , json: json)
         {
             self.availableCores         = availableCores
             self.availableCoreFrequency = availableCoreFrequency
             self.missionLength          = missionLength
-            self.enforceEnergyLimit     = enforceEnergyLimit
-
-            if enforceEnergyLimit {
-                Log.verbose("The energy limit will be enforced, proceeding with interpretation of missionLength as a constraint to be met.")
-            }
-            else {
-                Log.verbose("The energy limit will not be enforced, proceeding with interpretation of missionLength as a simple upper bound on the number of iterations.")
-            }
-
-            if let sceneImportance = extract(type: Double.self, name: "sceneImportance", json: json) {
-                self.sceneImportance = sceneImportance
-                Log.verbose("An sceneImportance of \(sceneImportance) was specified, proceeding with interpretation as a constraint to be met.")
-            }
-            else {
-                self.sceneImportance = nil
-                Log.verbose("No sceneImportance specified.")
-            }
 
             if let missionIntentString = json["missionIntent"] as? String {
                 if let compiledMissionIntent = compiler.compileIntentSpec(source: missionIntentString) as? Compiler.CompiledIntentSpec {
@@ -79,8 +59,6 @@ struct Perturbation {
             , "availableCores"         : availableCores
             , "availableCoreFrequency" : availableCoreFrequency
             , "missionLength"          : missionLength
-            , "enforceEnergyLimit"     : enforceEnergyLimit
-            , "sceneImportance"        : sceneImportance ?? "None"
             ]
     }
 
@@ -119,8 +97,7 @@ fileprivate func handleTestParameters(
     name: newIntent.name,
     knobs: knobs,
     measures: newIntent.measures,
-    constraint: newIntent.constraint,
-    constraintName: newIntent.constraintName,
+    constraints: newIntent.constraints,
     costOrValue: newIntent.costOrValue,
     optimizationType: newIntent.optimizationType,
     trainingSet: newIntent.trainingSet,

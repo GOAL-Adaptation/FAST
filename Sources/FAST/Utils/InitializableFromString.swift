@@ -164,6 +164,8 @@ extension InitializationParameters.ApplicationName : InitializableFromString {
                 self = .capsule
             case "incrementer": 
                 self = .incrementer
+            case "flightTestScenario7": 
+                self = .flightTestScenario7
             default:
                 failedToInitialize("ApplicationName", from: text)
                 return nil

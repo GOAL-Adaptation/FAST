@@ -139,8 +139,6 @@ func optimize
                 return 1.0 / measureGetter("latency")
             case "powerConsumption": 
                 return measureGetter("energyDelta") / measureGetter("latency")
-            case "energyRemaining":
-                return measureGetter("energyLimit") - measureGetter("energy")
             default:
                 return measureGetter(measureName)
         }
@@ -156,6 +154,43 @@ func optimize
         }
     }
 
+    /**
+     * Gather timing statistics about various segments of code.
+     * The "timers" dictionary is populated with timers, with labels such
+     * as "preBody" and "body", to provide low-level performance debugging 
+     * information.
+     */
+    var timers = [String:Double]()
+    func startMeasuring(_ label: String) {
+        timers["_" + label] = NSDate().timeIntervalSince1970
+    }
+    func stopMeasuring(_ label: String) {
+        guard let timeOfLastStartMeasuring = timers["_" + label] else {
+            FAST.fatalError("Runtime error: timer '\(label)' stopped before it was started!")
+        }
+        let timerSoFar = timers[label] ?? 0.0
+        timers[label] = timerSoFar + (NSDate().timeIntervalSince1970 - timeOfLastStartMeasuring)
+    }
+    func logTimingReport() {
+        let longestLabelLength = timers.keys.map{ k in k.count }.max()
+        let wholeExecutionTimer = timers["wholeExecution"]
+        if 
+            let lll = longestLabelLength,
+            let we  = wholeExecutionTimer
+        {
+            let prefixLength = "Timer '".count + 2
+            for (timerLabel,timerValue) in Array(timers).sorted(by: { t1,t2 in t1 < t2 }) {
+                if timerLabel.first! != "_" { // Ignore internal timers
+                    let labelString = "Timer '\(timerLabel)':".padding(toLength: prefixLength + lll, withPad: " ", startingAt: 0)
+                    let percentage = timerValue / we
+                    let timerValueString = String(format: "%.3f", timerValue)
+                    let percentageString = String(format: "%.0f", 100*(timerValue / we))
+                    Log.debug("\(labelString)\(timerValueString)s ~ \(percentageString)%")
+                }
+            }
+        }
+    }
+
     /** 
      * Loop body for a given number of iterations (or infinitely, if iterations == nil) 
      * Note: The overhead of preBody and postBody are excluded measures.
@@ -166,8 +201,21 @@ func optimize
              , _ body:   @escaping () -> Void
              ) {
 
+        func readTimeAndSystemEnergy() {
+            guard 
+                let anyArchitecture = runtime.architecture,
+                let architecture = anyArchitecture as? ClockAndEnergyArchitecture
+            else {
+                FAST.fatalError("Attempt to read time and system energy, but no compatible architecture was initialized.")
+            }
+            runtime.measure("time", architecture.clockMonitor.readClock())
+            runtime.measure("systemEnergy", Double(architecture.energyMonitor.readEnergy()))
+        }
+
         /** Execute preBody, execute body, update measures provided by runtime, and update postBody. */
         func executeBodyAndComputeMeasures() {
+
+            startMeasuring("beforePreBody")
             Log.debug("optimize.loop.updateMeasuresBegin")
             // When in scripted mode, block until a post to the /process endpoint
             runtime.waitForRestCallToIncrementScriptedCounter()
@@ -175,15 +223,30 @@ func optimize
             iteration += 1
             // Note that one less iteration is left to be processed when in scripted mode
             runtime.decrementScriptedCounter()
-            // Run preparatory code for this iteration, e.g. to reconfigure the system using a controller
-            preBody()
             // Record values of time and energy before executing the loop body
+            readTimeAndSystemEnergy()
             let systemEnergyBefore = runtime.getMeasure("systemEnergy")!
             let timeBefore = runtime.getMeasure("time")! // begin measuring latency
+            stopMeasuring("beforePreBody")
+
+            startMeasuring("preBody")
+            // Run preparatory code for this iteration, e.g. to reconfigure the system using a controller
+            preBody()
+            stopMeasuring("preBody")
+            
+            startMeasuring("body")
             // Run the loop body
             body()
+            stopMeasuring("body")
+
+            startMeasuring("postBody")
             // Run wrap-up code for this iteration, e.g. to report progress to a measuring device
             postBody()
+            stopMeasuring("postBody")
+
+            startMeasuring("afterPostBody")
+            // Record values of time and energy after executing the loop body
+            readTimeAndSystemEnergy()
             let timeAfter = runtime.getMeasure("time")! // stop measuring latency
             let systemEnergyAfter = runtime.getMeasure("systemEnergy")! // stop measuring energy
             // Measure the iteration counter
@@ -192,37 +255,43 @@ func optimize
             // Compute the latency and energyDelta, and if both are greater than 0, record them and their derived measures
             let latency: Double = timeAfter - timeBefore                
             let energyDelta: Double = systemEnergyAfter - systemEnergyBefore
-            if latency > 0.0 && energyDelta > 0.0 {
-
+            if latency > 0.0 {
                 runningTime += latency
-                energy += energyDelta
-
                 runtime.measure("latency", latency) // latency in seconds
-                runtime.measure("energyDelta", energyDelta) // energy per iteration
-                runtime.measure("energy", energy) // energy since application started or was last reset
                 runtime.measure("runningTime", runningTime) // running time in seconds
                 runtime.measure("performance", 
                     computeDerivedMeasure("performance", runtimeMeasureValueGetter)) // seconds per iteration
-                runtime.measure("powerConsumption", 
-                    computeDerivedMeasure("powerConsumption", runtimeMeasureValueGetter)) // rate of energy
-                // If running in Adaptive mode, the energyLimit is defined
-                if let theEnergyLimit = runtime.energyLimit {
-                    runtime.measure("energyLimit", Double(theEnergyLimit))
-                    runtime.measure("energyRemaining", 
-                        computeDerivedMeasure("energyRemaining", runtimeMeasureValueGetter))
-                } 
             }
             else {
-                Log.debug("Zero time passed between two measurements of time. The performance and powerConsumption measures cannot be computed.")
+                Log.debug("Zero time spent in this iteration. The performance measure cannot be computed and won't be updated. The latency and runningTime measures won't be updated.")
+            }
+            if energyDelta > 0.0 {
+                energy += energyDelta
+                runtime.measure("energyDelta", energyDelta) // energy per iteration
+                runtime.measure("energy", energy) // energy since application started or was last reset
+            }
+            else {
+                Log.debug("Zero energy spent in this iteration. The energyDelta and energy measures won't be updated.")
+            }
+            if latency > 0.0 && energyDelta > 0.0 {
+                runtime.measure("powerConsumption", 
+                    computeDerivedMeasure("powerConsumption", runtimeMeasureValueGetter)) // rate of energy
+            }
+            else {
+                Log.debug("Zero time and or energy spent in this iteration (latency: \(latency), energyDelta: \(energyDelta)). The powerConsumption measure cannot be computed and won't be updated.")
             }
             Log.debug("optimize.loop.updateMeasuresEnd")
+            stopMeasuring("afterPostBody")
+
         }
 
         // Wait for the system measures to be read
         while runtime.getMeasure("time") == nil || runtime.getMeasure("systemEnergy") == nil {
+            readTimeAndSystemEnergy()
             usleep(10000) // sleep 10ms
         }
 
+        startMeasuring("wholeExecution")
         if let initialMissionLength = iterations {
             Log.verbose("Starting execution bounded by missionLength parameter to \(initialMissionLength) iterations.")
             while !shouldTerminate() && !runtime.shouldTerminate && UInt64(runtime.getMeasure("iteration")!) < runtime.scenarioKnobs.missionLength.get() {
@@ -236,6 +305,9 @@ func optimize
             }
             Log.verbose("Ending execution unbounded by missionLength parameter.")
         }
+        stopMeasuring("wholeExecution")
+
+        logTimingReport()
     }
 
     func profile(intent: IntentSpec, exhaustive: Bool = true) {
@@ -495,7 +567,7 @@ func optimize
 
     }
 
-    func run(model: Model?, intent: IntentSpec, missionLength: UInt64, enforceEnergyLimit: Bool) {
+    func run(model: Model?, intent: IntentSpec, missionLength: UInt64) {
 
         Log.info("Running optimize scope \(id).")
 
@@ -505,67 +577,7 @@ func optimize
                   ? runtime.requestInitialModelFromMachineLearning(id: id, activeIntent: intent, originalModel: model)
                   : model
 
-        /** 
-         * Compute the energyLimit as the amount of energy that must be available 
-         * to the system when it starts, to complete the missionLength assuming that 
-         * it is always executing in the most energy-inefficient configuration, that 
-         * is, the one with the highest energyDelta.
-         */
-        func computeEnergyLimit() -> UInt64? {
-
-            switch runtime.runtimeKnobs.applicationExecutionMode.get() {
-                
-                case .Adaptive, .MachineLearning:
-
-                    if let controllerModel = model {
-                        let modelSortedByEnergyDeltaMeasure = controllerModel.sorted(by: "energyDelta")
-                        if 
-                            let energyDeltaMeasureIdx            = modelSortedByEnergyDeltaMeasure.measureNames.index(of: "energyDelta"),
-                            let modelEnergyDeltaMaxConfiguration = modelSortedByEnergyDeltaMeasure.configurations.last,
-                            let modelEnergyDeltaMinConfiguration = modelSortedByEnergyDeltaMeasure.configurations.first
-                        {
-                            let modelEnergyDeltaMaxDouble = modelEnergyDeltaMaxConfiguration.measureValues[energyDeltaMeasureIdx]
-                            let modelEnergyDeltaMinDouble = modelEnergyDeltaMinConfiguration.measureValues[energyDeltaMeasureIdx]
-
-                            if modelEnergyDeltaMinDouble == 0.0 {
-                                FAST.fatalError("Model minimum energyDelta measure is 0.0. Can not compute energyLimit.")
-                            }
-
-                            let modelEnergyDeltaMax = UInt64(modelEnergyDeltaMaxDouble)
-                            let modelEnergyDeltaMin = UInt64(modelEnergyDeltaMinDouble)
-
-                            if modelEnergyDeltaMin == 0 {
-                                Log.error("Minimum energyDelta found in active controller model is 0. Energy limit computation will fail!")
-                            }
-                            
-                            let energyLimit = modelEnergyDeltaMax * missionLength
-                            let maxMissionLength = energyLimit / modelEnergyDeltaMin
-
-                            Log.verbose("An energyLimit of \(energyLimit) was computed based on a missionLength of \(missionLength) and least energy-efficient model configuration with energyDelta \(modelEnergyDeltaMax). Maximum missionLength with this energyLimit is \(maxMissionLength)")
-
-                            return energyLimit
-                        }
-                        else {
-                            FAST.fatalError("Model is missing the energyDelta measure. Can not compute energyLimit.")
-                        }
-                    }
-                    else {
-                        FAST.fatalError("No model loaded. Can not compute energyLimit.")
-                    }
-
-                case .NonAdaptive:
-
-                    Log.verbose("Executing in NonAdaptive mode, no energyLimit computed.")
-                    return nil
-
-                default:
-                    
-                    FAST.fatalError("Attempt to execute in unsupported execution mode: \(runtime.runtimeKnobs.applicationExecutionMode.get()).")
-            }
-
-        }
-
-        func initializeControllerAndMeasuresAndGetInitialKnobSettings() -> KnobSettings {
+        func initializeMeasuresAndGetInitialKnobSettings() -> KnobSettings {
 
             resetMeasures()
 
@@ -575,12 +587,14 @@ func optimize
 
                     if let controllerModel = model {
 
-                        // Initialize the controller with the knob-to-mesure model, intent and window size
-                        runtime.initializeController(controllerModel, intent, windowSize, missionLength, enforceEnergyLimit)
+                        // Run the application in a fixed, known configuration for the first window
+                        let initialConfiguration = controllerModel.configurations[0] // Always configuration 0 since FASTController assumes the model is sorted by the constraint measure
+                        runtime.controller = ConstantController(knobSettings: initialConfiguration.knobSettings) 
+                        runtime.setIntent(intent)
+                        runtime.setModel(name: intent.name, currentModel: controllerModel, untrimmedModel: controllerModel)
 
                         // Compute initial schedule that meets the active intent, by using the measure values of
                         // the reference configuration as an estimate of the first measurements.
-                        let initialConfiguration = controllerModel.configurations[0] // Always configuration 0 since FASTController assumes the model is sorted by the constraint measure
                         let measureValuesOfInitialConfiguration = Dictionary(Array(zip(initialConfiguration.measureNames, initialConfiguration.measureValues)))
                         
                         // Initialize measures
@@ -621,16 +635,13 @@ func optimize
 
             }
         }
-        
-        if enforceEnergyLimit {
-            runtime.energyLimit = computeEnergyLimit() // Initialize the runtime's energyLimit based on the model
-        }
 
         // For the first window, the runtime will execute in the initial configuration 
         // (the initial value of currentKnobSettings), to obtain measures for this 
         // configuration that can be used to correctly initialize the controller, at
         // the first iteration of the second window.
-        var currentKnobSettings = initializeControllerAndMeasuresAndGetInitialKnobSettings()
+        var currentKnobSettings = initializeMeasuresAndGetInitialKnobSettings()
+        currentKnobSettings.apply(runtime: runtime)
         var lastKnobSettings = currentKnobSettings
         runtime.schedule = Schedule(constant: currentKnobSettings)
         runtime.measure("currentConfiguration", Double(currentKnobSettings.kid)) // The id of the configuration given in the knobtable
@@ -650,9 +661,24 @@ func optimize
         // Start the input processing loop
         loop( iterations: missionLength
             , preBody: {
+
                 // If this is the first iteration of any subsequent window, or if the schedule 
                 // has been invalidated (e.g. by the /perturb endpoint), request a new schedule.
                 if (iteration > 0 && iteration % windowSize == 0) || runtime.schedule == nil {
+
+                    // Before the first iteration of the second window, runtime.controller is always
+                    // a ConstantController. If running in Adaptive mode, replace this with the right 
+                    // adaptive controller.
+                    if 
+                        runtime.runtimeKnobs.applicationExecutionMode.get() == .Adaptive &&
+                        runtime.controller is ConstantController
+                    {
+                        // Initialize the controller with the knob-to-mesure model, intent and window size
+                        guard let controllerModel = model else {
+                            FAST.fatalError("Attempt to initialize adaptive controller with undefined model.")
+                        }
+                        runtime.initializeController(controllerModel, intent, windowSize)
+                    }
 
                     // If the controller deems the model is bad, and if online model updates
                     // have been enabled, request a new model from the machine learning module.
@@ -672,6 +698,7 @@ func optimize
                     runtime.schedule = runtime.controller.getSchedule(runtime.intents[id]!, measuringDevice.windowAverages())
 
                 }
+                startMeasuring("preBody > knobActuation")
                 if runtime.runtimeKnobs.applicationExecutionMode.get() == ApplicationExecutionMode.Adaptive {
                     
                     currentKnobSettings = runtime.schedule![iteration % windowSize]
@@ -686,22 +713,30 @@ func optimize
                     }
 
                 }
+                stopMeasuring("preBody > knobActuation")
             }
             , postBody: {
+                
+                startMeasuring("postBody > reportProgress")
                 measuringDevice.reportProgress()
+                stopMeasuring("postBody > reportProgress")
+                
+                startMeasuring("postBody > logStatus")
                 // Send a status to the test harness if enough time has elapsed since the last status
                 let timeNow = NSDate().timeIntervalSince1970
                 if !suppressStatus && timeNow >= timeOfLastStatus + minimumSecondsBetweenStatuses {
                     let statusDictionary = runtime.statusDictionary()
                     Log.debug("\nCurrent status: \(convertToJsonSR4783(from: statusDictionary ?? [:])).\n")
                     if runtime.executeWithTestHarness {
-                        sendStatusQueue.async {
-                            // FIXME handle error from request
-                            let _ = RestClient.sendRequest(to: "status", withBody: statusDictionary)
-                        }
+                        // sendStatusQueue.async {
+                        //     // FIXME handle error from request
+                        //     let _ = RestClient.sendRequest(to: "status", withBody: statusDictionary)
+                        // }
                     }
                     timeOfLastStatus = timeNow
                 }
+                stopMeasuring("postBody > logStatus")
+
             }) 
         {
             startTime = ProcessInfo.processInfo.systemUptime // reset, in case something paused execution between iterations
@@ -721,9 +756,6 @@ func optimize
 
             // FIXME Read a model corresponding to the initialized application,
             //       intent, and input stream.
-            // NOTE  If missionLength is to be enforced (ips.initialConditions.enforceEnergyLimit)
-            //       then load a model that has been filtered to keep only configurations that
-            //       exhibit a strictly isotonic relationship between energyDelta and quality.
             var model: Model
             if let modelFromTestHarness = ips.model {
                 Log.info("Received model as part of the inialization parameters.")
@@ -731,7 +763,7 @@ func optimize
             }
             else {
                 Log.info("No model received as part of the inialization parameters, will read the model from file.")
-                model = runtime.readModelFromFile(id, intent: ips.initialConditions.missionIntent, readTradeoffFilteredModel: ips.initialConditions.enforceEnergyLimit)!
+                model = runtime.readModelFromFile(id, intent: ips.initialConditions.missionIntent)!
             }
 
             Log.debug("Using initialization parameters from test harness: \(ips.asDict()).")
@@ -746,7 +778,7 @@ func optimize
             Log.verbose("Setting application execution model to \(applicationExecutionMode).")
             runtime.runtimeKnobs.applicationExecutionMode.set(applicationExecutionMode)
 
-            run(model: model, intent: ips.initialConditions.missionIntent, missionLength: ips.initialConditions.missionLength, enforceEnergyLimit: ips.initialConditions.enforceEnergyLimit)
+            run(model: model, intent: ips.initialConditions.missionIntent, missionLength: ips.initialConditions.missionLength)
 
         }
         else {
@@ -777,13 +809,12 @@ func optimize
                         Log.info("Model loaded for optimize scope \(id).")
 
                         if 
-                            let missionLength      = initialize(type: UInt64.self, name: "missionLength"     , from: key),
-                            let enforceEnergyLimit = initialize(type: Bool.self  , name: "enforceEnergyLimit", from: key)
+                            let missionLength      = initialize(type: UInt64.self, name: "missionLength"     , from: key)
                         {
-                            run(model: model, intent: intent, missionLength: missionLength, enforceEnergyLimit: enforceEnergyLimit)
+                            run(model: model, intent: intent, missionLength: missionLength)
                         }
                         else {
-                            FAST.fatalError("The  missionLength and enforceEnergyLimit parameters (mandatory for Adaptive execution) could not be initialized.")
+                            FAST.fatalError("The missionLength parameter (mandatory for Adaptive execution) could not be initialized.")
                         }
 
                     } else {
@@ -797,8 +828,7 @@ func optimize
                         if 
                             let missionLength = initialize(type: UInt64.self, name: "missionLength", from: key)
                         {
-                            // energyLimit not defined or enforced
-                            run(model: model, intent: intent, missionLength: missionLength, enforceEnergyLimit: false)
+                            run(model: model, intent: intent, missionLength: missionLength)
                         }
                         else {
                             FAST.fatalError("The missionLength parameter (mandatory for NonAdaptive execution) could not be initialized.")

@@ -63,8 +63,7 @@ public class Compiler {
                     name             : intentExpr.intentSection.intentDecl.name
                 , knobs            : compileKnobs(intentExpr)
                 , measures         : measures
-                , constraint       : compileConstraintValue(intentExpr)
-                , constraintName   : intentExpr.intentSection.intentDecl.constraintName
+                , constraints      : compileConstraints(intentExpr)
                 , costOrValue      : compileCostOrValue(intentExpr, measuresStore)
                 , optimizationType : intentExpr.intentSection.intentDecl.optimizationType
                 , trainingSet      : compileTrainingSet(intentExpr)
@@ -83,8 +82,7 @@ public class Compiler {
             let name             : String
             let knobs            : [String : ([Any], Any)]
             let measures         : [String]
-            let constraint       : Double
-            let constraintName   : String
+            let constraints      : [String : (Double, ConstraintType)]
             let costOrValue      : ([Double]) -> Double
             let optimizationType : FASTControllerOptimizationType
             let trainingSet      : [String]
@@ -94,8 +92,7 @@ public class Compiler {
         init( name             : String
                 , knobs            : [String : ([Any], Any)]
                 , measures         : [String]
-                , constraint       : Double
-                , constraintName   : String
+                , constraints      : [String : (Double, ConstraintType)]
                 , costOrValue      : @escaping ([Double]) -> Double
                 , optimizationType : FASTControllerOptimizationType
                 , trainingSet      : [String]
@@ -105,11 +102,10 @@ public class Compiler {
             self.name             = name            
             self.knobs            = knobs           
             self.measures         = measures        
-            self.constraint       = constraint      
-            self.constraintName   = constraintName  
+            self.constraints      = constraints      
             self.costOrValue      = costOrValue     
             self.optimizationType = optimizationType
-            self.trainingSet      = trainingSet     	
+            self.trainingSet      = trainingSet         
             self.objectiveFunctionRawString = objectiveFunctionRawString
         }
     }
@@ -240,10 +236,10 @@ public class Compiler {
     internal func compileMeasures(_ intentExpr: IntentExpression) -> [String] {
         return intentExpr.measureSection.measureDecls.map { (md:MeasureDecl) in md.name }
     }
-
-    /** Extract the constraint value from a parsed intent specification.  */
-    internal func compileConstraintValue(_ intentExpr: IntentExpression) -> Double {
-        return compileTypedLiteral(intentExpr.intentSection.intentDecl.constraint)!
+    
+    /** Extract multiple constraints from a parsed intent specification.  */
+    internal func compileConstraints(_ intentExpr: IntentExpression) -> [String : (Double, ConstraintType)] {
+        return intentExpr.intentSection.intentDecl.constraints.mapValues({ (compileTypedLiteral($0.0)!, $0.1) })
     }
 
     /** Translate a binary operator expression into a SWIFT expression. */

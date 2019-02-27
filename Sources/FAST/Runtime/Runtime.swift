@@ -85,7 +85,7 @@ public class Runtime {
     // Names of measures registered by the runtime. 
     // Along with the systemMeasures registered by the architecture, these are reserved measure names.
     let runtimeMeasures = 
-        ["windowSize", "iteration", "latency", "energyDelta", "energy", "energyLimit", "energyRemaining", "runningTime", "performance", "powerConsumption", "currentConfiguration"]
+        ["windowSize", "iteration", "latency", "energyDelta", "energy", "runningTime", "performance", "powerConsumption", "currentConfiguration"]
 
     func resetRuntimeMeasures(windowSize: UInt32) {
         self.measure("windowSize", Double(windowSize))
@@ -93,8 +93,6 @@ public class Runtime {
         self.measure("latency", 0.0) // latency in seconds
         self.measure("energyDelta", 0.0) // energy per iteration
         self.measure("energy", 0.0) // energy since application started or was last reset
-        self.measure("energyLimit", Double(self.energyLimit ?? 0)) // energyDelta of most energy-inefficient configuration times initial mission length 
-        self.measure("energyRemaining", Double(self.energyLimit ?? 0)) // runtime.energyLimit - energy 
         self.measure("runningTime", 0.0) // running time in seconds
         self.measure("performance", 0.0) // seconds per iteration
         self.measure("powerConsumption", 0.0) // rate of energy
@@ -121,6 +119,8 @@ public class Runtime {
 
     var knobSetters: [String : (Any) -> Void] = [:]
     var knobSettersLock = NSLock()
+    // Used to find the index of the current configuration for use by the controller
+    var currentKnobSettings: KnobSettings? = nil
 
     var intents: [String : IntentSpec] = [:]
     // Map from intent name to a pair (m1,m2) of Models, where 
@@ -136,14 +136,6 @@ public class Runtime {
     let intentCompiler = Compiler()
 
     var schedule: Schedule? = nil
-
-    // The amount of energy that the system is provisioned with at the start of a mission, 
-    // which is assumed to be enough to operate in the configuration with the highest 
-    // energyDelta for the entire initial missionLength.
-    // NOTE: Is only nil until it is initialized during the computation of the initial schedule
-    //       in Optimize.setUpControllerAndComputeInitialScheduleAndConfigurationAndEnergyLimit, 
-    //       and should be safe to unwrap at any time during Adaptve executions.
-    var energyLimit: UInt64? = nil
 
     /**
      * Read it from the file system. The intent will be loaded from a file whose
@@ -182,8 +174,8 @@ public class Runtime {
      * <APPLICATION_PATH>/<ID>.measuretable where <APPLICATION_PATH> is the
      * location of the application and <ID> is the value of the id parameter.
      */
-    func readModelFromFile(_ id: String, intent: IntentSpec, readTradeoffFilteredModel: Bool = false) -> Model? {
-        let tableSuffix = readTradeoffFilteredModel ? "table.filtered" : "table"
+    func readModelFromFile(_ id: String, intent: IntentSpec) -> Model? {
+        let tableSuffix = "table"
         if let knobCSV = readFile(withName: id, ofType: "knob\(tableSuffix)") {
             if let measureCSV = readFile(withName: id, ofType: "measure\(tableSuffix)") {
                 return Model(knobCSV, measureCSV, intent)
@@ -253,10 +245,7 @@ public class Runtime {
         Log.debug("Reinitializing controller with new model from machine learning module.")
         self.reinitializeController(
             currentIntent, 
-            replacingCurrentModelWith: newModel, 
-            intentPreservingController.missionLength,
-            intentPreservingController.enforceEnergyLimit,
-            intentPreservingController.sceneImportance
+            replacingCurrentModelWith: newModel
         )
 
     }
@@ -313,10 +302,7 @@ public class Runtime {
                 Dictionary(measuringDevices.map{
                     (intentName, measuringDevice) in
                     let intentSpec = intents[intentName]!
-                    let windowAverages = measuringDevice.windowAverages()
-                    let constraintVariableValue = windowAverages[intentSpec.constraintName]!
-                    var components =
-                        [ "constraintVariableValue" : constraintVariableValue as Any ]
+                    var components = [String : Any]()
                     if 
                         let objectiveFunction           = intentSpec.currentCostOrValue(runtime: self),
                         let objectiveFunctionExpression = intentSpec.objectiveFunctionRawString
@@ -324,9 +310,18 @@ public class Runtime {
                         components["objectiveFunction"]           = objectiveFunction
                         components["objectiveFunctionExpression"] = objectiveFunctionExpression
                     }
-                    components["constraintGoal"]   = intentSpec.constraint
-                    components["constraintName"]   = intentSpec.constraintName
                     components["optimizationType"] = intentSpec.optimizationType == .minimize ? "min" : "max"
+                    let measureValues = measuringDevice.values()
+                    components["constraints"] = intentSpec.constraints.map {
+                        (constraintVariable: String, goalAndType: (Double, ConstraintType)) -> [String : Any] in 
+                        let (constraintGoal, constraintType) = goalAndType
+                        return [
+                            "variable" : constraintVariable,
+                            "goal"     : constraintGoal,
+                            "value"    : measureValues[constraintVariable]!,
+                            "type"     : constraintType.rawValue
+                        ]
+                    }
                     return ( intentName, components )
                 })
 
@@ -334,19 +329,22 @@ public class Runtime {
             * Create a Dictionary of (measureName, statisticsValues) where
             * statisticsValues is a Dictionary of (statisticsName, statisticsValue).
             */
+            let measuringDevice = self.measuringDevices[appName]!
             Log.debug("Creating measureStatistics.")
             let measureStatistics: [String : [String : Double]] =
-                Dictionary(self.measuringDevices[appName]!.stats.map {
+                Dictionary(measuringDevice.stats.map {
                     (measureName: String, stats: Statistics) in
                     (measureName, stats.asJson)
                 })
             let measureStatisticsPerKnobSettings: [String: [String : [String: Double]]] =
-                Dictionary(self.measuringDevices[appName]!.statsPerKnobSettings.map {
-                    kv in
-                    let measureName = kv.0
-                    let perKnobSettingsStats: [KnobSettings: Statistics] = kv.1
-                    return (measureName, Dictionary(perKnobSettingsStats.map{ (String($0.0.kid), $0.1.asJson) }))
-                })
+                measuringDevice.collectDetailedStats
+                    ?   Dictionary(measuringDevice.statsPerKnobSettings.map {
+                            kv in
+                            let measureName = kv.0
+                            let perKnobSettingsStats: [KnobSettings: Statistics] = kv.1
+                            return (measureName, Dictionary(perKnobSettingsStats.map{ (String($0.0.kid), $0.1.asJson) }))
+                        })
+                    : [:]
 
             Log.debug("Creating arguments dictionary.")
             var arguments : [String : Any] =
@@ -363,7 +361,10 @@ public class Runtime {
             let applicationExecutionMode = self.runtimeKnobs.applicationExecutionMode.get()
             let isControllerModelAvailable = applicationExecutionMode == .Adaptive || applicationExecutionMode == .MachineLearning
 
-            if isControllerModelAvailable {
+            if 
+                isControllerModelAvailable && 
+                measuringDevice.collectDetailedStats 
+            {
                 // The measure values that the controller associates with the current configuration through the controller model.
                 // Note: This will only be defined when running in Adaptive or MachineLearning mode.
                 Log.debug("Calculating measurePredictions.")
@@ -515,8 +516,8 @@ public class Runtime {
       }
     }
 
-    /** Intialize intent preserving controller with the given model, intent, missionLength and window. */
-    func initializeController(_ model: Model, _ intent: IntentSpec, _ window: UInt32 = 20, _ missionLength: UInt64, _ enforceEnergyLimit: Bool, _ sceneImportance: Double? = nil) {
+    /** Intialize intent preserving controller with the given model, intent, and window. */
+    func initializeController(_ model: Model, _ intent: IntentSpec, _ window: UInt32 = 20) {
         Log.debug("In preparation for initializing the controller, will now trim the model.")
         // Trim model with respect to the intent, to force the controller to choose only those
         // configurations that the user has specified there.
@@ -530,16 +531,44 @@ public class Runtime {
             let (description, filter) = descriptionAndFilter
             return m.trim(toSatisfy: filter, description)
         })
-        Log.debug("Model trimmed to registered filters. Will now initialize controller.")
+        Log.debug("Model trimmed to registered filters. Will now initialize controller for intent with \(intent.constraints.count) constraints.")
         synchronized(controllerLock) {
-            if let c = IntentPreservingController(modelTrimmedToBothIntentAndFilters, intent, self, window, missionLength, self.energyLimit, enforceEnergyLimit, sceneImportance) {
-                setIntent(intent)
-                setModel(name: intent.name, currentModel: modelTrimmedToBothIntentAndFilters, untrimmedModel: model)
-                controller = c
-                Log.info("Controller initialized.")
-            }
-            else {
-                FAST.fatalError("Controller failed to initialize.")
+            switch intent.constraints.count {
+            case 1:    
+                if let c = IntentPreservingController(modelTrimmedToBothIntentAndFilters, intent, self, window) {
+                    setIntent(intent)
+                    setModel(name: intent.name, currentModel: modelTrimmedToBothIntentAndFilters, untrimmedModel: model)
+                    controller = c
+                    Log.info("IntentPreservingController initialized.")
+                }
+                else {
+                    FAST.fatalError("IntentPreservingController failed to initialize.")
+                }
+
+            case 2...:    
+                if let c = MulticonstrainedIntentPreservingController(modelTrimmedToBothIntentAndFilters, intent, window) {
+                    setIntent(intent)
+                    setModel(name: intent.name, currentModel: modelTrimmedToBothIntentAndFilters, untrimmedModel: model)
+                    controller = c
+                    Log.info("MulticonstrainedIntentPreservingController initialized.")
+                }
+                else {
+                    FAST.fatalError("MulticonstrainedIntentPreservingController failed to initialize.")
+                }
+
+            case 0:
+                if let c = UnconstrainedIntentPreservingController(modelTrimmedToBothIntentAndFilters, intent, window) {
+                    setIntent(intent)
+                    setModel(name: intent.name, currentModel: modelTrimmedToBothIntentAndFilters, untrimmedModel: model)
+                    controller = c
+                    Log.info("UnconstrainedIntentPreservingController initialized.")
+                }
+                else {
+                    FAST.fatalError("UnconstrainedIntentPreservingController failed to initialize.")
+                }
+
+            default:
+                FAST.fatalError("Intent doesn't havae any constraint initialized.")
             }
         }
     }
@@ -556,10 +585,7 @@ public class Runtime {
             if 
                 let (_ /* currentModel will be recomputed */, untrimmedModel) = self.models[currentIntent.name] 
             {
-                initializeController(untrimmedModel, currentIntent, self.controller.window, 
-                    intentPreservingController.missionLength,
-                    intentPreservingController.enforceEnergyLimit, 
-                    intentPreservingController.sceneImportance)
+                initializeController(untrimmedModel, currentIntent, self.controller.window)
             } else {
                 FAST.fatalError("Attempt to reinitialize controller based on a controller with an undefined model.")
             }
@@ -569,17 +595,13 @@ public class Runtime {
     }
 
     /** Reintialize intent preserving controller with the intent, keeping the previous model and window */
-    public func reinitializeController(_ spec: IntentSpec, replacingCurrentModelWith newModel: Model? = nil, _ missionLength: UInt64?, _ enforceEnergyLimit: Bool?, _ sceneImportance: Double? = nil) {
+    public func reinitializeController(_ spec: IntentSpec, replacingCurrentModelWith newModel: Model? = nil) {
         if 
-            let intentPreservingController = self.controller as? IntentPreservingController,
             let (_ /* currentModel will be recomputed */, untrimmedModel) = self.models[spec.name]
         {
             // Use the passed model if available, otherwise use the model of the active controller
             var model = newModel ?? untrimmedModel
-            initializeController(model, spec, controller.window, 
-                missionLength      ?? intentPreservingController.missionLength,
-                enforceEnergyLimit ?? intentPreservingController.enforceEnergyLimit, 
-                sceneImportance    ?? intentPreservingController.sceneImportance)
+            initializeController(model, spec, controller.window)   
         } 
         else if let constantController = self.controller as? ConstantController {
             setIntent(spec)
@@ -588,24 +610,16 @@ public class Runtime {
         }
     }
 
-    public func changeIntent(_ spec: IntentSpec, _ missionLength: UInt64? = nil, _ enforceEnergyLimit: Bool? = nil, _ sceneImportance: Double? = nil) {
-      guard let intentPreservingController = controller as? IntentPreservingController else {
-        Log.error("Active controller type '\(type(of: controller))' does not support change of intent.")
-        return
-      }
-      if spec.isEverythingExceptConstraitValueIdentical(to: intents[spec.name]) {
-        // FIXME Also check that missionLength didnt change
-        Log.verbose("Knob or measure sets of the new intent are identical to those of the previous intent. Setting the constraint goal of the existing controller to '\(spec.constraint)'.")
-        intentPreservingController.fastController.setConstraint(spec.constraint)
-        setIntent(spec)
-      }
-      else {
-        Log.verbose("Reinitializing the controller for `\(spec.name)`.")
-        reinitializeController(spec, 
-            missionLength      ?? intentPreservingController.missionLength, 
-            enforceEnergyLimit ?? intentPreservingController.enforceEnergyLimit, 
-            sceneImportance    ?? intentPreservingController.sceneImportance)
-      }
+    public func changeIntent(_ spec: IntentSpec, _ missionLength: UInt64? = nil) {
+        if !(controller is IntentPreservingController || controller is MulticonstrainedIntentPreservingController) {
+            Log.error("Active controller type '\(type(of: controller))' does not support change of intent.")
+            return
+        }
+        /* TODO Re-introduce approach to preserving controller state whenever only the constraint goal has changed (at least for the IntentPreservingController) */
+        else {
+            Log.verbose("Reinitializing the controller for `\(spec.name)`.")
+            reinitializeController(spec)
+        }
     }
 
     /** Update the value of name in the global measure store and return that value */
@@ -645,7 +659,7 @@ public class Runtime {
                         return currentConfiguration
                     }
                     else {
-                        FAST.fatalError("Current configuration with id \(currentKnobSettingsId) not found in current model \(currentModel).")
+                        FAST.fatalError("Configuration with id \(currentKnobSettingsId) (the current configuration id) not found in current model, which contains configurations with ids: '\(currentModel.configurations.map{$0.knobSettings.kid})'. Intent specification may be inconsistent with the model.")
                     }
                 }
                 else {
@@ -670,12 +684,8 @@ public class Runtime {
     /** Set scenario knobs according to perturbation */
     func setScenarioKnobs(accordingTo perturbation: Perturbation) {
         var newSettings: [String : [String : Any]] = [
-            "missionLength":      ["missionLength":      perturbation.missionLength],
-            "enforceEnergyLimit": ["enforceEnergyLimit": perturbation.enforceEnergyLimit], 
+            "missionLength":      ["missionLength":      perturbation.missionLength]
         ]
-        if let sceneImportance = perturbation.sceneImportance {
-            newSettings["sceneImportance"] = ["sceneImportance": sceneImportance]
-        }
         self.scenarioKnobs.setStatus(newSettings: newSettings)
         self.setKnob("availableCores",         to: perturbation.availableCores)
         self.setKnob("availableCoreFrequency", to: perturbation.availableCoreFrequency)
