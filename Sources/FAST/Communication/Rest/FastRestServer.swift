@@ -179,6 +179,8 @@ class FastRestServer : RestServer {
                             runtime.schedule = Schedule(constant: fixedConfiguration)
                             // Apply the fixed configuration
                             fixedConfiguration.apply(runtime: runtime)
+                            // Update the currentKnobSettings
+                            runtime.currentKnobSettings = fixedConfiguration
                         }
                         logMessage = "Knobs set through /fixConfiguration endpoint. " + logMessage
                     }
