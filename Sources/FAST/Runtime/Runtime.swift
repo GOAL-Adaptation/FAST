@@ -329,19 +329,22 @@ public class Runtime {
             * Create a Dictionary of (measureName, statisticsValues) where
             * statisticsValues is a Dictionary of (statisticsName, statisticsValue).
             */
+            let measuringDevice = self.measuringDevices[appName]!
             Log.debug("Creating measureStatistics.")
             let measureStatistics: [String : [String : Double]] =
-                Dictionary(self.measuringDevices[appName]!.stats.map {
+                Dictionary(measuringDevice.stats.map {
                     (measureName: String, stats: Statistics) in
                     (measureName, stats.asJson)
                 })
             let measureStatisticsPerKnobSettings: [String: [String : [String: Double]]] =
-                Dictionary(self.measuringDevices[appName]!.statsPerKnobSettings.map {
-                    kv in
-                    let measureName = kv.0
-                    let perKnobSettingsStats: [KnobSettings: Statistics] = kv.1
-                    return (measureName, Dictionary(perKnobSettingsStats.map{ (String($0.0.kid), $0.1.asJson) }))
-                })
+                measuringDevice.collectDetailedStats
+                    ?   Dictionary(measuringDevice.statsPerKnobSettings.map {
+                            kv in
+                            let measureName = kv.0
+                            let perKnobSettingsStats: [KnobSettings: Statistics] = kv.1
+                            return (measureName, Dictionary(perKnobSettingsStats.map{ (String($0.0.kid), $0.1.asJson) }))
+                        })
+                    : [:]
 
             Log.debug("Creating arguments dictionary.")
             var arguments : [String : Any] =
@@ -358,7 +361,10 @@ public class Runtime {
             let applicationExecutionMode = self.runtimeKnobs.applicationExecutionMode.get()
             let isControllerModelAvailable = applicationExecutionMode == .Adaptive || applicationExecutionMode == .MachineLearning
 
-            if isControllerModelAvailable {
+            if 
+                isControllerModelAvailable && 
+                measuringDevice.collectDetailedStats 
+            {
                 // The measure values that the controller associates with the current configuration through the controller model.
                 // Note: This will only be defined when running in Adaptive or MachineLearning mode.
                 Log.debug("Calculating measurePredictions.")
