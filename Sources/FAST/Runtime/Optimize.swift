@@ -291,6 +291,10 @@ func optimize
             usleep(10000) // sleep 10ms
         }
 
+        // When in scripted mode, wait until runtime.scriptedCounter is incremented 
+        // (through the REST API's /process end-point).
+        runtime.waitForRestCallToIncrementScriptedCounter()
+
         startMeasuring("wholeExecution")
         if let initialMissionLength = iterations {
             Log.verbose("Starting execution bounded by missionLength parameter to \(initialMissionLength) iterations.")

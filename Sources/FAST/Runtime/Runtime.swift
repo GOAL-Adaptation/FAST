@@ -445,8 +445,13 @@ public class Runtime {
     // blocks until the counter is > 0 if the application is executing in scripted mode
     func waitForRestCallToIncrementScriptedCounter() {
 
+
         // keeps track of the counter and blocks the application in scripted mode
         if (runtimeKnobs.interactionMode.get() == .Scripted) {
+            
+            if scriptedCounter == 0 {
+                Log.debug("Waiting for runtime.scriptedCounter to be incremented (e.g. by the REST API's /process end-point.)")
+            }
 
             while (runtimeKnobs.interactionMode.get() == .Scripted &&
                    scriptedCounter == 0 &&
