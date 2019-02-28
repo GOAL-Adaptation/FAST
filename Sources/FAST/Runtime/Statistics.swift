@@ -153,12 +153,6 @@ internal class Statistics {
             window[windowHead] = value
             windowHead = (windowHead + 1) % windowSize
         }
-        if let d = description {
-            Log.debug("Statistics for \(measure) \(d). Last observed value: \(lastObservedValue), window average: \(windowAverage), total average: \(totalAverage), total variance: \(totalVariance).")
-        }
-        else {
-            Log.verbose("Statistics for \(measure). Last observed value: \(lastObservedValue), window average: \(windowAverage), total average: \(totalAverage), total variance: \(totalVariance).")
-        }
         return value
     }
 
