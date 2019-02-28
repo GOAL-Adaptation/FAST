@@ -35,7 +35,7 @@ class MulticonstrainedIntentPreservingController : Controller {
         var constraintBoundsLessOrEqualTo =  [Double](constraintsLessOrEqualTo.values.map { $0.0 })
         var constraintBoundsGreaterOrEqualTo =  [Double](constraintsGreaterOrEqualTo.values.map { $0.0 })
         var constraintBoundsEqualTo =  [Double](constraintsEqualTo.values.map { $0.0 })
-        constraintBoundsEqualTo.append(Double(window))
+        constraintBoundsEqualTo.append(Double(1.0))
         var constraintCoefficientsLessOrEqualTo = (constraintMeasureIdxsLEQ.map { c in domain.map { k in model[Int(k)].measureValues[c!] } })
         var constraintCoefficientsGreaterOrEqualTo = (constraintMeasureIdxsGEQ.map { c in domain.map { k in model[Int(k)].measureValues[c!] } })
         var constraintCoefficientsEqualTo = (constraintMeasureIdxsEQ.map { c in domain.map { k in model[Int(k)].measureValues[c!] } })
