@@ -172,17 +172,19 @@ func optimize
         timers[label] = timerSoFar + (NSDate().timeIntervalSince1970 - timeOfLastStartMeasuring)
     }
     func logTimingReport() {
-        
-        let overheadTime = timers.filter{ kv in
-            // Do not count internal timers, sub-timers, and the whole execution timer
-            ["_", ">","wholeExecution"].map{
+
+        let overheadTimerAndSubTimers = timers.filter{ kv in
+            // Do not count internal timers, body, and the whole execution timer
+            ["_","body","wholeExecution"].map{
                 !kv.key.contains($0)
             }.reduce(true,{$0 && $1})
-        }.map{$0.value}.reduce(0,+)
-        
+        }        
+        let overheadTimers = overheadTimerAndSubTimers.filter{ !$0.key.contains(">") }
+        let overheadExecutionTime = overheadTimers.map{$0.value}.reduce(0,+)
+        let longestLabelLength = timers.keys.map{ $0.count }.max()
         if 
-            let longestLabelLength = timers.keys.map{ k in k.count }.max()
-            let wholeExecutionTime  = timers["wholeExecution"]
+            let lll = longestLabelLength,
+            let wholeExecutionTime = timers["wholeExecution"]
         {
             let prefixLength = "Timer '".count + 2
             for (timerLabel,timerValue) in Array(timers).sorted(by: { t1,t2 in t1 < t2 }) {
@@ -191,7 +193,8 @@ func optimize
                     let timerValueString = String(format: "%.3f", timerValue)
                     let percentageOfWholeString = String(format: "%.0f", 100*(timerValue / wholeExecutionTime))
                     let percentageOfOverheadString = String(format: "%.0f", 100*(timerValue / overheadExecutionTime))
-                    Log.verbose("\(labelString)\(timerValueString)s\t~\t\(percentageOfWholeString)%\t[\(percentageOfOverheadString)% of overhead]")
+                    let basicTimerReportEntry = "\(labelString)\(timerValueString)s\t\(percentageOfWholeString)%"
+                    Log.verbose(basicTimerReportEntry + (overheadTimerAndSubTimers.keys.contains(timerLabel) ? "\t[\(percentageOfOverheadString)% of overhead]" : ""))
                 }
             }
         }
