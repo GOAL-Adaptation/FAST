@@ -172,23 +172,30 @@ func optimize
         timers[label] = timerSoFar + (NSDate().timeIntervalSince1970 - timeOfLastStartMeasuring)
     }
     func logTimingReport() {
-        let longestLabelLength = timers.keys.map{ k in k.count }.max()
-        let wholeExecutionTimer = timers["wholeExecution"]
+        
+        let overheadTime = timers.filter{ kv in
+            // Do not count internal timers, sub-timers, and the whole execution timer
+            ["_", ">","wholeExecution"].map{
+                !kv.key.contains($0)
+            }.reduce(true,{$0 && $1})
+        }.map{$0.value}.reduce(0,+)
+        
         if 
-            let lll = longestLabelLength,
-            let we  = wholeExecutionTimer
+            let longestLabelLength = timers.keys.map{ k in k.count }.max()
+            let wholeExecutionTime  = timers["wholeExecution"]
         {
             let prefixLength = "Timer '".count + 2
             for (timerLabel,timerValue) in Array(timers).sorted(by: { t1,t2 in t1 < t2 }) {
                 if timerLabel.first! != "_" { // Ignore internal timers
                     let labelString = "Timer '\(timerLabel)':".padding(toLength: prefixLength + lll, withPad: " ", startingAt: 0)
-                    let percentage = timerValue / we
                     let timerValueString = String(format: "%.3f", timerValue)
-                    let percentageString = String(format: "%.0f", 100*(timerValue / we))
-                    Log.debug("\(labelString)\(timerValueString)s ~ \(percentageString)%")
+                    let percentageOfWholeString = String(format: "%.0f", 100*(timerValue / wholeExecutionTime))
+                    let percentageOfOverheadString = String(format: "%.0f", 100*(timerValue / overheadExecutionTime))
+                    Log.verbose("\(labelString)\(timerValueString)s\t~\t\(percentageOfWholeString)%\t[\(percentageOfOverheadString)% of overhead]")
                 }
             }
         }
+
     }
 
     /** 
@@ -314,6 +321,33 @@ func optimize
         logTimingReport()
     }
 
+    /** 
+     * Output a status message to the log if enough time has elapsed since the last status,
+     * and unless proteus_runtime_suppressStatus is 'true'.
+     * If proteus_runtime_executeWithTestHarness and  proteus_runtime_sendStatusToTestHarness 
+     * are both 'true', the status message will also be sent to the test harness' /status
+     * end-point.
+     */
+    var timeOfLastStatus = NSDate().timeIntervalSince1970
+    let sendStatusQueue  = DispatchQueue(label: "sendStatus") // Send status messages to the test harness on a separate thread using this queue
+    func logStatus() {
+        
+        let timeNow = NSDate().timeIntervalSince1970
+        if !runtime.suppressStatus && timeNow >= timeOfLastStatus + runtime.minimumSecondsBetweenStatuses {
+            let statusDictionary = runtime.statusDictionary()
+            Log.verbose("\nCurrent status: \(convertToJsonSR4783(from: statusDictionary ?? [:])).\n")
+            if runtime.executeWithTestHarness && runtime.sendStatusToTestHarness {
+                sendStatusQueue.async {
+                    guard let statusResponse = RestClient.sendRequest(to: "status", withBody: statusDictionary) else {
+                        FAST.fatalError("Unable to send status to \(RestClient.serverProtocol)://\(RestClient.serverAddress):\(RestClient.serverPort)/status")
+                    }
+                }
+            }
+            timeOfLastStatus = timeNow
+        }
+
+    }
+
     func profile(intent: IntentSpec, exhaustive: Bool = true) {
 
         Log.info("Profiling optimize scope \(id).")
@@ -393,8 +427,7 @@ func optimize
                         loop( iterations: profileSize
                             , postBody: {
                                 measuringDevice.reportProgress()
-                                let statusDictionary = runtime.statusDictionary()
-                                Log.debug("\nCurrent status: \(convertToJsonSR4783(from: statusDictionary ?? [:])).\n")
+                                logStatus()
                                 knobSettings.apply(runtime: runtime)
                             }) 
                         {
@@ -654,14 +687,6 @@ func optimize
         let measuringDevice = MeasuringDevice(samplingPolicy, windowSize, intent.measures, runtime)
         runtime.measuringDevices[id] = measuringDevice
 
-        // Send status messages to the test harness on a separate thread using this queue
-        let sendStatusQueue = DispatchQueue(label: "sendStatus")
-
-        // Output status to console if enough time has elapsed, and unless proteus_runtime_suppressStatus is 'true'
-        var timeOfLastStatus = NSDate().timeIntervalSince1970
-        let minimumSecondsBetweenStatuses = initialize(type: Double.self, name: "minimumSecondsBetweenStatuses", from: key, or: 0.0)
-        let suppressStatus                = initialize(type: Bool.self,   name: "suppressStatus",                from: key, or: false)
-
         // Start the input processing loop
         loop( iterations: missionLength
             , preBody: {
@@ -726,19 +751,7 @@ func optimize
                 stopMeasuring("postBody > reportProgress")
                 
                 startMeasuring("postBody > logStatus")
-                // Send a status to the test harness if enough time has elapsed since the last status
-                let timeNow = NSDate().timeIntervalSince1970
-                if !suppressStatus && timeNow >= timeOfLastStatus + minimumSecondsBetweenStatuses {
-                    let statusDictionary = runtime.statusDictionary()
-                    Log.debug("\nCurrent status: \(convertToJsonSR4783(from: statusDictionary ?? [:])).\n")
-                    if runtime.executeWithTestHarness {
-                        // sendStatusQueue.async {
-                        //     // FIXME handle error from request
-                        //     let _ = RestClient.sendRequest(to: "status", withBody: statusDictionary)
-                        // }
-                    }
-                    timeOfLastStatus = timeNow
-                }
+                logStatus()
                 stopMeasuring("postBody > logStatus")
 
             }) 

@@ -74,13 +74,17 @@ public class Runtime {
     // REST server address used by FAST application
     let restServerAddress       = initialize(type: String.self, name: "address",       from: key, or: "0.0.0.0")
 
+    // Controls whether or not the machine learning module will be used to update the controller model online.
+    let executeWithMachineLearning = initialize(type: Bool.self, name: "executeWithMachineLearning", from: key, or: false)
+
     // Controls whether or not the test harness is involved in the execution.
     // This includes obtaining initialization parameters are obtained from response to post to brass-th/ready,
     // and posting to brass-th/status after the processing of each input.
     let executeWithTestHarness = initialize(type: Bool.self, name: "executeWithTestHarness", from: key, or: false)
 
-    // Controls whether or not the machine learning module will be used to update the controller model online.
-    let executeWithMachineLearning = initialize(type: Bool.self, name: "executeWithMachineLearning", from: key, or: false)
+    // When executing with a test harness (proteus_runtime_executeWithTestHarness=true), send a status message
+    // after every iteration has completed.
+    let sendStatusToTestHarness = initialize(type: Bool.self, name: "sendStatusToTestHarness", from: key, or: false)
 
     // Controls whether or detailed status messages are output.
     // By default, status messages will contain the verdict components as well as the current value of each measure.
@@ -89,6 +93,15 @@ public class Runtime {
     //  - architecture
     //  - measure statistics
     let detailedStatusMessages = initialize(type: Bool.self, name: "detailedStatusMessages", from: key, or: false)
+    
+    // Completely turn off logging of status messages (both to standard output and to the test harness' /status end-point).
+    let suppressStatus = initialize(type: Bool.self, name: "suppressStatus", from: key, or: false)
+
+    // Wait at least this long between successive status message logs.
+    let minimumSecondsBetweenStatuses = initialize(type: Double.self, name: "minimumSecondsBetweenStatuses", from: key, or: 0.0)
+
+    // When set to true, the MeasuringDevice will collect statistics for each combination of measure and KnobSettings.
+    let collectDetailedStatistics = initialize(type: Bool.self, name: "collectDetailedStatistics", from: key, or: false)
 
     // Names of measures registered by the runtime. 
     // Along with the systemMeasures registered by the architecture, these are reserved measure names.
@@ -371,17 +384,17 @@ public class Runtime {
                         , currentConfiguration.measureValues
                         ).map{ [ "name" : $0, "value" : $1 ] }
 
-                    if measuringDevice.collectDetailedStats {
+                    if self.collectDetailedStatistics {
 
                         // Extract per-KnobSettings statistics
                         // NOTE: This is very expensive! 
                         //       When the time it takes to process an iteration is very low (<10ms),
-                        //       enabling proteus_runtime_collectDetailedStats will cause energy-derived
+                        //       enabling proteus_runtime_collectDetailedStatistics will cause energy-derived
                         //       measures such as performance and powerConsumption to be significantly
                         //       affected by the time it takes to output this part of the status message.
 
                         let measureStatisticsPerKnobSettings: [String: [String : [String: Double]]] =
-                            measuringDevice.collectDetailedStats
+                            self.collectDetailedStatistics
                                 ?   Dictionary(measuringDevice.statsPerKnobSettings.map {
                                         kv in
                                         let measureName = kv.0

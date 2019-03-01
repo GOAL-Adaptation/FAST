@@ -60,8 +60,12 @@ execute:              export proteus_client_rest_serverPort                   :=
 execute:              export proteus_emulator_emulationDatabaseType           := Dict
 execute:              export proteus_emulator_database_db                     := ./${APPNAME}.trace.json
 execute:              export proteus_emulator_database_readingMode            := Statistics
-execute:              export proteus_runtime_collectDetailedStats             := false
-execute:              export proteus_runtime_detailedStatusMessages           := false
+
+execute:              export proteus_runtime_collectDetailedStatistics        := false
+execute:              export proteus_runtime_suppressStatus                   := false
+execute:              export proteus_runtime_minimumSecondsBetweenStatuses    := 0.0
+execute:              export proteus_runtime_detailedStatus                   := false
+execute:              export proteus_runtime_sendStatusToTestHarness          := false
 
 execute:              export proteus_armBigLittle_policy                      := Simple
 execute:              export proteus_armBigLittle_availableBigCores           := 4
