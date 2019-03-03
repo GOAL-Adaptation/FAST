@@ -49,7 +49,10 @@ public class Compiler {
 
         func extractSection(_ sectionName: String) -> String? {
             let stopParsingHereRegex = 
-                sectionNames.filter{ $0 != sectionName }.map{ "(?:\($0))" }.joined(separator: "|")
+                sectionNames.filter{ $0 != sectionName }
+                            .map{ "(?:\($0))" } // sections may end with another section
+                            .joined(separator: "|") 
+                            + "|(?:$)" // sections may end with end of the file (string)
             let sectionExtractorRegex =
                 "(?:\(sectionName)((.|\n)+?)(?=\(stopParsingHereRegex)))"
             return fileContent
