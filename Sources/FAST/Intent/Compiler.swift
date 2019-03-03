@@ -57,13 +57,17 @@ public class Compiler {
                 .map{ "\(fileContent[$0])"}
         }
 
-        guard
-            let knobSection        = extractSection("knobs"),
-            let measuresSection    = extractSection("measures"),
-            let intentSection      = extractSection("intent"),
-            let trainingSetSection = extractSection("trainingSet")
-        else {
-            FAST.fatalError("Malformed intent specification: '\(fileContent)'.")
+        guard let knobSection = extractSection("knobs") else {
+            FAST.fatalError("Could not extract knobs section from intent specification: '\(fileContent)'.")
+        }
+        guard let measuresSection = extractSection("measures") else {
+            FAST.fatalError("Could not extract knobs section from intent specification: '\(fileContent)'.")
+        }
+        guard let intentSection = extractSection("intent") else {
+            FAST.fatalError("Could not extract knobs section from intent specification: '\(fileContent)'.")
+        }
+        guard let trainingSetSection = extractSection("trainingSet") else {
+            FAST.fatalError("Could not extract knobs section from intent specification: '\(fileContent)'.")
         }
 
         let knobSectionComponents = knobSection.components(separatedBy: "such that")
