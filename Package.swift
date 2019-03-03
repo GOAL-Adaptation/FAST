@@ -22,7 +22,7 @@ let package = Package(
   ],
   targets: [
     .target(name: "FAST", dependencies: [
-      "HeliumLogger", "PerfectHTTPServer", "SwiftAST", "FASTController", "CSwiftV", "CAffinity", "UnconstrainedOptimizer", "MulticonstrainedOptimizer"]),
+      "HeliumLogger", "PerfectHTTPServer", "Predicate", "SwiftAST", "FASTController", "CSwiftV", "CAffinity", "UnconstrainedOptimizer", "MulticonstrainedOptimizer"]),
     .target(name: "incrementer", dependencies: ["FAST"]),
     .target(name: "CAffinity", path: "Sources/CAffinity"),
 	.testTarget(name: "FASTTests", dependencies: ["FAST"]),

@@ -16,7 +16,7 @@ import Parser
 import Source
 import Diagnostic
 import FASTController
-import Predicate
+import enum Predicate.Predicate
 
 //---------------------------------------
 
