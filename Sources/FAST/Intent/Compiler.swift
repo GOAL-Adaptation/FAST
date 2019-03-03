@@ -74,7 +74,7 @@ public class Compiler {
 
         switch knobSectionComponents.count {
             case 1:
-                return (fileContent,nil)
+                return (fileContent, nil)
             case 2:
                 let knobSectionWithoutConstraints = knobSectionComponents[0]
                 let knobConstraints = knobSectionComponents[1]
