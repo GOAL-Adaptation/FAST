@@ -16,7 +16,7 @@ import Parser
 import Source
 import Diagnostic
 import FASTController
-import enum Predicate.Predicate
+import struct Expression.AnyExpression
 
 //---------------------------------------
 
@@ -174,11 +174,32 @@ public class Compiler {
             guard let constraint = knobConstraintsRawString else {
                 return true
             }
-            let swiftConstraint = constraint
-                .replacingOccurrences(of: "and", with: "&&")
-                .replacingOccurrences(of: "or", with: "||")
-            let predicate = NSPredicate(format: swiftConstraint)
-            return predicate.evaluate(with: "", substitutionVariables: knobSettings.settings) as Bool
+            func evalBoolOp(_ op: String, l: Any, r: Any, _ function: (Bool,Bool) -> Bool) -> Bool {
+                guard let leftBool = l as? Bool else {
+                    FAST.fatalError("Left operand for knob constraint \(l) \(op) \(r) is not boolean.")
+                }
+                guard let rightBool = r as? Bool else {
+                    FAST.fatalError("Right operand for knob constraint \(l) \(op) \(r) is not boolean.")
+                }
+                return function(leftBool,rightBool)
+            }
+            let expression = AnyExpression(
+                constraint, 
+                options: .boolSymbols, 
+                constants: knobSettings.settings,
+                symbols: [
+                    .infix("and") : { 
+                        args in evalBoolOp("and", l: args[0], r: args[1], { $0 && $1 }) 
+                    },
+                    .infix("or") : { 
+                        args in evalBoolOp("or" , l: args[0], r: args[1], { $0 || $1 }) 
+                    }
+                ]
+            )
+            guard let result = try? expression.evaluate() as Bool else {
+                FAST.fatalError("Failed to evaluate knob constraints: '\(expression)', as a boolean, in environment: '\(knobSettings.settings)' (from KnobSettings with id \(knobSettings.kid)).")
+            }
+            return result
         }
 
     }

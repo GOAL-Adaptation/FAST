@@ -62,6 +62,20 @@ class CompilerTests: XCTestCase {
             XCTAssertEqual(thresholdRangeExpected[i], thresholdRange[i] as! Int)
         }
 
+        XCTAssertTrue(spec.satisfiesKnobConstraints(knobSettings: KnobSettings(kid: -1, [
+            "threshold"             : 200000,
+            "step"                  : "1",
+            "utilizedCores"         : 4,
+            "utilizedCoreFrequency" : 600,
+        ])))
+
+        XCTAssertFalse(spec.satisfiesKnobConstraints(knobSettings: KnobSettings(kid: -1, [
+            "threshold"             : 200000,
+            "step"                  : "1",
+            "utilizedCores"         : 4,
+            "utilizedCoreFrequency" : 300,
+        ])))
+
         /* Measures */
 
         // Note: this list must contain all the measures listed in incrementer.intent, but in alphabetical order
