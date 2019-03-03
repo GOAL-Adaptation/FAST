@@ -31,6 +31,10 @@ public protocol IntentSpec {
   var trainingSet: [String]  { get }
 
   var objectiveFunctionRawString: String? { get }
+  
+  var knobConstraintsRawString: String? { get }
+
+  func satisfiesKnobConstraints(knobSettings: KnobSettings) -> Bool
 
 }
 

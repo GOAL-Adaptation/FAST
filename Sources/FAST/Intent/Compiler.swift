@@ -16,6 +16,7 @@ import Parser
 import Source
 import Diagnostic
 import FASTController
+import Predicate
 
 //---------------------------------------
 
@@ -37,17 +38,66 @@ public class Compiler {
         }
     }
 
+    /* 
+        Work-around to parse until knob constraints can be handled by swift-ast 
+        Returns (fileContentWithoutKnobConstraints, knobConstraints), where 
+        knobConstraints is nil whenever the fileContent does not contain a knob constraint.
+    */
+    func separateKnobConstraintsFromRestOfIntentSpec(source fileContent: String) -> (String,String?) {
+
+        let sectionNames = ["knobs", "measures", "intent", "trainingSet"]
+
+        func extractSection(_ sectionName: String) -> String? {
+            let stopParsingHereRegex = 
+                sectionNames.filter{ $0 != sectionName }.map{ "(?:\($0))" }.joined(separator: "|")
+            let sectionExtractorRegex =
+                "(?:\(sectionName)((.|\n)+?)(?=\(stopParsingHereRegex)))"
+            return fileContent
+                .range(of: sectionExtractorRegex, options: .regularExpression)
+                .map{ "\(fileContent[$0])"}
+        }
+
+        guard
+            let knobSection        = extractSection("knobs"),
+            let measuresSection    = extractSection("measures"),
+            let intentSection      = extractSection("intent"),
+            let trainingSetSection = extractSection("trainingSet")
+        else {
+            FAST.fatalError("Malformed intent specification: '\(fileContent)'.")
+        }
+
+        let knobSectionComponents = knobSection.components(separatedBy: "such that")
+
+        switch knobSectionComponents.count {
+            case 1:
+                return (fileContent,nil)
+            case 2:
+                let knobSectionWithoutConstraints = knobSectionComponents[0]
+                let knobConstraints = knobSectionComponents[1]
+                let intentWithoutKnobConstraint = 
+                    knobSectionWithoutConstraints + measuresSection + intentSection + trainingSetSection
+                return (intentWithoutKnobConstraint, knobConstraints) 
+            default:
+                FAST.fatalError("Malformed knob section: '\(knobSection)'.")
+        }
+
+    }
+
     /** 
      * Parse an intent specification from a String `source`,
      * then compile its expressions into executable SWIFT code.
      */
     public func compileIntentSpec(source fileContent: String) -> IntentSpec? {
         let diagnosticConsumer = HeliumLoggerDiagnosticConsumer()
-        let parser = IntentParser(source: SourceFile(content: fileContent))
+
+        let (fileContentWithoutKnobConstraints, knobConstraints) = 
+            separateKnobConstraintsFromRestOfIntentSpec(source: fileContent)
+
+        let parser = IntentParser(source: SourceFile(content: fileContentWithoutKnobConstraints))
         guard let topLevelDecl = try? parser.parse(),
                     let firstStatement = topLevelDecl.statements.first else {
             DiagnosticPool.shared.report(withConsumer: diagnosticConsumer)
-            Log.warning("Failed to parse intent: \(fileContent).")
+            Log.warning("Failed to parse intent: \(fileContentWithoutKnobConstraints).")
             return nil
         }
         
@@ -68,6 +118,7 @@ public class Compiler {
                 , optimizationType : intentExpr.intentSection.intentDecl.optimizationType
                 , trainingSet      : compileTrainingSet(intentExpr)
                 , objectiveFunctionRawString : intentExpr.intentSection.intentDecl.optimizedExpr.textDescription
+                , knobConstraintsRawString : knobConstraints
             )
 
         }
@@ -88,6 +139,7 @@ public class Compiler {
             let trainingSet      : [String]
 
             var objectiveFunctionRawString : String?
+            var knobConstraintsRawString   : String?
 
         init( name             : String
                 , knobs            : [String : ([Any], Any)]
@@ -97,6 +149,7 @@ public class Compiler {
                 , optimizationType : FASTControllerOptimizationType
                 , trainingSet      : [String]
                 , objectiveFunctionRawString : String? = nil
+                , knobConstraintsRawString : String? = nil
             )
         {
             self.name             = name            
@@ -107,7 +160,20 @@ public class Compiler {
             self.optimizationType = optimizationType
             self.trainingSet      = trainingSet         
             self.objectiveFunctionRawString = objectiveFunctionRawString
+            self.knobConstraintsRawString = knobConstraintsRawString
         }
+
+        public func satisfiesKnobConstraints(knobSettings: KnobSettings) -> Bool {
+            guard let constraint = knobConstraintsRawString else {
+                return true
+            }
+            let swiftConstraint = constraint
+                .replacingOccurrences(of: "and", with: "&&")
+                .replacingOccurrences(of: "or", with: "||")
+            let predicate = NSPredicate(format: swiftConstraint)
+            return predicate.evaluate(with: "", substitutionVariables: knobSettings.settings) as Bool
+        }
+
     }
 
     //---------------------------------------
