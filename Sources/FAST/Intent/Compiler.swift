@@ -186,7 +186,13 @@ public class Compiler {
             let expression = AnyExpression(
                 constraint, 
                 options: .boolSymbols, 
-                constants: knobSettings.settings,
+                constants: knobSettings.settings.mapValues{
+                    switch $0 {
+                        case let i as Int    : return NSNumber(value: i)
+                        case let d as Double : return NSNumber(value: d)
+                        default              : return $0
+                    }
+                },
                 symbols: [
                     .infix("and") : { 
                         args in evalBoolOp("and", l: args[0], r: args[1], { $0 && $1 }) 
