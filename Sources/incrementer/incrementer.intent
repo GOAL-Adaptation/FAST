@@ -3,7 +3,7 @@ knobs       threshold             from [200000, 400000, 600000, 800000, 1000000 
             utilizedCores         from [1, 2, 3, 4 reference] 
             utilizedCoreFrequency from [300, 400, 600, 1200 reference]   
 
-            such that utilizedCoreFrequency > utilizedCores * 100 and (threshold < 400000)and step == "4"
+            such that utilizedCoreFrequency > utilizedCores * 100 
 
 measures    energy           : Double // System measure
             energyDelta      : Double // System measure
