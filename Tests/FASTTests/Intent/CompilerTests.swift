@@ -99,15 +99,15 @@ class CompilerTests: XCTestCase {
             return
         }
         XCTAssertEqual(performanceConstraintValue, 5.0)
-        XCTAssertEqual(performanceConstraintType, ConstraintType.lessOrEqualTo)
+        XCTAssertEqual(performanceConstraintType, ConstraintType.greaterOrEqualTo)
 
         // Objective function
                                                     // Note: this list must contain all the measures listed in incrementer.intent, but in alphabetical order
                                                     // ["energy", "energyDelta", "latency", "operations", "performance", "powerConsumption", "quality"]
-        XCTAssertEqual(1.0/9.0      , spec.costOrValue([13.0     , 7.0          , 1.0/50.0 , 3.0         , 50.0         , 11.0             , 1.0/9.0  ])) // 0.111... == 1.0/(3.0*3.0)
+        XCTAssertEqual(9.0      , spec.costOrValue([13.0     , 7.0          , 1.0/50.0 , 3.0         , 50.0         , 11.0             , 1.0/9.0  ])) // 0.111... == 1.0/(3.0*3.0)
         
         // Optimization type
-        XCTAssertEqual(.maximize    , spec.optimizationType)
+        XCTAssertEqual(.minimize    , spec.optimizationType)
 
         /* Training set */
 
