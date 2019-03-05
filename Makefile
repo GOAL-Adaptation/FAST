@@ -66,6 +66,7 @@ execute:              export proteus_runtime_suppressStatus                   :=
 execute:              export proteus_runtime_minimumSecondsBetweenStatuses    := 0.0
 execute:              export proteus_runtime_detailedStatus                   := false
 execute:              export proteus_runtime_sendStatusToTestHarness          := false
+execute:              export proteus_runtime_logToMemory                      := false
 
 execute:              export proteus_armBigLittle_policy                      := Simple
 execute:              export proteus_armBigLittle_availableBigCores           := 4

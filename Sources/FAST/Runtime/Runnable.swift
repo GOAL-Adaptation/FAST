@@ -106,6 +106,44 @@ func setApplicationKnobFilter(forKnob knobName: String, to targetKnobValues: [An
     return runtime.measure(name, value)
 }
 
+class LogOutputStream: TextOutputStream {
+    let inMemory: Bool
+    let stream: FileHandle
+    var buffer: [Data]
+    init(toStream stream: FileHandle, inMemory: Bool) {
+        self.stream = stream
+        self.inMemory = inMemory
+        self.buffer = [Data]()
+    }
+    func write(_ text: String) {
+        guard let data = text.data(using: String.Encoding.utf8) else { return }
+        if inMemory {
+            buffer.append(data)
+        }
+        else {
+            self.stream.write(data)
+        }
+    }
+    func flush() {
+        if inMemory {
+            for logLine in buffer {
+                self.stream.write(logLine)
+            }
+            self.buffer = [Data]()
+        }
+    }
+}
+class StandardOutput: LogOutputStream {
+    init(inMemory: Bool) {
+        super.init(toStream: FileHandle.standardOutput,inMemory: inMemory)
+    }
+}
+class StandardError: LogOutputStream {
+    init(inMemory: Bool) {
+        super.init(toStream: FileHandle.standardError, inMemory: inMemory)
+    }
+}
+
 public func optimize(
     _ id: String,
     _ knobs: [TextApiModule],
@@ -119,20 +157,15 @@ public func optimize(
 {
 
     // Initialize the logger
-    class StandardError: TextOutputStream {
-        func write(_ text: String) {
-            guard let data = text.data(using: String.Encoding.utf8) else { return }
-            FileHandle.standardError.write(data)
-        }
-    }
     let logLevel = initialize(type: LoggerMessageType.self, name: "logLevel", from: ["proteus","runtime"], or: .verbose)
     let logToStandardError = initialize(type: Bool.self, name: "logToStandardError", from: ["proteus","runtime"], or: false)
-    if logToStandardError {
-        HeliumStreamLogger.use(logLevel, outputStream: StandardError())
-    }
-    else {
-        HeliumLogger.use(logLevel)
-    }
+    let logToMemory = initialize(type: Bool.self, name: "logToMemory", from: ["proteus","runtime"], or: false)
+    
+    let outputStream = logToStandardError
+                     ? StandardError(inMemory: logToMemory)
+                     : StandardOutput(inMemory: logToMemory)
+
+    HeliumStreamLogger.use(logLevel, outputStream: outputStream)
 
     // initialize runtime
     runtime = providedRuntime ?? Runtime.newRuntime()
@@ -149,4 +182,9 @@ public func optimize(
 
     // start the actual optimization
     optimize(app.name, runtime, until: shouldTerminate, across: windowSize, samplingPolicy: samplingPolicy, routine)
+
+    // Flush the log if it was buffered in memory
+    if logToMemory {
+        outputStream.flush()
+    }
 }

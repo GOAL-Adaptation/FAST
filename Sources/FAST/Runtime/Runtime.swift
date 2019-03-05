@@ -103,6 +103,9 @@ public class Runtime {
     // When set to true, the MeasuringDevice will collect statistics for each combination of measure and KnobSettings.
     let collectDetailedStatistics = initialize(type: Bool.self, name: "collectDetailedStatistics", from: key, or: false)
 
+    // When true, log messages are not written to the output/error stream until the end of execution, which reduces overhead.
+    let logToMemory = initialize(type: Bool.self, name: "logToMemory", from: ["proteus","runtime"], or: false)
+
     // Names of measures registered by the runtime. 
     // Along with the systemMeasures registered by the architecture, these are reserved measure names.
     let runtimeMeasures = 
