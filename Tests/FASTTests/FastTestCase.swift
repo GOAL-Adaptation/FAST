@@ -20,6 +20,7 @@ class FASTTestCase : XCTestCase {
     /** Note: When overriding this, remember to call super.setUp(). */
     override func setUp() {
         runtime = Runtime.newRuntime()
+        runtime.initializeArchitecture(name: "Default")
         runtime.measure("time", 0.0)
         runtime.measure("systemEnergy", 0.0)
         runtime.resetRuntimeMeasures(windowSize: windowSize)
