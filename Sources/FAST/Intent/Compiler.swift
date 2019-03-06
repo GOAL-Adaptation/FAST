@@ -297,9 +297,12 @@ public class Compiler {
                 }
                 else {
                     if let eAsBinOpExpr = e as? BinaryOperatorExpression {
-                            return compileBinaryOperatorExpression(eAsBinOpExpr, store)
+                        return compileBinaryOperatorExpression(eAsBinOpExpr, store)
                     } else if let eAsPrefixOpExpr = e as? PrefixOperatorExpression {
-                            return compilePrefixOperatorExpression(eAsPrefixOpExpr, store)
+                        return compilePrefixOperatorExpression(eAsPrefixOpExpr, store)
+                    } else if let eAsSequenceExpr = e as? SequenceExpression {
+                        let binOpExp = buildBinaryOpExpr(eAsSequenceExpr)
+                        return compileBinaryOperatorExpression(binOpExp, store)
                     } else {
                         FAST.fatalError("Unsupported expression found in compileExpression: \(e) of type \(type(of: e)).")
                     }
@@ -365,6 +368,33 @@ public class Compiler {
             default:
                 FAST.fatalError("Unknown operator found in compilePrefixOperatorExpression: \(e.prefixOperator).")
         }
+    }
+
+    internal func buildBinaryOpExpr(_ e: SequenceExpression) -> BinaryOperatorExpression {
+        // e as a SequenceExpression must have at least two binary operations (see documentation of SequenceExpression),
+        // meaning e.elements.count >= 5.
+        // Since e is an optimized expression, the first element, e.element[0] must be an Expression, 
+        // the second element, e.elements[1] must be a binary operator.
+        // If e.elements.count == 5, then e.elements[2..4] must form a BinaryOperatorExpression,
+        // otherwise e.elements[2..count-1] must form a SequenceExpression
+        var resultExp : BinaryOperatorExpression?
+        if e.elements.count == 5 {
+            if case .expression(let eLeft) = e.elements[0], case .binaryOperator(let binOp1) = e.elements[1],
+                case .expression(let eMiddle) = e.elements[2], case .binaryOperator(let binOp2) = e.elements[3],
+                case .expression(let eRight) = e.elements[4] {
+                let binaryRight = BinaryOperatorExpression(binaryOperator: binOp2, leftExpression: eMiddle, rightExpression: eRight)
+                resultExp = BinaryOperatorExpression(binaryOperator: binOp1, leftExpression: eLeft, rightExpression: binaryRight)
+            }
+        }
+        else { // e.elements.count >= 7: e.elements[2..count-1] must form a SequenceExpression
+            if case .expression(let eLeft) = e.elements[0], case .binaryOperator(let binOp1) = e.elements[1] {
+                let subArray = Array(e.elements[2 ... e.elements.count-1])
+                let tailSequenceExp = SequenceExpression(elements: subArray)
+                let binaryRight = buildBinaryOpExpr(tailSequenceExp)
+                resultExp = BinaryOperatorExpression(binaryOperator: binOp1, leftExpression: eLeft, rightExpression: binaryRight)
+            }                
+        }
+        return resultExp!
     }
 
     /** Compile the objective ("cost" or "value") function of the intent into a Swift closure. */
