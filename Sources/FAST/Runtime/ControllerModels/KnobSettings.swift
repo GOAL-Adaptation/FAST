@@ -1,13 +1,13 @@
 import LoggerAPI
 
 /* A collection of knob values that can be applied to control the system. */
-class KnobSettings: Hashable, Codable, CustomStringConvertible {
+public class KnobSettings: Hashable, Codable, CustomStringConvertible {
     let kid: Int // The id of the configuration given in the knobtable
     let settings: [String : Any]
 
-    let hashValue: Int
+    public let hashValue: Int
 
-    init(kid: Int, _ settings: [String : Any]) {
+    public init(kid: Int, _ settings: [String : Any]) {
         self.kid = kid
         self.settings = settings
 
@@ -29,7 +29,7 @@ class KnobSettings: Hashable, Codable, CustomStringConvertible {
         self.hashValue = hash
     }
 
-    func apply(runtime: Runtime) {
+    public func apply(runtime: Runtime) {
         for (name, value) in settings {
             runtime.setKnob(name, to: value)
         }
@@ -42,7 +42,7 @@ class KnobSettings: Hashable, Codable, CustomStringConvertible {
     * iff this.settings contains the given otherSettings.
     * Used in filtering knob settings from a given array of KnobSettings.
     */
-    func contains(_ otherSettings: [String: Any]) -> Bool {
+    public func contains(_ otherSettings: [String: Any]) -> Bool {
         for (knobName, knobValue) in otherSettings {
             switch knobValue {
             case is Int:
@@ -140,7 +140,7 @@ class KnobSettings: Hashable, Codable, CustomStringConvertible {
     }
 
     // Since property settings is encoded as [String: Wrapper], it needs to be unwrapped.
-    required init(from decoder: Decoder) throws {
+    public required init(from decoder: Decoder) throws {
         let values = try decoder.container(keyedBy: CodingKeys.self)
         kid = try values.decode(Int.self, forKey: .kid)
         let wrappedSettings = try values.decode([String: Wrapper].self, forKey: .settings)
@@ -154,7 +154,7 @@ class KnobSettings: Hashable, Codable, CustomStringConvertible {
 * Used in filtering out duplicate KnobSettings in an array of KnobSettings.
 */
 extension KnobSettings: Equatable {
-    static func == (lhs: KnobSettings, rhs: KnobSettings) -> Bool {
+    public static func == (lhs: KnobSettings, rhs: KnobSettings) -> Bool {
         return lhs.contains(rhs.settings) && rhs.contains(lhs.settings)
     }
 }

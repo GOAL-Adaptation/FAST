@@ -1,7 +1,9 @@
-knobs       threshold             from [200000 , 400000, 600000, 800000, 1000000 reference] 
+knobs       threshold             from [200000, 400000, 600000, 800000, 1000000 reference] 
             step                  from ["1" reference, "2", "3", "4"]                             
-            utilizedCores         from [1, 4 reference, 2, 3 ]                             
-            utilizedCoreFrequency from [300, 400, 1200 reference, 600]     
+            utilizedCores         from [1, 2, 3, 4 reference] 
+            utilizedCoreFrequency from [300, 400, 600, 1200 reference]   
+
+            such that utilizedCoreFrequency > utilizedCores * 100 
 
 measures    energy           : Double // System measure
             energyDelta      : Double // System measure
@@ -11,7 +13,6 @@ measures    energy           : Double // System measure
             operations       : Double // Application measure
             quality          : Double // Application measure
 
-intent      incrementer min(operations * operations) such that quality <= 50000000.0 and performance >= 0.0 
+intent      incrementer max(1.0  / operations * operations) such that quality <= 50000.0 and performance >= 5.0 
 
 trainingSet []
-

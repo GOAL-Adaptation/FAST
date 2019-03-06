@@ -201,6 +201,17 @@ func optimize
 
     }
 
+    func readTimeAndSystemEnergy() {
+        guard 
+            let anyArchitecture = runtime.architecture,
+            let architecture = anyArchitecture as? ClockAndEnergyArchitecture
+        else {
+            FAST.fatalError("Attempt to read time and system energy, but no compatible architecture was initialized.")
+        }
+        runtime.measure("time", architecture.clockMonitor.readClock())
+        runtime.measure("systemEnergy", Double(architecture.energyMonitor.readEnergy()))
+    }
+
     /** 
      * Loop body for a given number of iterations (or infinitely, if iterations == nil) 
      * Note: The overhead of preBody and postBody are excluded measures.
@@ -210,17 +221,6 @@ func optimize
              , postBody: @escaping () -> Void = {}
              , _ body:   @escaping () -> Void
              ) {
-
-        func readTimeAndSystemEnergy() {
-            guard 
-                let anyArchitecture = runtime.architecture,
-                let architecture = anyArchitecture as? ClockAndEnergyArchitecture
-            else {
-                FAST.fatalError("Attempt to read time and system energy, but no compatible architecture was initialized.")
-            }
-            runtime.measure("time", architecture.clockMonitor.readClock())
-            runtime.measure("systemEnergy", Double(architecture.energyMonitor.readEnergy()))
-        }
 
         /** Execute preBody, execute body, update measures provided by runtime, and update postBody. */
         func executeBodyAndComputeMeasures() {
@@ -389,7 +389,14 @@ func optimize
             withOpenFile(atPath: profileOutputPrefix + ".measuretable", append: true) { (measureTableOutputStream: Foundation.OutputStream) in
                 withOpenFile(atPath: profileOutputPrefix + ".variancetable", append: true) { (varianceTableOutputStream: Foundation.OutputStream) in
 
-                    let knobSpace = intent.knobSpace(exhaustive: exhaustive)
+                    let knobSpaceFull = intent.knobSpace(exhaustive: exhaustive)
+                    var knobSpace = knobSpaceFull
+                    if let compiledIntentSpec = intent as? Compiler.CompiledIntentSpec {
+                        knobSpace = knobSpaceFull.filter { compiledIntentSpec.satisfiesKnobConstraints(knobSettings: $0) }
+                    }
+                    else {
+                        FAST.fatalError("Intent Spec \(intent) is NOT a CompiledIntentSpec!")
+                    }
                     let knobNames = Array(knobSpace[0].settings.keys).sorted()
                     let measureNames = Array(Set(intent.measures + runtime.runtimeAndSystemMeasures)).sorted()
 
@@ -508,8 +515,15 @@ func optimize
 
         // Number of inputs to process when profiling a configuration
         let traceSize = initialize(type: UInt64.self, name: "missionLength", from: key, or: UInt64(1000))
-        let knobSpace = intent.knobSpace()
-        
+        let knobSpaceFull = intent.knobSpace()
+        var knobSpace = knobSpaceFull
+        if let compiledIntentSpec = intent as? Compiler.CompiledIntentSpec {
+            knobSpace = knobSpaceFull.filter { compiledIntentSpec.satisfiesKnobConstraints(knobSettings: $0) }
+        }
+        else {
+            FAST.fatalError("Intent Spec \(intent) is NOT a CompiledIntentSpec!")
+        }
+
         Log.info("Tracing configuration space of size \(knobSpace.count) over \(traceSize) iterations: \(knobSpace).")
 
         for i in 0 ..< knobSpace.count {
@@ -554,6 +568,11 @@ func optimize
             // the current application configuration and current system configuration,
             // and insert the measured delta time, delta energy into the database.
             var inputNum = 0
+            // Wait for the system measures to be read
+            while runtime.getMeasure("time") == nil || runtime.getMeasure("systemEnergy") == nil {
+                readTimeAndSystemEnergy()
+                usleep(10000) // sleep 10ms
+            }
             var lastTime = runtime.getMeasure("time")!
             var lastEnergy = runtime.getMeasure("energy")!
             var deltaTimeDeltaEnergyInsertion = ""

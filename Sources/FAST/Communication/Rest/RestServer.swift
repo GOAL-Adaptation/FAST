@@ -282,9 +282,17 @@ public class RestServer {
             return "\(name) from [\(rangeRef)]" 
         }.joined(separator:"\n\t")
         let intentObjectiveFunctionString = mkExpressionString(from: intentObjectiveFunction)
+        
+        var knobConstraintsPhrase = "" 
+        // missionIntent may not contain knobConstraints predicate
+        if let knobConstraintsAny = missionIntent["knobConstraints"] {
+            let knobConstraints = missionIntent["knobConstraints"]! as! String
+            knobConstraintsPhrase =  "  such that \(knobConstraints) "
+        }
 
         return
             "knobs \(knobsString) \n" +
+             "\(knobConstraintsPhrase) \n" +
             "measures \(measuresString) \n" +
             "intent \(intentName) \(intentOptimizationType)(\(intentObjectiveFunctionString)) " +
                 "such that \(intentConstraintString) \n" +

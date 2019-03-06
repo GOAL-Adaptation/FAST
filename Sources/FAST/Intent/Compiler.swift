@@ -16,6 +16,7 @@ import Parser
 import Source
 import Diagnostic
 import FASTController
+import struct Expression.AnyExpression
 
 //---------------------------------------
 
@@ -37,25 +38,81 @@ public class Compiler {
         }
     }
 
+    /* 
+        Work-around to parse until knob constraints can be handled by swift-ast 
+        Returns (fileContentWithoutKnobConstraints, knobConstraints), where 
+        knobConstraints is nil whenever the fileContent does not contain a knob constraint.
+    */
+    func separateKnobConstraintsFromRestOfIntentSpec(source fileContent: String) -> (String,String?) {
+
+        let sectionNames = ["knobs", "measures", "intent", "trainingSet"]
+
+        func extractSection(_ sectionName: String) -> String? {
+            let stopParsingHereRegex = 
+                sectionNames.filter{ $0 != sectionName }
+                            .map{ "(?:\($0))" } // sections may end with another section
+                            .joined(separator: "|") 
+                            + "|(?:$)" // sections may end with end of the file (string)
+            let sectionExtractorRegex =
+                "(?:\(sectionName)((.|\n)+?)(?=\(stopParsingHereRegex)))"
+            return fileContent
+                .range(of: sectionExtractorRegex, options: .regularExpression)
+                .map{ "\(fileContent[$0])"}
+        }
+
+        guard let knobSection = extractSection("knobs") else {
+            FAST.fatalError("Could not extract knobs section from intent specification: '\(fileContent)'.")
+        }
+        guard let measuresSection = extractSection("measures") else {
+            FAST.fatalError("Could not extract knobs section from intent specification: '\(fileContent)'.")
+        }
+        guard let intentSection = extractSection("intent") else {
+            FAST.fatalError("Could not extract knobs section from intent specification: '\(fileContent)'.")
+        }
+        guard let trainingSetSection = extractSection("trainingSet") else {
+            FAST.fatalError("Could not extract knobs section from intent specification: '\(fileContent)'.")
+        }
+
+        let knobSectionComponents = knobSection.components(separatedBy: "such that")
+
+        switch knobSectionComponents.count {
+            case 1:
+                return (fileContent, nil)
+            case 2:
+                let knobSectionWithoutConstraints = knobSectionComponents[0]
+                let knobConstraints = knobSectionComponents[1]
+                let intentWithoutKnobConstraint = 
+                    knobSectionWithoutConstraints + measuresSection + intentSection + trainingSetSection
+                return (intentWithoutKnobConstraint, knobConstraints) 
+            default:
+                FAST.fatalError("Malformed knob section: '\(knobSection)'.")
+        }
+
+    }
+
     /** 
      * Parse an intent specification from a String `source`,
      * then compile its expressions into executable SWIFT code.
      */
     public func compileIntentSpec(source fileContent: String) -> IntentSpec? {
         let diagnosticConsumer = HeliumLoggerDiagnosticConsumer()
-        let parser = IntentParser(source: SourceFile(content: fileContent))
+
+        let (fileContentWithoutKnobConstraints, knobConstraints) = 
+            separateKnobConstraintsFromRestOfIntentSpec(source: fileContent)
+
+        let parser = IntentParser(source: SourceFile(content: fileContentWithoutKnobConstraints))
         guard let topLevelDecl = try? parser.parse(),
                     let firstStatement = topLevelDecl.statements.first else {
             DiagnosticPool.shared.report(withConsumer: diagnosticConsumer)
-            Log.warning("Failed to parse intent: \(fileContent).")
+            Log.warning("Failed to parse intent: \(fileContentWithoutKnobConstraints).")
             return nil
         }
         
         DiagnosticPool.shared.report(withConsumer: diagnosticConsumer)
                 
         if let intentExpr = firstStatement as? IntentExpression {
-            let measures = compileMeasures(intentExpr).sorted()
-            var measuresStore: [String : Int] = [:]
+            let measures = compileMeasures(intentExpr).sorted()  // sorted array of all meassure names
+            var measuresStore: [String : Int] = [:]              // key: measure name, value: index of the measure name in the measures array.
             for i in 0 ..< measures.count {
                 measuresStore[measures[i]] = i
             }
@@ -68,6 +125,7 @@ public class Compiler {
                 , optimizationType : intentExpr.intentSection.intentDecl.optimizationType
                 , trainingSet      : compileTrainingSet(intentExpr)
                 , objectiveFunctionRawString : intentExpr.intentSection.intentDecl.optimizedExpr.textDescription
+                , knobConstraintsRawString : knobConstraints
             )
 
         }
@@ -88,6 +146,7 @@ public class Compiler {
             let trainingSet      : [String]
 
             var objectiveFunctionRawString : String?
+            var knobConstraintsRawString   : String?
 
         init( name             : String
                 , knobs            : [String : ([Any], Any)]
@@ -97,6 +156,7 @@ public class Compiler {
                 , optimizationType : FASTControllerOptimizationType
                 , trainingSet      : [String]
                 , objectiveFunctionRawString : String? = nil
+                , knobConstraintsRawString : String? = nil
             )
         {
             self.name             = name            
@@ -107,7 +167,47 @@ public class Compiler {
             self.optimizationType = optimizationType
             self.trainingSet      = trainingSet         
             self.objectiveFunctionRawString = objectiveFunctionRawString
+            self.knobConstraintsRawString = knobConstraintsRawString
         }
+
+        public func satisfiesKnobConstraints(knobSettings: KnobSettings) -> Bool {
+            guard let constraint = knobConstraintsRawString else {
+                return true
+            }
+            func evalBoolOp(_ op: String, l: Any, r: Any, _ function: (Bool,Bool) -> Bool) -> Bool {
+                guard let leftBool = l as? Bool else {
+                    FAST.fatalError("Left operand for knob constraint \(l) \(op) \(r) is not boolean.")
+                }
+                guard let rightBool = r as? Bool else {
+                    FAST.fatalError("Right operand for knob constraint \(l) \(op) \(r) is not boolean.")
+                }
+                return function(leftBool,rightBool)
+            }
+            let expression = AnyExpression(
+                constraint, 
+                options: .boolSymbols, 
+                constants: knobSettings.settings.mapValues{
+                    switch $0 {
+                        case let i as Int    : return NSNumber(value: i)
+                        case let d as Double : return NSNumber(value: d)
+                        default              : return $0
+                    }
+                },
+                symbols: [
+                    .infix("and") : { 
+                        args in evalBoolOp("and", l: args[0], r: args[1], { $0 && $1 }) 
+                    },
+                    .infix("or") : { 
+                        args in evalBoolOp("or" , l: args[0], r: args[1], { $0 || $1 }) 
+                    }
+                ]
+            )
+            guard let result = try? expression.evaluate() as Bool else {
+                FAST.fatalError("Failed to evaluate knob constraints: '\(expression)', as a boolean, in environment: '\(knobSettings.settings)' (from KnobSettings with id \(knobSettings.kid)).")
+            }
+            return result
+        }
+
     }
 
     //---------------------------------------
@@ -197,9 +297,12 @@ public class Compiler {
                 }
                 else {
                     if let eAsBinOpExpr = e as? BinaryOperatorExpression {
-                            return compileBinaryOperatorExpression(eAsBinOpExpr, store)
+                        return compileBinaryOperatorExpression(eAsBinOpExpr, store)
                     } else if let eAsPrefixOpExpr = e as? PrefixOperatorExpression {
-                            return compilePrefixOperatorExpression(eAsPrefixOpExpr, store)
+                        return compilePrefixOperatorExpression(eAsPrefixOpExpr, store)
+                    } else if let eAsSequenceExpr = e as? SequenceExpression {
+                        let binOpExp = buildBinaryOpExpr(eAsSequenceExpr)
+                        return compileBinaryOperatorExpression(binOpExp, store)
                     } else {
                         FAST.fatalError("Unsupported expression found in compileExpression: \(e) of type \(type(of: e)).")
                     }
@@ -265,6 +368,33 @@ public class Compiler {
             default:
                 FAST.fatalError("Unknown operator found in compilePrefixOperatorExpression: \(e.prefixOperator).")
         }
+    }
+
+    internal func buildBinaryOpExpr(_ e: SequenceExpression) -> BinaryOperatorExpression {
+        // e as a SequenceExpression must have at least two binary operations (see documentation of SequenceExpression),
+        // meaning e.elements.count >= 5.
+        // Since e is an optimized expression, the first element, e.element[0] must be an Expression, 
+        // the second element, e.elements[1] must be a binary operator.
+        // If e.elements.count == 5, then e.elements[2..4] must form a BinaryOperatorExpression,
+        // otherwise e.elements[2..count-1] must form a SequenceExpression
+        var resultExp : BinaryOperatorExpression?
+        if e.elements.count == 5 {
+            if case .expression(let eLeft) = e.elements[0], case .binaryOperator(let binOp1) = e.elements[1],
+                case .expression(let eMiddle) = e.elements[2], case .binaryOperator(let binOp2) = e.elements[3],
+                case .expression(let eRight) = e.elements[4] {
+                let binaryRight = BinaryOperatorExpression(binaryOperator: binOp2, leftExpression: eMiddle, rightExpression: eRight)
+                resultExp = BinaryOperatorExpression(binaryOperator: binOp1, leftExpression: eLeft, rightExpression: binaryRight)
+            }
+        }
+        else { // e.elements.count >= 7: e.elements[2..count-1] must form a SequenceExpression
+            if case .expression(let eLeft) = e.elements[0], case .binaryOperator(let binOp1) = e.elements[1] {
+                let subArray = Array(e.elements[2 ... e.elements.count-1])
+                let tailSequenceExp = SequenceExpression(elements: subArray)
+                let binaryRight = buildBinaryOpExpr(tailSequenceExp)
+                resultExp = BinaryOperatorExpression(binaryOperator: binOp1, leftExpression: eLeft, rightExpression: binaryRight)
+            }                
+        }
+        return resultExp!
     }
 
     /** Compile the objective ("cost" or "value") function of the intent into a Swift closure. */

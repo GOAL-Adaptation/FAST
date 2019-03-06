@@ -12,6 +12,7 @@
 				"referenceValue": "1"
 			}
 		],
+		"knobConstraints": "utilizedCoreFrequency > utilizedCores * 100",
 		"measures": [
 			{
 				"name": "energy"
@@ -65,7 +66,7 @@
 					}
 				},
 				"rightPredicate": {
-					"operator": "<=",
+					"operator": ">=",
 					"leftExpression": {
 						"variableName": "performance"
 					},
