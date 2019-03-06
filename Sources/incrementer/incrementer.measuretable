@@ -1,5 +1,4 @@
 id,currentConfiguration,energy,energyDelta,iteration,latency,operations,performance,powerConsumption,quality,runningTime,systemEnergy,time,windowSize
-id,currentConfiguration,energy,energyDelta,iteration,latency,operations,performance,powerConsumption,quality,runningTime,systemEnergy,time,windowSize
 0,-1.0,99.5,0.995,99.5,0.0298112714290619,50000.0,33.5443592997895,33.3766375032905,0.25,2.96979289412498,201.0,1551662331.14016,20.0
 1,-1.0,99.5,0.995,99.5,0.0301493895053864,50000.0,33.1681674622746,33.0023266249632,0.25,3.02141973972321,601.0,1551662337.18941,20.0
 2,-1.0,99.5,0.995,99.5,0.0299599075317383,50000.0,33.3779401335148,33.2110504328472,0.25,2.98719485402107,1001.0,1551662343.22042,20.0

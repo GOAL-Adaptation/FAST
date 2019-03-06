@@ -42,12 +42,20 @@ open class Model {
         assert(!intent.measures.map{ measureNonIdHeaders.contains($0) }.contains(false), "All measures in the intent must also be present in the model.")
         var configurations: [Configuration] = []
         for rowNumber in 0 ..< knobTable.rows.count {
-            let configId = Int(knobTable.rows[rowNumber].first!)!
-            let knobNameValuePairs = Array(zip(knobNames, knobTable.rows[rowNumber].dropFirst().map{ parseKnobSetting(setting: $0) }))
+            let currentRow = knobTable.rows[rowNumber]
+            if currentRow == knobTable.headers {
+                FAST.fatalError("Repeated header line found on row \(rowNumber) in model.")
+            }
+            guard let configId = Int(currentRow.first!) else {
+                FAST.fatalError("Row \(rowNumber) of model is empty.")
+            }
+            let knobNameValuePairs = Array(zip(knobNames, currentRow.dropFirst().map{ parseKnobSetting(setting: $0) }))
             let knobSettings = KnobSettings(kid: configId, [String:Any](knobNameValuePairs))
             var measures = [String : Double]()
             for m in measureNames {
-                let indexOfM = measureNonIdHeaders.index(of: m)! 
+                guard let indexOfM = measureNonIdHeaders.index(of: m) else {
+                    FAST.fatalError("Measure '\(m)' not found in measure table.")
+                }
                 measures[m] = Double(measureTable.rows[rowNumber].dropFirst()[indexOfM])! // FIXME Add error handling
             }
             configurations.append(Configuration(configId, knobSettings, measures))

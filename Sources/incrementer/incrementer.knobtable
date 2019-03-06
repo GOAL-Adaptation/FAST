@@ -1,5 +1,4 @@
 id,step,threshold,utilizedCoreFrequency,utilizedCores
-id,step,threshold,utilizedCoreFrequency,utilizedCores
 0,<4>,200000,300,1
 1,<4>,200000,400,1
 2,<4>,200000,600,1
