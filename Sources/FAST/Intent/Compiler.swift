@@ -111,8 +111,8 @@ public class Compiler {
         DiagnosticPool.shared.report(withConsumer: diagnosticConsumer)
                 
         if let intentExpr = firstStatement as? IntentExpression {
-            let measures = compileMeasures(intentExpr).sorted()
-            var measuresStore: [String : Int] = [:]
+            let measures = compileMeasures(intentExpr).sorted()  // sorted array of all meassure names
+            var measuresStore: [String : Int] = [:]              // key: measure name, value: index of the measure name in the measures array.
             for i in 0 ..< measures.count {
                 measuresStore[measures[i]] = i
             }
