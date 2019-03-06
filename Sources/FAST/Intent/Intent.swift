@@ -44,6 +44,7 @@ public enum ConstraintType : String {
 
 extension IntentSpec {
   var objectiveFunctionRawString: String? { return nil }
+  var knobConstraintsRawString: String? { return nil }
 
   /** All possbile knob settings. */
   func knobSpace(exhaustive: Bool = true) -> [KnobSettings] {
@@ -196,6 +197,7 @@ extension IntentSpec {
     guard
       Set(self.measures) == Set(other.measures), // measures
       self.knobs.count == other.knobs.count, Set(self.knobs.keys) == Set(other.knobs.keys), // knobs
+      self.knobConstraintsRawString == other.knobConstraintsRawString, // knob constraints
       self.objectiveFunctionRawString == other.objectiveFunctionRawString, // objective function
       self.optimizationType == other.optimizationType, // optimization type
       Set(self.constraints.keys) == Set(other.constraints.keys) // constraint variable names
