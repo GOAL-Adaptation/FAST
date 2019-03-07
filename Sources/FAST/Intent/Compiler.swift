@@ -117,11 +117,10 @@ public class Compiler {
                 measuresStore[measures[i]] = i
             }
             return CompiledIntentSpec(
-                    name             : intentExpr.intentSection.intentDecl.name
+                  name             : intentExpr.intentSection.intentDecl.name
                 , knobs            : compileKnobs(intentExpr)
                 , measures         : measures
                 , constraints      : compileConstraints(intentExpr)
-                , costOrValue      : compileCostOrValue(intentExpr, measuresStore)
                 , optimizationType : intentExpr.intentSection.intentDecl.optimizationType
                 , trainingSet      : compileTrainingSet(intentExpr)
                 , objectiveFunctionRawString : intentExpr.intentSection.intentDecl.optimizedExpr.textDescription
@@ -137,39 +136,62 @@ public class Compiler {
 
     /** SWIFT representation of a FAST intent specification file. */
     class CompiledIntentSpec : IntentSpec {
-            let name             : String
-            let knobs            : [String : ([Any], Any)]
-            let measures         : [String]
-            let constraints      : [String : (Double, ConstraintType)]
-            let costOrValue      : ([Double]) -> Double
+            let name             : String                               // name of application
+            let knobs            : [String : ([Any], Any)]              // list of knobs, each with range and reference
+            let measures         : [String]                             // alphabetically sorted list of measure names
+            let constraints      : [String : (Double, ConstraintType)]  // dynamic multi constraints
+            let costOrValue      : ([Double]) -> Double // takes an array of measure values corresponding to all the measures 
+                                                        // sorted in alphabetical order, and computes the optimized function
+                                                        // represented in the objectiveFunctionRawString parameter.
             let optimizationType : FASTControllerOptimizationType
             let trainingSet      : [String]
 
-            var objectiveFunctionRawString : String?
-            var knobConstraintsRawString   : String?
+            var objectiveFunctionRawString : String?    // the textual representation of the objective function.
+            var knobConstraintsRawString   : String?    // the textual representation of the knob constraints.
 
         init( name             : String
                 , knobs            : [String : ([Any], Any)]
                 , measures         : [String]
                 , constraints      : [String : (Double, ConstraintType)]
-                , costOrValue      : @escaping ([Double]) -> Double
                 , optimizationType : FASTControllerOptimizationType
                 , trainingSet      : [String]
                 , objectiveFunctionRawString : String? = nil
                 , knobConstraintsRawString : String? = nil
-            )
+            ) 
         {
             self.name             = name            
             self.knobs            = knobs           
             self.measures         = measures        
             self.constraints      = constraints      
-            self.costOrValue      = costOrValue     
             self.optimizationType = optimizationType
             self.trainingSet      = trainingSet         
             self.objectiveFunctionRawString = objectiveFunctionRawString
             self.knobConstraintsRawString = knobConstraintsRawString
-        }
 
+            self.costOrValue = { measureValuesArray in
+                guard let objectiveFunctionString = objectiveFunctionRawString else {
+                    FAST.fatalError("Objective function is not defined.")
+                }
+                
+                // Get the environment dictionary of all the measures, 
+                // assuming measureValuesArray[i] is the value of measures[i]:
+                var measureValuesDictionary = [String:Double]()
+                for i in 0 ..< measures.count {
+                    measureValuesDictionary[measures[i]] = measureValuesArray[i]
+                }
+
+                // Build an AnyExpression with the objectiveFunctionString and the environement
+                // measureValuesDictionary, and let it do the magic evaluating itself.
+                let expression = AnyExpression(
+                    objectiveFunctionString,
+                    constants: measureValuesDictionary
+                )
+                guard let result = try? expression.evaluate() as Double else {
+                    FAST.fatalError("Failed to evaluate objective function: '\(expression)', as a Double, in environment: '\(measureValuesDictionary)'.")
+                }
+                return result
+            }
+        }
         public func satisfiesKnobConstraints(knobSettings: KnobSettings) -> Bool {
             guard let constraint = knobConstraintsRawString else {
                 return true
@@ -263,56 +285,6 @@ public class Compiler {
         }
     }
 
-    /** 
-     * Translate an Expression AST into a SWIFT expression (in the form of a closure)
-     * whose environment is an array of doubles. The store maps a variable (measure)
-     * name to an index into this array.
-     */
-    internal func compileExpression(_ e: Expression, _ store: [String : Int]) -> ([Double]) -> Double {
-        if let pe = e as? ParenthesizedExpression {
-            Log.debug("Compiling parenthesized expression: \(e)" )
-            return compileExpression(pe.expression, store)
-        }
-        else {
-            if let d: Double = compileTypedLiteral(e) {
-                return { (_: [Double]) in d }
-            }
-            else {
-                if let identifierExpr = e as? IdentifierExpression,
-                     case let .identifier(identifier, _) = identifierExpr.kind {
-                    Log.debug("Compiling identifier '\(identifier)'.")
-                    if let i = store[identifier.textDescription] {
-                        return { (measures: [Double]) in 
-                            if i < measures.count {
-                                return measures[i]
-                            }
-                            else {
-                                FAST.fatalError("Value for measure \(identifier), present in the store \(store), is missing from the environment \(measures).")        
-                            }
-                        }
-                    }
-                    else {
-                        FAST.fatalError("Unknown measure: \(identifier).")
-                    }
-                }
-                else {
-                    if let eAsBinOpExpr = e as? BinaryOperatorExpression {
-                        return compileBinaryOperatorExpression(eAsBinOpExpr, store)
-                    } else if let eAsPrefixOpExpr = e as? PrefixOperatorExpression {
-                        return compilePrefixOperatorExpression(eAsPrefixOpExpr, store)
-                    } else if let eAsSequenceExpr = e as? SequenceExpression {
-                        let binOpExp = buildBinaryOpExpr(eAsSequenceExpr)
-                        return compileBinaryOperatorExpression(binOpExp, store)
-                    } else {
-                        FAST.fatalError("Unsupported expression found in compileExpression: \(e) of type \(type(of: e)).")
-                    }
-                }
-            }
-        }
-    }
-    
-    //---------------------------------------
-
     internal func compileRange(_ range: Expression) -> [Any] {
         switch (range as! LiteralExpression).kind {
             case .array(let elements):
@@ -343,64 +315,6 @@ public class Compiler {
     /** Extract multiple constraints from a parsed intent specification.  */
     internal func compileConstraints(_ intentExpr: IntentExpression) -> [String : (Double, ConstraintType)] {
         return intentExpr.intentSection.intentDecl.constraints.mapValues({ (compileTypedLiteral($0.0)!, $0.1) })
-    }
-
-    /** Translate a binary operator expression into a SWIFT expression. */
-    internal func compileBinaryOperatorExpression(_ e: BinaryOperatorExpression, _ store: [String : Int]) -> ([Double]) -> Double {
-        Log.debug("Compiling binary operator expression '\(e)'.")
-        let l = compileExpression(e.leftExpression, store)
-        let r = compileExpression(e.rightExpression, store)
-        switch e.binaryOperator {
-            case "+": return { (measures: [Double]) in l(measures) + r(measures) }
-            case "-": return { (measures: [Double]) in l(measures) - r(measures) }
-            case "*": return { (measures: [Double]) in l(measures) * r(measures) }
-            case "/": return { (measures: [Double]) in l(measures) / r(measures) }
-            default:
-                FAST.fatalError("Unknown operator found in compileBinaryOperatorExpression: \(e.binaryOperator).")
-        }
-    }
-
-    internal func compilePrefixOperatorExpression(_ e: PrefixOperatorExpression, _ store: [String : Int]) -> ([Double]) -> Double {
-        Log.debug("Compiling binary operator expression '\(e)'.")
-        let compiled = compileExpression(e.postfixExpression, store)
-        switch e.prefixOperator {
-            case "-": return { (measures: [Double]) in 0 - compiled(measures) }
-            default:
-                FAST.fatalError("Unknown operator found in compilePrefixOperatorExpression: \(e.prefixOperator).")
-        }
-    }
-
-    internal func buildBinaryOpExpr(_ e: SequenceExpression) -> BinaryOperatorExpression {
-        // e as a SequenceExpression must have at least two binary operations (see documentation of SequenceExpression),
-        // meaning e.elements.count >= 5.
-        // Since e is an optimized expression, the first element, e.element[0] must be an Expression, 
-        // the second element, e.elements[1] must be a binary operator.
-        // If e.elements.count == 5, then e.elements[2..4] must form a BinaryOperatorExpression,
-        // otherwise e.elements[2..count-1] must form a SequenceExpression
-        var resultExp : BinaryOperatorExpression?
-        if e.elements.count == 5 {
-            if case .expression(let eLeft) = e.elements[0], case .binaryOperator(let binOp1) = e.elements[1],
-                case .expression(let eMiddle) = e.elements[2], case .binaryOperator(let binOp2) = e.elements[3],
-                case .expression(let eRight) = e.elements[4] {
-                let binaryRight = BinaryOperatorExpression(binaryOperator: binOp2, leftExpression: eMiddle, rightExpression: eRight)
-                resultExp = BinaryOperatorExpression(binaryOperator: binOp1, leftExpression: eLeft, rightExpression: binaryRight)
-            }
-        }
-        else { // e.elements.count >= 7: e.elements[2..count-1] must form a SequenceExpression
-            if case .expression(let eLeft) = e.elements[0], case .binaryOperator(let binOp1) = e.elements[1] {
-                let subArray = Array(e.elements[2 ... e.elements.count-1])
-                let tailSequenceExp = SequenceExpression(elements: subArray)
-                let binaryRight = buildBinaryOpExpr(tailSequenceExp)
-                resultExp = BinaryOperatorExpression(binaryOperator: binOp1, leftExpression: eLeft, rightExpression: binaryRight)
-            }                
-        }
-        return resultExp!
-    }
-
-    /** Compile the objective ("cost" or "value") function of the intent into a Swift closure. */
-    internal func compileCostOrValue(_ intentExpr: IntentExpression, _ store: [String : Int]) -> ([Double]) -> Double {
-        let costOrValueExpr = intentExpr.intentSection.intentDecl.optimizedExpr
-        return compileExpression(costOrValueExpr, store)
     }
 
     /** Compile the training set descriptor into an array of commands to pass to the application during training. */

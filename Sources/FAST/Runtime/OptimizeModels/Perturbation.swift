@@ -98,7 +98,6 @@ fileprivate func handleTestParameters(
     knobs                     : knobs,
     measures                  : newIntent.measures,
     constraints               : newIntent.constraints,
-    costOrValue               : newIntent.costOrValue,
     optimizationType          : newIntent.optimizationType,
     trainingSet               : newIntent.trainingSet,
     objectiveFunctionRawString: newIntent.objectiveFunctionRawString,
