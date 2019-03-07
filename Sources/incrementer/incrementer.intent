@@ -13,6 +13,7 @@ measures    energy           : Double // System measure
             operations       : Double // Application measure
             quality          : Double // Application measure
 
-intent      incrementer max(1.0  / operations * operations) such that quality <= 50000.0 and performance >= 5.0 
+intent      incrementer max(1.0 / (operations * operations)) such that quality <= 50000.0 and performance >= 5.0 
+            // the objective function needs to be fully parenthesized since '/' and '*' have same precedence.
 
 trainingSet []
