@@ -50,7 +50,7 @@ copy-resources-test:
 	cp $(RESOURCE_PATH)/incrementer.* $(TEST_RESOURCE_TARGET_PATH)/
 
 clean:
-	rm -rf .build/
+	rm -rf .build/ *.resolved
 
 rebuild: clean build
 
