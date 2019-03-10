@@ -193,7 +193,7 @@ public class Compiler {
             }
         }
         public func satisfiesKnobConstraints(knobSettings: KnobSettings) -> Bool {
-            guard let constraint = knobConstraintsRawString else {
+            guard var constraint = knobConstraintsRawString else {
                 return true
             }
             func evalBoolOp(_ op: String, l: Any, r: Any, _ function: (Bool,Bool) -> Bool) -> Bool {
@@ -205,8 +205,10 @@ public class Compiler {
                 }
                 return function(leftBool,rightBool)
             }
+            // replace occurrences of 'if a then b' with '!(a) or b'
+            constraint = constraint.replacingOccurrences(of: "if", with: "!(").replacingOccurrences(of: "then", with: ") or ")
             let expression = AnyExpression(
-                constraint, 
+                constraint,
                 options: .boolSymbols, 
                 constants: knobSettings.settings.mapValues{
                     switch $0 {
