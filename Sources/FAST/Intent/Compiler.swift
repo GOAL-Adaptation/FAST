@@ -225,8 +225,7 @@ public class Compiler {
                 }
                 return function(leftBool,rightBool)
             }
-            // replace occurrences of 'if a then b' with '!(a) or b'
-            constraint = constraint.replacingOccurrences(of: "if", with: "!(").replacingOccurrences(of: "then", with: ") or ")
+           
             let expression = AnyExpression(
                 constraint,
                 options: .boolSymbols, 
