@@ -196,6 +196,26 @@ public class Compiler {
             guard var constraint = knobConstraintsRawString else {
                 return true
             }
+
+            func replaceKeyWord(strExp: String, 
+                    preKeyWords: [String], oldKeyWord: String, newKeyWord: String, postKeyWords: [String])
+            -> String {
+                var result = strExp
+                for preKeyWord in preKeyWords {
+                    for postKeyWord in postKeyWords {
+                        result = result.replacingOccurrences(of: "\(preKeyWord)\(oldKeyWord)\(postKeyWord)", with: "\(preKeyWord)\(newKeyWord)\(postKeyWord)")
+                    }
+                }
+                return result
+            }
+            // replace occurrences of 'if a then b' with '!(a) or b'
+            let preIfs = ["\n", " ", "("] 
+            let postIfs = [" ", "\n", "!", "("]
+            constraint = replaceKeyWord(strExp: constraint, preKeyWords: preIfs, oldKeyWord: "if", newKeyWord: " !( ", postKeyWords: postIfs)
+            let preThens = [" ", "\n", ")"]
+            let postThens = [" ", "\n", "!", "("]
+            constraint = replaceKeyWord(strExp: constraint, preKeyWords: preThens, oldKeyWord: "then", newKeyWord: " ) or ", postKeyWords: postThens)
+
             func evalBoolOp(_ op: String, l: Any, r: Any, _ function: (Bool,Bool) -> Bool) -> Bool {
                 guard let leftBool = l as? Bool else {
                     FAST.fatalError("Left operand for knob constraint \(l) \(op) \(r) is not boolean.")
