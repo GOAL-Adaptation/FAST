@@ -541,20 +541,41 @@ func optimize
                 streamingApplication.initializeStream()
             }
 
-            // Assign an ID to the current configuration (of knobType) and insert that into idDict
-            func assignIdToConfiguration(knobType: String, module: TextApiModule, to idDict: inout [KnobSettings : Int]) -> Int {
-                let knobs = module.getStatus()![knobType] as! [String : Any]
+            // Assign an ID to the current configuration and insert that into idDict
+            func assignApplicationConfigurationId(appModule: TextApiModule, sysModule: TextApiModule, to idDict: inout [KnobSettings : Int]) -> Int {
+                let appModuleStatus = appModule.getStatus()!
+                var knobs = appModuleStatus["applicationKnobs"] as! [String : Any]
+                if let sysModuleStatus = sysModule.getStatus() {
+                    let sysKnobs = sysModuleStatus["systemConfigurationKnobs"] as! [String : Any]
+                    knobs.merge(with: sysKnobs)
+                }
                 let knobSettings = KnobSettings(kid: -1, DictDatabase.unwrapKnobStatus(knobStatus: knobs))
-                let id = knobSpace.index(where: { $0.contains(knobSettings.settings) })!
+                guard let id = knobSpace.index(where: { knobSettings.contains($0.settings) }) else {
+                    FAST.fatalError("knobSpace does not contain \(knobSettings.settings).")
+                }
                 if idDict[knobSettings] == nil {
                     idDict[knobSettings] = id
                 }
                 return idDict[knobSettings]!
             }
-            // The id of an application configuration KnobSettings as its position in the knobSysRefSpace
-            let applicationConfigurationId = assignIdToConfiguration(knobType: "applicationKnobs"        , module: myApp , to: &getCurrentAppConfigurationIdDict)
-            // The id of a system configuration KnobSettings as its position in the knobAppRefSpace
+            // The id of an application configuration KnobSettings as its position in the knobRefSpace
+            let applicationConfigurationId = assignApplicationConfigurationId(appModule: myApp, sysModule: myArch, to: &getCurrentAppConfigurationIdDict)
+
+            // Assign an ID to the current configuration (of knobType) and insert that into idDict
+            func assignIdToConfiguration(knobType: String, module: TextApiModule, to idDict: inout [KnobSettings : Int]) -> Int {
+                let knobs = module.getStatus()![knobType] as! [String : Any]
+                let knobSettings = KnobSettings(kid: -1, DictDatabase.unwrapKnobStatus(knobStatus: knobs))
+                guard let id = knobSpace.index(where: { $0.contains(knobSettings.settings) }) else {
+                    FAST.fatalError("knobSysRefSpace does not contain \(knobSettings.settings).")
+                }
+                if idDict[knobSettings] == nil {
+                    idDict[knobSettings] = id
+                }
+                return idDict[knobSettings]!
+            }
+            // The id of a system configuration KnobSettings as its position in the knobSysRefSpace
             let systemConfigurationId      = assignIdToConfiguration(knobType: "systemConfigurationKnobs", module: myArch, to: &getCurrentSysConfigurationIdDict)
+
             // Register the profileEntryId of the current knobSettings in tracedConfigurations
             let profileEntryId = 
                 DictDatabase.ProfileEntryId( 
