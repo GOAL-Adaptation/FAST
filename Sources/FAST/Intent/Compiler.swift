@@ -197,25 +197,6 @@ public class Compiler {
                 return true
             }
 
-            func replaceKeyWord(strExp: String, 
-                    preKeyWords: [String], oldKeyWord: String, newKeyWord: String, postKeyWords: [String])
-            -> String {
-                var result = strExp
-                for preKeyWord in preKeyWords {
-                    for postKeyWord in postKeyWords {
-                        result = result.replacingOccurrences(of: "\(preKeyWord)\(oldKeyWord)\(postKeyWord)", with: "\(preKeyWord)\(newKeyWord)\(postKeyWord)")
-                    }
-                }
-                return result
-            }
-            // replace occurrences of 'if a then b' with '!(a) or b'
-            let preIfs = ["\n", " ", "("] 
-            let postIfs = [" ", "\n", "!", "("]
-            constraint = replaceKeyWord(strExp: constraint, preKeyWords: preIfs, oldKeyWord: "if", newKeyWord: " !( ", postKeyWords: postIfs)
-            let preThens = [" ", "\n", ")"]
-            let postThens = [" ", "\n", "!", "("]
-            constraint = replaceKeyWord(strExp: constraint, preKeyWords: preThens, oldKeyWord: "then", newKeyWord: " ) or ", postKeyWords: postThens)
-
             func evalBoolOp(_ op: String, l: Any, r: Any, _ function: (Bool,Bool) -> Bool) -> Bool {
                 guard let leftBool = l as? Bool else {
                     FAST.fatalError("Left operand for knob constraint \(l) \(op) \(r) is not boolean.")
@@ -225,7 +206,36 @@ public class Compiler {
                 }
                 return function(leftBool,rightBool)
             }
-           
+
+            func evalFromOp(_ op: String, l: Any, r: Any, _ function: (Any, Any) -> Bool) -> Bool {
+                return function(l,r)
+            }
+
+            func equalTo(_ l: Any, _ r: Any) -> Bool {
+                switch (l,r) {
+                    case let (ld,rd) as (Double,Double):
+                        return ld == rd
+                    case let (li,ri) as (Int,Int):
+                        return li == ri
+                    case let (ls,rs) as (String,String):
+                        return ls == rs
+                    case let (lb,rb) as (Bool,Bool):
+                        return lb == rb
+                    case let (la,ra) as ([Any],[Any]):
+                        if la.count != ra.count {
+                            return false
+                        }
+                        for i in 0 ..< la.count {
+                            if !equalTo(la[i],ra[i]) {
+                                return false
+                            }
+                        }
+                        return true
+                    default:
+                        FAST.fatalError("Equality check not implemented for: \((type(of:l), type(of:r)))")
+                }
+            }  
+
             let expression = AnyExpression(
                 constraint,
                 options: .boolSymbols, 
@@ -242,6 +252,24 @@ public class Compiler {
                     },
                     .infix("or") : { 
                         args in evalBoolOp("or" , l: args[0], r: args[1], { $0 || $1 }) 
+                    },
+                    .infix("implies") : { 
+                        args in evalBoolOp("implies" , l: args[0], r: args[1], { !$0 || $1 }) 
+                    },
+                    .infix("from") : { 
+                        (args: [Any]) in evalFromOp("from", l: args[0], r: args[1], 
+                        { 
+                            (l,r) in
+                            switch r {
+                                case let arr as [Any]:
+                                    for e in arr { 
+                                        if equalTo(e,l) { return true }
+                                    }
+                                    return false
+                                default:
+                                    fatalError("Second parameter of from operator must be an array. It was: '\(r)'.")
+                            }
+                        }) 
                     }
                 ]
             )
