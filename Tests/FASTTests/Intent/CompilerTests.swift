@@ -63,8 +63,8 @@ class CompilerTests: XCTestCase {
         }
 
         XCTAssertTrue(spec.satisfiesKnobConstraints(knobSettings: KnobSettings(kid: -1, [
-            "threshold"             : 200000,
-            "step"                  : "1",
+            "threshold"             : 600000,
+            "step"                  : "3",
             "utilizedCores"         : 4,
             "utilizedCoreFrequency" : 600,
         ])))
