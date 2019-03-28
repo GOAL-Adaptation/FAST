@@ -10,7 +10,7 @@ knobs       threshold             from [200000, 400000, 600000, 800000, 1000000 
                 and
                 [utilizedCoreFrequency, step] from [ [300, "4"], [400, "4"], [600, "3"]]
                 and
-                (utilizedCoreFrequency == 12000 )implies (step == "2")
+                (utilizedCoreFrequency == 12000 ) implies (step == "2")
 
 measures    energy           : Double // System measure
             energyDelta      : Double // System measure
