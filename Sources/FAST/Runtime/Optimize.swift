@@ -544,15 +544,22 @@ func optimize
             // Assign an ID to the current configuration and insert that into idDict
             func assignApplicationConfigurationId(appModule: TextApiModule, sysModule: TextApiModule, to idDict: inout [KnobSettings : Int]) -> Int {
                 let appModuleStatus = appModule.getStatus()!
-                var knobs = appModuleStatus["applicationKnobs"] as! [String : Any]
+                var appKnobs = appModuleStatus["applicationKnobs"] as! [String : Any]  
+                // appKnobs contains qp, while knobSpace, coming from the intent specification, does not have any settings that has qp, 
+                // and thus has no settings that can contain appKnobs.
+                // On the other hand, appKnobs only have application knobs and thus cannot contain any settings in knobSpace, because knob space contains system knobs as well.
+                // By merging application knobs with system knobs, we have something that has both app and sys knobs, and thus can contain things from knobSpace.
                 if let sysModuleStatus = sysModule.getStatus() {
                     let sysKnobs = sysModuleStatus["systemConfigurationKnobs"] as! [String : Any]
-                    knobs.merge(with: sysKnobs)
+                    appKnobs.merge(with: sysKnobs)
                 }
-                let knobSettings = KnobSettings(kid: -1, DictDatabase.unwrapKnobStatus(knobStatus: knobs))
-                guard let id = knobSpace.index(where: { knobSettings.contains($0.settings) }) else {
-                    FAST.fatalError("knobSpace does not contain \(knobSettings.settings).")
+                let mergedKnobSettings = KnobSettings(kid: -1, DictDatabase.unwrapKnobStatus(knobStatus: appKnobs))
+                // Find the index for mergeKnobSettings in knobSpace:
+                guard let id = knobSpace.index(where: { mergedKnobSettings.contains($0.settings) }) else {
+                    FAST.fatalError("knobSpace does not contain \(mergedKnobSettings.settings).")
                 }
+                appKnobs = appModuleStatus["applicationKnobs"] as! [String : Any]
+                let knobSettings = KnobSettings(kid: -1, DictDatabase.unwrapKnobStatus(knobStatus: appKnobs))
                 if idDict[knobSettings] == nil {
                     idDict[knobSettings] = id
                 }
