@@ -255,13 +255,19 @@ func optimize
             stopMeasuring("postBody")
 
             startMeasuring("afterPostBody")
-            // Record values of time and energy after executing the loop body
-            readTimeAndSystemEnergy()
-            let timeAfter = runtime.getMeasure("time")! // stop measuring latency
-            let systemEnergyAfter = runtime.getMeasure("systemEnergy")! // stop measuring energy
-            // Measure the iteration counter
+
+            // Measure the iteration counter. 
+            // This must be incremented before the next call to readTimeAndSystemEnergy, 
+            // otherwise the emulator will read the same delta-time value from the database.
             runtime.measure("iteration", Double(iteration))
             runtime.measure("windowSize", Double(windowSize))
+
+            // Record values of time and energy after executing the loop body
+            readTimeAndSystemEnergy()
+
+            let timeAfter = runtime.getMeasure("time")! // stop measuring latency
+            let systemEnergyAfter = runtime.getMeasure("systemEnergy")! // stop measuring energy
+            
             // Compute the latency and energyDelta, and if both are greater than 0, record them and their derived measures
             let latency: Double = timeAfter - timeBefore                
             let energyDelta: Double = systemEnergyAfter - systemEnergyBefore
