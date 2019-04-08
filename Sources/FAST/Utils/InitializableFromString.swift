@@ -151,29 +151,6 @@ extension InitializationParameters.ArchitectureName : InitializableFromString {
 
 }
 
-/** Extension for ApplicationName */
-extension InitializationParameters.ApplicationName : InitializableFromString {
-
-    public init?(from text: String) {
-        switch text {
-            case "radar": 
-                self = .radar
-            case "x264": 
-                self = .x264
-            case "capsule": 
-                self = .capsule
-            case "incrementer": 
-                self = .incrementer
-            case "flightTestScenario7": 
-                self = .flightTestScenario7
-            default:
-                failedToInitialize("ApplicationName", from: text)
-                return nil
-        }
-    }
-
-}
-
 /** LoggerAPI LoggerMessageType */
 extension LoggerMessageType: InitializableFromString {
 

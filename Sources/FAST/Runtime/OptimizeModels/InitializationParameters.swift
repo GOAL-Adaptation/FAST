@@ -6,9 +6,7 @@ struct InitializationParameters {
         case ArmBigLittle, XilinxZcu
     }
 
-    enum ApplicationName {
-        case radar, x264, capsule, incrementer, flightTestScenario7
-    }
+    typealias ApplicationName = String
 
     let architecture             : ArchitectureName
     let applicationName          : ApplicationName
