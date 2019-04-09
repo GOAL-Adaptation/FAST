@@ -1,14 +1,14 @@
 knobs       threshold             from [50000, 200000 reference] 
             step                  from ["1" reference, "4"]                             
             utilizedCores         from [2, 4 reference] 
-            utilizedCoreFrequency from [400, 600, 1200 reference]   
+            utilizedCoreFrequency from [600, 1200 reference]   
 
             such that 
                 utilizedCoreFrequency > utilizedCores * 100 
                 and
-                [utilizedCoreFrequency, step] from [ [400, "1"], [600, "4"], [1200, "4"]]
+                [utilizedCoreFrequency, step] from [ [600, "1"], [1200, "1"], [1200, "4"] ]
                 and
-                (utilizedCoreFrequency == 1200) implies (step == "2")
+                (utilizedCoreFrequency == 1200) implies (step == "4")
 
 measures    energy           : Double // System measure
             energyDelta      : Double // System measure
@@ -22,3 +22,4 @@ intent      incrementer max(1.0 / (operations * operations)) such that quality <
             // the objective function needs to be fully parenthesized since '/' and '*' have same precedence.
 
 trainingSet []
+
