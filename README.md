@@ -1,7 +1,7 @@
 # FAST
    
 
-FAST is an implementation of an implicit programming model. It is built as a lightweight extension of the Swift programming language with added programming constructs to express intents.  It also serves as a framework for developing both terminating and streaming applications that can adapt to meet dynamic changes in the operating environment and mission intent when running on hardware platforms supported by the FAST runtime.  Currently FAST supports the x86_64 platform running Ubuntu 16.04 and macOS 10.14, and the Xilinx ZCU102 running Ubuntu 16.04.  
+FAST is an implementation of the intent-driven programming model. It is built as a lightweight extension of the Swift programming language with added programming constructs to express intents.  It also serves as a framework for developing both terminating and streaming applications that can adapt to meet dynamic changes in the operating environment and mission intent when running on hardware platforms supported by the FAST runtime.  Currently FAST supports the x86_64 platform running Ubuntu 16.04 and macOS 10.14, and the Xilinx ZCU102 running Ubuntu 16.04.  
   
 
 
