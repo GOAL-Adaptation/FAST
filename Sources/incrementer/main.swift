@@ -11,7 +11,7 @@
 import Foundation
 import FAST
 
-let threshold = Knob("threshold", 1000000)
+let threshold = Knob("threshold", 200000)
 let step = Knob("step", "1")
 
 var x = 0
