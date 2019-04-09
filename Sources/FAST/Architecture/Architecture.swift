@@ -228,7 +228,7 @@ internal func actuateLinuxUtilizedCoreFrequencySystemConfigurationKnob(actuation
            }
 
            if pwrite(fp, freqString, freqStringSize, 0) == -1 {
-              Log.error("Error writing to \(utilizedCoreFrequencyFilename).")
+              Log.error("Error writing string '\(freqString)' to \(utilizedCoreFrequencyFilename).")
            }
 
            close(fp)
