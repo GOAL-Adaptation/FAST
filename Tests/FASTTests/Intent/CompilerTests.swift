@@ -50,30 +50,30 @@ class CompilerTests: XCTestCase {
 
         let (stepRange, stepReference) = spec.knobs["step"]!
         XCTAssertEqual("1", stepReference as! String)
-        let stepRangeExpected = ["1", "2", "3", "4"]
+        let stepRangeExpected = ["1", "4"]
         for i in 0 ..< stepRangeExpected.count {
             XCTAssertEqual(stepRangeExpected[i], stepRange[i] as! String)
         }
 
         let (thresholdRange, thresholdReference) = spec.knobs["threshold"]!
-        XCTAssertEqual(1000000, thresholdReference as! Int)
-        let thresholdRangeExpected = [200000, 400000, 600000, 800000, 1000000]
+        XCTAssertEqual(200000, thresholdReference as! Int)
+        let thresholdRangeExpected = [50000, 200000]
         for i in 0 ..< thresholdRangeExpected.count {
             XCTAssertEqual(thresholdRangeExpected[i], thresholdRange[i] as! Int)
         }
 
         XCTAssertTrue(spec.satisfiesKnobConstraints(knobSettings: KnobSettings(kid: -1, [
-            "threshold"             : 600000,
-            "step"                  : "3",
+            "threshold"             : 50000,
+            "step"                  : "1",
             "utilizedCores"         : 4,
             "utilizedCoreFrequency" : 600,
         ])))
 
         XCTAssertFalse(spec.satisfiesKnobConstraints(knobSettings: KnobSettings(kid: -1, [
             "threshold"             : 200000,
-            "step"                  : "1",
-            "utilizedCores"         : 4,
-            "utilizedCoreFrequency" : 300,
+            "step"                  : "1",  // This falsifies the constraint 
+            "utilizedCores"         : 2,
+            "utilizedCoreFrequency" : 1200, // This falsifies the constraint 
         ])))
 
         /* Measures */

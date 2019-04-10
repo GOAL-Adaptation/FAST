@@ -3,16 +3,17 @@
 		"knobs": [
 			{
 				"name": "threshold",
-				"range": [200000, 400000, 600000, 800000, 1000000],
-				"referenceValue": 1000000
+				"range": [50000, 200000],
+				"referenceValue": 200000
 			},
 			{
 				"name": "step",
-				"range": ["1", "2", "3", "4"],
+				"range": ["1", "4"],
 				"referenceValue": "1"
 			}
 		],
-		"knobConstraints": "utilizedCoreFrequency > utilizedCores * 100",
+		"knobConstraints": 
+			"utilizedCoreFrequency > utilizedCores * 100 and [utilizedCoreFrequency, step] from [ [600, \"1\"], [1200, \"1\"], [1200, \"4\"] ] and (utilizedCoreFrequency == 1200) implies (step == \"4\")",
 		"measures": [
 			{
 				"name": "energy"
