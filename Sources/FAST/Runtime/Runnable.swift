@@ -70,6 +70,7 @@ func setApplicationKnobFilter(forKnob knobName: String, to targetKnobValues: [An
     if someTargetKnobValuesIsNotInt {
         FAST.fatalError("Currently application knob filters must consist only of Int values. Offending filter: \(targetKnobValues).")
     }
+    r.knobRanges[knobName] = targetKnobValues
     let filterName = "filter values for knob \(knobName)"
     // If targetKnobValue is empty, clear the filter for this knob
     if targetKnobValues.isEmpty {
@@ -100,6 +101,13 @@ func setApplicationKnobFilter(forKnob knobName: String, to targetKnobValues: [An
         }
     }
     r.reinitializeController()
+}
+
+func getKnobRange(knobName: String) -> [Any] {
+    guard let r = runtime else {
+        FAST.fatalError("Attempt to get range for knob '\(knobName)' before runtime is initialized.")
+    }
+    return r.knobRanges[knobName] ?? []
 }
 
 @discardableResult public func measure(_ name: String, _ value: Double) -> Double {

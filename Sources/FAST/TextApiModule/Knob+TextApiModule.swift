@@ -98,7 +98,10 @@ extension Knob: TextApiModule {
 
     /** Knob: get status as a dictionary */
     public func getInternalStatus() -> [String : Any]? {
-        return ["value" : self.value]
+        return [
+            "value" : self.value,
+            "range" : getKnobRange(knobName: self.name) // Defaults to [] (for non-application and unrestricted knobs)
+        ]
     }
 
     /** Knob: set status from a dictionary */

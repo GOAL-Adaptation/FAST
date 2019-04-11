@@ -436,6 +436,22 @@ components:
           items: 
             $ref: '#/components/schemas/NameValuePair'
     
+    NameValueAndRangePair:
+      type: object
+      description: Data representing the value and range of a knob .
+      required:
+        - name
+        - value
+      properties:
+        name:
+          type: string
+        value:
+          type: number
+        range:
+          type: array
+          items:
+            type: number
+    
     # Identical to the response type of TH/status
     Status:
       type: object
@@ -471,7 +487,7 @@ components:
               description: >-
                 Application-dependent listing the value of each application knob.
               items:
-                $ref: '#/components/schemas/NameValuePair'
+                $ref: '#/components/schemas/NameValueAndRangePair'
             architecture:
               type: string
               description: Name of the system architecture.
@@ -481,7 +497,7 @@ components:
                 Architecture dependent listing the value of each system
                 configuration knob.
               items:
-                $ref: '#/components/schemas/NameValuePair'
+                $ref: '#/components/schemas/NameValueAndRangePair'
             scenarioKnobs:
               type: array
               description: >-

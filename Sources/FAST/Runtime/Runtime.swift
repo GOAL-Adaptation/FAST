@@ -42,7 +42,8 @@ public class Runtime {
         measuringDevices         = [:]
 
         knobSetters              = [:]
-        knobSettersLock          = NSLock()
+        knobRanges               = [:]
+        knobLock                 = NSLock()
 
         intents                  = [:]
         models                   = [:]
@@ -142,7 +143,8 @@ public class Runtime {
     var measuringDevices: [String : MeasuringDevice] = [:]
 
     var knobSetters: [String : (Any) -> Void] = [:]
-    var knobSettersLock = NSLock()
+    var knobLock = NSLock()
+    var knobRanges: [String : [Any]] = [:]
     // Used to find the index of the current configuration for use by the controller
     var currentKnobSettings: KnobSettings? = nil
 
@@ -291,8 +293,26 @@ public class Runtime {
             return Array(dict).map { (s , a) in ["name" : s, "value" : a] }
         }
 
+        func toArrayOfKnobStateDicts(_ dict: [String : Any]) -> [[String : Any]] {
+            return Array(dict).map { 
+                (s , valueAndRange) in 
+                guard let (value,range) = valueAndRange as? (Any, [Any]) else {
+                    FAST.fatalError("Could not cast \(valueAndRange) to a pair of knob value and knob range.")
+                }
+                return ["name" : s, "value" : value, "range" : range] 
+            }
+        }
+
         func unwrapValues(_ dict: [String: Any]) -> [String: Any] {
             return Dictionary(dict.map { (s,a) in (s, (a as! [String: Any])["value"]!) })
+        }
+
+        func unwrapKnobState(_ dict: [String: Any]) -> [String: Any] {
+            return Dictionary(dict.map { 
+                (s,a) in 
+                let aDict = a as! [String: Any]
+                return (s, (aDict["value"]!, aDict["range"]!)) 
+            })
         }
 
         func extractStatus(from module: TextApiModule) -> [String : Any] {
@@ -301,6 +321,10 @@ public class Runtime {
 
         func extractStatus(of subModule: String, from module: TextApiModule?) -> [String : Any] {
             return (module?.getStatus()?[subModule] as? [String: Any]).map{ unwrapValues($0) } ?? [:]
+        }
+
+        func extractKnobStatus(of subModule: String, from module: TextApiModule?) -> [String : Any] {
+            return (module?.getStatus()?[subModule] as? [String: Any]).map{ unwrapKnobState($0) } ?? [:]
         }
 
         if let appName               = application?.name {
@@ -338,19 +362,23 @@ public class Runtime {
             */
             let measuringDevice = self.measuringDevices[appName]!
 
+            // Extract status from sub-modules (application-, and system configuration knobs)
+            let applicationKnobs               = extractKnobStatus(of: "applicationKnobs",         from: application  )
+            let systemConfigurationKnobs       = extractKnobStatus(of: "systemConfigurationKnobs", from: architecture )
+
             var arguments : [String : Any] =
                 [ "application"              : appName
                 , "measures"                 : toArrayOfPairDicts(getMeasures()) // Current measure values
+                , "applicationKnobs"         : toArrayOfKnobStateDicts(applicationKnobs)
+                , "systemConfigurationKnobs" : toArrayOfKnobStateDicts(systemConfigurationKnobs)
                 , "verdictComponents"        : toArrayOfPairDicts(verdictComponents)
                 ]
             
             if detailedStatusMessages {
 
-                // Extract status from sub-modules (application-, system configuration- and scenario knobs)
+                // Extract status from other sub-modules (architecture and scenario knobs)
 
-                let applicationKnobs               = extractStatus(of: "applicationKnobs",         from: application  )
                 let archName                       = architecture?.name ?? "NOT CONFIGURED"
-                let systemConfigurationKnobs       = extractStatus(of: "systemConfigurationKnobs", from: architecture )
                 let architecureScenarioKnobsStatus = extractStatus(of: "scenarioKnobs",            from: architecture)
                 let scenarioKnobsStatus            = extractStatus(                                from: scenarioKnobs)
                 
@@ -411,10 +439,8 @@ public class Runtime {
                     }
                     
                 }
-
-                arguments["applicationKnobs"        ] = toArrayOfPairDicts(applicationKnobs)
+                
                 arguments["architecture"            ] = archName
-                arguments["systemConfigurationKnobs"] = toArrayOfPairDicts(systemConfigurationKnobs)
                 arguments["scenarioKnobs"           ] = toArrayOfPairDicts(combinedScenarioKnobsStatus)
                 arguments["measureStatistics"       ] = measureStatistics // Current measure statistics
 
@@ -627,17 +653,13 @@ public class Runtime {
      * filtered according t.
      */
     public func reinitializeController() {
-        if let intentPreservingController = self.controller as? IntentPreservingController {
-            let currentIntent = intentPreservingController.intent
-            if 
-                let (_ /* currentModel will be recomputed */, untrimmedModel) = self.models[currentIntent.name] 
-            {
-                initializeController(untrimmedModel, currentIntent, self.controller.window)
-            } else {
-                FAST.fatalError("Attempt to reinitialize controller based on a controller with an undefined model.")
-            }
-        } else {
-            FAST.fatalError("Attempt to reinitialize an unsupported controller.")
+        switch self.controller {
+            case let c as IntentPreservingController:
+                reinitializeController(c.intent)
+            case let c as MulticonstrainedIntentPreservingController:
+                reinitializeController(c.intent)
+            default:
+                FAST.fatalError("Attempt to reinitialize an unsupported controller of type \(type(of: self.controller)).")
         }
     }
 
@@ -653,7 +675,7 @@ public class Runtime {
         else if let constantController = self.controller as? ConstantController {
             setIntent(spec)
         } else {
-            FAST.fatalError("Attempt to reinitialize controller based on a controller with an undefined model.")
+            FAST.fatalError("Attempt to reinitialize controller based on a controller (of type \(type(of: self.controller))) with an undefined model.")
         }
     }
 
