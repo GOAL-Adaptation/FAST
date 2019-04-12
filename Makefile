@@ -7,6 +7,9 @@
 
 APPNAME := incrementer
 
+CURRENT_SWIFT_VERSION := $(shell swift -version | grep "Apple Swift" | sed "s/.*version //g" | sed "s/ .*//g")
+REQUIRED_SWIFT_VERSION := 4.1.2
+
 UNAME := $(shell uname)
 SPM_FLAGS_ALL := \
   -Xlinker -lenergymon-default
@@ -30,15 +33,23 @@ SPM_FLAGS := $(SPM_FLAGS_ALL) \
 TEST_RESOURCE_TARGET_PATH := $(RESOURCE_TARGET_PATH)/FASTPackageTests.xctest/Contents/Resources
 endif
 
-build: copy-resources-build
+build: check-swift copy-resources-build
 	swift build -Xswiftc -suppress-warnings $(SPM_FLAGS)
+
+check-swift:
+ifneq (${CURRENT_SWIFT_VERSION}, ${REQUIRED_SWIFT_VERSION})
+	@echo "Please compile and run only with Swift version 4.1.2. Current version is ${CURRENT_SWIFT_VERSION}."
+	exit 1
+else
+	@echo "Using correct Swift version (${CURRENT_SWIFT_VERSION})."
+endif
 
 test: export proteus_runtime_logLevel        := Error
 test: export proteus_runtime_missionLength   := 1000
 test: export proteus_runtime_address         := 0.0.0.0
 test: export proteus_client_rest_serverPath  := 127.0.0.1
 test: export proteus_client_rest_serverPort  := 8080
-test: build copy-resources-test
+test: check-swift copy-resources-test
 	swift test $(SPM_FLAGS)
 
 copy-resources-build:
@@ -82,7 +93,7 @@ execute:              export proteus_xilinxZcu_availableCoreFrequency         :=
 execute:              export proteus_xilinxZcu_utilizedCores                  := 4
 execute:              export proteus_xilinxZcu_utilizedCoreFrequency          := 1200
 
-execute: copy-resources-build
+execute: check-swift copy-resources-build
 	.build/debug/${APPNAME}
 
 go:                     build run
