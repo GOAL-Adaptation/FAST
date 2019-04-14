@@ -100,7 +100,6 @@ class MulticonstrainedIntentPreservingController : Controller {
         lastMeasureValues = [Int: [String : Double]]()
         for i in 0..<sizeOfConfigurations {
             lastMeasureValues[i] = Dictionary(uniqueKeysWithValues: zip(sortedModel.measureNames, sortedModel[i].measureValues))
-            print(lastMeasureValues[i])
         }
     } 
 
@@ -115,21 +114,21 @@ class MulticonstrainedIntentPreservingController : Controller {
             if model!.measureNames.contains(key) {
                 var estimatedMeasure = 0.0 // estimate the expected measure value for last schedule from the measure value table
                 for configurationId in lastSchedule! {
-    //print("Configuration index: \(configurationId), \(lastMeasureValues[Int(configurationId)]![idx])")
                     estimatedMeasure += lastMeasureValues[Int(configurationId)]![key]!
                 }
 
                 estimatedMeasure /= Double(lastSchedule!.count)
+
                 for i in 0..<sizeOfConfigurations {
-                    lastMeasureValues[i]![key]! *= (weight * (value / estimatedMeasure + 1.0 - weight))
+                    lastMeasureValues[i]![key]! *= (weight * (value / estimatedMeasure) + (1.0 - weight))
                 }
             }
         }
 
         // Updating the optimization solver
-        constraintCoefficientsLessOrEqualTo = (constraintMeasureIdxsLEQ.map { c in domain.map { k in model![Int(k)].measureValues[c] } })
-        constraintCoefficientsGreaterOrEqualTo = (constraintMeasureIdxsGEQ.map { c in domain.map { k in model![Int(k)].measureValues[c] } })
-        constraintCoefficientsEqualTo = (constraintMeasureIdxsEQ.map { c in domain.map { k in model![Int(k)].measureValues[c] } })
+        constraintCoefficientsLessOrEqualTo = (constraintMeasureIdxsLEQ.map { c in domain.map { k in lastMeasureValues[Int(k)]![model!.measureNames[c]]! } })
+        constraintCoefficientsGreaterOrEqualTo = (constraintMeasureIdxsGEQ.map { c in domain.map { k in lastMeasureValues[Int(k)]![model!.measureNames[c]]! } })
+        constraintCoefficientsEqualTo = (constraintMeasureIdxsEQ.map { c in domain.map { k in lastMeasureValues[Int(k)]![model!.measureNames[c]]! } })
         constraintCoefficientsEqualTo.append([Double](repeating: 1.0, count: sizeOfConfigurations)) 
         let measureVectorFunction = model!.getMeasureVectorFunction()
         let costOrValue = intent.costOrValue
