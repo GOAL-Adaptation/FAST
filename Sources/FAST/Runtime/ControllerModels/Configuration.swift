@@ -29,4 +29,31 @@ struct Configuration {
         return knobValueStringsInOrder.joined(separator: ",")
     }
 
+    func isIn(intent spec: IntentSpec) -> Bool {
+        return self.knobSettings.settings.map{ (knobName: String, knobValue: Any) in  
+            if let (knobRange,_) = spec.knobs[knobName] {
+                if 
+                    let v = knobValue as? Int,
+                    let r = knobRange as? [Int] 
+                {
+                    return r.contains(v)
+                } 
+                else {
+                    if 
+                        let v = knobValue as? String,
+                        let r = knobRange as? [String] 
+                    {
+                        return r.contains(v)
+                    } 
+                    else {
+                        FAST.fatalError("Knob \(knobName) in model has value '\(knobValue)' of unsupported type: '\(type(of: knobValue))'.")
+                    }
+                }
+            }
+            else {
+                return true
+            }
+        }.reduce(true, { $0 && $1 })
+    }
+
 }

@@ -681,10 +681,10 @@ func optimize
                     if let controllerModel = model {
 
                         // Run the application in a fixed, known configuration for the first window
-                        let initialConfiguration = controllerModel.configurations[0] // Always configuration 0 since FASTController assumes the model is sorted by the constraint measure
-                        runtime.controller = ConstantController(knobSettings: initialConfiguration.knobSettings) 
                         runtime.setIntent(intent)
-                        runtime.setModel(name: intent.name, currentModel: controllerModel, untrimmedModel: controllerModel)
+                        let initialKnobSettings = runtime.registerModel(for: intent, controllerModel)
+                        let (activeModel, _) = runtime.models[intent.name]! // activeModel was possibly trimmed by Runtime.registerModel()
+                        let initialConfiguration = activeModel.getConfiguration(correspondingTo: initialKnobSettings)
 
                         // Compute initial schedule that meets the active intent, by using the measure values of
                         // the reference configuration as an estimate of the first measurements.
@@ -710,10 +710,8 @@ func optimize
                 case .NonAdaptive:
 
                     // Initialize the constant controller with the reference configuration from the intent
-                    let initialKnobSettings = intent.referenceKnobSettings()
-                    runtime.controller = ConstantController(knobSettings: initialKnobSettings) 
                     runtime.setIntent(intent)        
-                    runtime.setModel(name: intent.name, currentModel: model!, untrimmedModel: model!)
+                    let initialKnobSettings = runtime.registerModel(for: intent, model!, withInitialKnobSettings: intent.referenceKnobSettings())
 
                     // Initialize measures
                     for measure in intent.measures {
@@ -743,13 +741,44 @@ func optimize
         let measuringDevice = MeasuringDevice(samplingPolicy, windowSize, intent.measures, runtime)
         runtime.measuringDevices[id] = measuringDevice
 
+        // When the model filters are changed e.g. by a call to the Knob.restrict() 
+        // or Knob.control() API, this function will be triggered by setting the
+        // Runtime.modelFiltersWereUpdated flag. This function will then start a
+        // counter (iterationWhenModelFiltersWereUpdated) based on which the 
+        // ConstantController will be replaced by an adaptive controller. 
+        var iterationWhenModelFiltersWereUpdated: UInt32 = 0
+
         // Start the input processing loop
         loop( iterations: missionLength
             , preBody: {
 
+                guard
+                    runtime.runtimeKnobs.applicationExecutionMode.get() == .Adaptive,
+                    let controllerModel = model
+                else {
+                    FAST.fatalError("Attempt to run in adaptive model with undefined model.")
+                }
+
+                // If model filters have been updated, re-register the model which,
+                // in turn, will switch to a ConstantController for at least one 
+                // window (enforced using iterationWhenModelFiltersWereUpdated below).
+                if runtime.modelFiltersWereUpdated {
+                    runtime.modelFiltersWereUpdated = false
+                    runtime.registerModel(for: intent, controllerModel)
+                    iterationWhenModelFiltersWereUpdated = iteration
+                }
+
                 // If this is the first iteration of any subsequent window, or if the schedule 
                 // has been invalidated (e.g. by the /perturb endpoint), request a new schedule.
-                if (iteration > 0 && iteration % windowSize == 0) || runtime.schedule == nil {
+                if 
+                    (   
+                        iteration >= iterationWhenModelFiltersWereUpdated + windowSize
+                        && 
+                        iteration % windowSize == 0
+                    ) 
+                    || 
+                    runtime.schedule == nil 
+                {
 
                     // Before the first iteration of the second window, runtime.controller is always
                     // a ConstantController. If running in Adaptive mode, replace this with the right 
@@ -759,9 +788,6 @@ func optimize
                         runtime.controller is ConstantController
                     {
                         // Initialize the controller with the knob-to-mesure model, intent and window size
-                        guard let controllerModel = model else {
-                            FAST.fatalError("Attempt to initialize adaptive controller with undefined model.")
-                        }
                         runtime.initializeController(controllerModel, intent, windowSize)
                     }
 

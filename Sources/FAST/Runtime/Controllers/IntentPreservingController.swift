@@ -35,7 +35,7 @@ class IntentPreservingController : Controller {
                 FAST.fatalError("Can not initialize IntentPreservingController (at iteration \(runtime.getMeasure("iteration"))) without knowledge of current knob settings.")
             }
             guard let initialModelEntryIdx = modelSortedByConstraintMeasure.configurations.index(where: { $0.knobSettings == currentKnobSettings }) else {
-                FAST.fatalError("Current configuration (at iteration \(runtime.getMeasure("iteration"))) with the following knob settings missing from model '\(currentKnobSettings)'.")
+                FAST.fatalError("Current configuration (at iteration \(runtime.getMeasure("iteration")!)) with the following knob settings missing from model: \(currentKnobSettings). Model: \(model).")
             }
 
             Log.debug("Initializing FASTController with constraint: '\(constraint)', constraintMeasureIdx: '\(constraintMeasureIdx)', window: '\(window)', objectiveFunctionRawString: '\(objectiveFunctionRawString)'.")
