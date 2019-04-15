@@ -72,9 +72,7 @@ class FastRestServer : RestServer {
 
                 // The scenario knobs (availableCores, availableCoreFrequency) 
                 // act as filters on the corresponding knobs in the intent.
-                runtime.setScenarioKnobs(accordingTo: perturbation)                
-                setIntentModelFilter(perturbation.missionIntent)
-                runtime.modelFiltersWereUpdated = true
+                runtime.setScenarioKnobs(accordingTo: perturbation)
 
                 guard let intentBeforePerturbation = runtime.intents[perturbation.missionIntent.name] else {
                     FAST.fatalError("Perturbation intent name '\(perturbation.missionIntent.name)' does not correspond to any registered application name. Known applications are: '\(runtime.intents.keys)'.")

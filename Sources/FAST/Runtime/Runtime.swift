@@ -802,12 +802,36 @@ public class Runtime {
 
     /** Set scenario knobs according to perturbation */
     func setScenarioKnobs(accordingTo perturbation: Perturbation) {
+
         var newSettings: [String : [String : Any]] = [
             "missionLength":      ["missionLength":      perturbation.missionLength]
         ]
         self.scenarioKnobs.setStatus(newSettings: newSettings)
         self.setKnob("availableCores",         to: perturbation.availableCores)
         self.setKnob("availableCoreFrequency", to: perturbation.availableCoreFrequency)
+
+        // Set model filters and update knob ranges for the system configuraiton knobs accordingly
+
+        if 
+            let (utilizedCoresKnobRange, _): ([Any], Any) = perturbation.missionIntent.knobs["utilizedCores"],
+            let range = utilizedCoresKnobRange as? [Int]
+        {
+            self.knobRanges["utilizedCores"] = range.filter{ $0 <= Int(perturbation.availableCores) }
+            self.modelFiltersWereUpdated = true
+        }
+
+        if 
+            let (utilizedCoreFrequencyKnobRange, _) = perturbation.missionIntent.knobs["utilizedCoreFrequency"],
+            let range = utilizedCoreFrequencyKnobRange as? [Int]
+        {
+            self.knobRanges["utilizedCoreFrequency"] = range.filter{ $0 <= Int(perturbation.availableCoreFrequency) }
+            self.modelFiltersWereUpdated = true
+        }
+
+        if self.modelFiltersWereUpdated {
+            setIntentModelFilter(perturbation.missionIntent)
+        }
+
     }
 
 }
