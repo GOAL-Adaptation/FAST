@@ -2,6 +2,8 @@ import Foundation
 import LoggerAPI
 import MulticonstrainedOptimizer
 
+fileprivate let key = ["proteus","runtime"]
+
 class MulticonstrainedIntentPreservingController : Controller {
     let model: Model? // Always defined for this Controller
     let window: UInt32
@@ -164,8 +166,9 @@ class MulticonstrainedIntentPreservingController : Controller {
     }
     
     func getSchedule(_ intent: IntentSpec, _ measureValues: [String : Double]) -> Schedule {
-        if lastSchedule != nil {
-            updateCoefficients(weight: 0.1, measureValues: measureValues)
+       let weight = initialize(type: Double.self, name: "weightForFeedbackControl", from: key, or: 0.1)
+       if lastSchedule != nil {
+            updateCoefficients(weight: weight, measureValues: measureValues)
         }
         let schedule = multiconstrainedLinearOptimizer.computeSchedule(window: window) // FIXME Pass meaningful tag for logging
         assert(schedule.count == window, "The size of schedule is \(schedule.count) and the window size has to be \(window)")
