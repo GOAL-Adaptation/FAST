@@ -7,7 +7,7 @@
 
 APPNAME := incrementer
 
-CURRENT_SWIFT_VERSION := $(shell swift -version | grep "Apple Swift" | sed "s/.*version //g" | sed "s/ .*//g")
+CURRENT_SWIFT_VERSION := $(shell swift -version | grep "Swift" | sed "s/.*version //g" | sed "s/ .*//g")
 REQUIRED_SWIFT_VERSION := 4.1.2
 
 UNAME := $(shell uname)
