@@ -752,17 +752,16 @@ func optimize
         loop( iterations: missionLength
             , preBody: {
 
-                guard
-                    runtime.runtimeKnobs.applicationExecutionMode.get() == .Adaptive,
-                    let controllerModel = model
-                else {
-                    FAST.fatalError("Attempt to run in adaptive model with undefined model.")
-                }
-
                 // If model filters have been updated, re-register the model which,
                 // in turn, will switch to a ConstantController for at least one 
                 // window (enforced using iterationWhenModelFiltersWereUpdated below).
-                if runtime.modelFiltersWereUpdated {
+                if 
+                    runtime.runtimeKnobs.applicationExecutionMode.get() == .Adaptive && 
+                    runtime.modelFiltersWereUpdated
+                {
+                    guard let controllerModel = model else {
+                        FAST.fatalError("Attempt to register an undefined model.")
+                    }
                     runtime.modelFiltersWereUpdated = false
                     runtime.registerModel(for: intent, controllerModel)
                     iterationWhenModelFiltersWereUpdated = iteration
@@ -787,6 +786,9 @@ func optimize
                         runtime.runtimeKnobs.applicationExecutionMode.get() == .Adaptive &&
                         runtime.controller is ConstantController
                     {
+                        guard let controllerModel = model else {
+                            FAST.fatalError("Attempt to initialize adaptive controller but no model has been registered.")
+                        }
                         // Initialize the controller with the knob-to-mesure model, intent and window size
                         runtime.initializeController(controllerModel, intent, windowSize)
                     }
