@@ -696,23 +696,6 @@ public class Runtime {
         }
     }
 
-    /** 
-     * Reintialize intent preserving controller keeping the previous intent, model and window 
-     * This method can be used when self.modelFilters have changed, for example when 
-     * Knob.control() or Knob.restrict() have been called, and the active model should be
-     * filtered according t.
-     */
-    public func reinitializeController() {
-        switch self.controller {
-            case let c as IntentPreservingController:
-                reinitializeController(c.intent)
-            case let c as MulticonstrainedIntentPreservingController:
-                reinitializeController(c.intent)
-            default:
-                FAST.fatalError("Attempt to reinitialize an unsupported controller of type \(type(of: self.controller)).")
-        }
-    }
-
     /** Reintialize intent preserving controller with the intent, keeping the previous model and window */
     public func reinitializeController(_ spec: IntentSpec, replacingCurrentModelWith newModel: Model? = nil) {
         if 
