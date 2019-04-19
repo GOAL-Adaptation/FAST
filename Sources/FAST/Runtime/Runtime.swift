@@ -698,22 +698,6 @@ public class Runtime {
         }
     }
 
-    /** Reintialize intent preserving controller with the intent, keeping the previous model and window */
-    public func reinitializeController(_ spec: IntentSpec, replacingCurrentModelWith newModel: Model? = nil) {
-        if 
-            let (_ /* currentModel will be recomputed */, untrimmedModel) = self.models[spec.name]
-        {
-            // Use the passed model if available, otherwise use the model of the active controller
-            var model = newModel ?? untrimmedModel
-            initializeController(model, spec, controller.window)   
-        } 
-        else if let constantController = self.controller as? ConstantController {
-            setIntent(spec)
-        } else {
-            FAST.fatalError("Attempt to reinitialize controller based on a controller (of type \(type(of: self.controller))) with an undefined model.")
-        }
-    }
-
     /** Update the value of name in the global measure store and return that value */
     @discardableResult func measure(_ name: String, _ value: Double) -> Double {
         synchronized(measuresLock) {
