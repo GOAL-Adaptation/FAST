@@ -70,19 +70,21 @@ class FastRestServer : RestServer {
             {
                 Log.debug("Received valid JSON on /perturb endpoint: \(json)")
 
+                guard 
+                    let intentBeforePerturbation = runtime.intents[perturbation.missionIntent.name],
+                    let (_, unTrimmedModelBeforePerturbation) = runtime.models[perturbation.missionIntent.name] 
+                else {
+                    FAST.fatalError("Perturbation intent name '\(perturbation.missionIntent.name)' does not correspond to any registered application name. Known applications are: '\(runtime.intents.keys)'.")
+                }
+
                 // The scenario knobs (availableCores, availableCoreFrequency) 
                 // act as filters on the corresponding knobs in the intent.
                 runtime.setScenarioKnobs(accordingTo: perturbation)
 
-                guard let intentBeforePerturbation = runtime.intents[perturbation.missionIntent.name] else {
-                    FAST.fatalError("Perturbation intent name '\(perturbation.missionIntent.name)' does not correspond to any registered application name. Known applications are: '\(runtime.intents.keys)'.")
-                }
-
                 if perturbation.scenarioChanged || !intentBeforePerturbation.isEqual(to: perturbation.missionIntent) {
                     Log.debug("Perturbation changed intent in a way that produced valid knob ranges. Reinitializing controller and invalidating current schedule.")
                     // Reinitialize the controller with the new intent
-                    runtime.reinitializeController(perturbation.missionIntent)
-                    runtime.schedule = nil // invalidate current schedule
+                    runtime.registerIntentAndModel(for: perturbation.missionIntent, unTrimmedModelBeforePerturbation)
                 }
                 else {
                     Log.verbose("Perturbation did not change the intent, or did so in a way that did not produce valid knob ranges. Did not invalidate current schedule.")

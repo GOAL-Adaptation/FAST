@@ -100,7 +100,7 @@ func setApplicationKnobModelFilter(forKnob knobName: String, to targetKnobValues
             }
         }
     }
-    r.modelFiltersWereUpdated = true
+    r.perturbationOccurred = true
 }
 
 func setIntentModelFilter(_ spec: IntentSpec) {
@@ -110,6 +110,7 @@ func setIntentModelFilter(_ spec: IntentSpec) {
     let filterName = "filter values for intent \(spec.name)"
     Log.debug("Setting model filter for intent '\(spec.name)' based on intent specification: \(spec).")
     r.modelFilters[filterName] = { $0.isIn(intent: spec) }
+    r.perturbationOccurred = true
 } 
 
 func getKnobRange(knobName: String) -> [Any] {
