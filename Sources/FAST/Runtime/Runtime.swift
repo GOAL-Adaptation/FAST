@@ -729,18 +729,6 @@ public class Runtime {
         }
     }
 
-    public func changeIntent(_ spec: IntentSpec, _ missionLength: UInt64? = nil) {
-        if !(controller is IntentPreservingController || controller is MulticonstrainedIntentPreservingController) {
-            Log.error("Active controller type '\(type(of: controller))' does not support change of intent.")
-            return
-        }
-        /* TODO Re-introduce approach to preserving controller state whenever only the constraint goal has changed (at least for the IntentPreservingController) */
-        else {
-            Log.verbose("Reinitializing the controller for `\(spec.name)`.")
-            reinitializeController(spec)
-        }
-    }
-
     /** Update the value of name in the global measure store and return that value */
     @discardableResult func measure(_ name: String, _ value: Double) -> Double {
         synchronized(measuresLock) {

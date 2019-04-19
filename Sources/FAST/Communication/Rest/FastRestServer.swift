@@ -132,21 +132,6 @@ class FastRestServer : RestServer {
                 self.addJsonBody(toResponse: response, json: [:], jsonDescription: "empty", endpointName: "enable")
         })
 
-        routes.add(method: .post, uri: "/changeIntent", handler: {
-            request, response in
-                if let json = self.readRequestBody(request: request, fromEndpoint: "/changeIntent") {
-                    Log.debug("Received valid JSON on /changeIntent endpoint: \(json).")
-                    let missionIntent = json["missionIntent"]! as! String
-                    response.status = self.changeIntent(missionIntent, accumulatedStatus: response.status)
-                    Log.info("Intent change requested through /changeIntent endpoint.")
-                }
-                else {
-                    Log.error("Did not receive valid JSON on /changeIntent endpoint: \(request)")
-                }
-                self.addJsonBody(toResponse: response, json: [:], jsonDescription: "empty", endpointName: "changeIntent")
-            }
-        )
-
         routes.add(method: .post, uri: "/fixConfiguration", handler: {
             request, response in
                 if let json = self.readRequestBody(request: request, fromEndpoint: "/fixConfiguration") {
