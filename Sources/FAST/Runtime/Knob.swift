@@ -48,7 +48,7 @@ public class Knob<T> : IKnob {
      * the controller.
      */
     public func control() {
-        setApplicationKnobFilter(forKnob: self.name, to: [])
+        setApplicationKnobModelFilter(forKnob: self.name, to: [])
     }
 
     /** 
@@ -64,7 +64,7 @@ public class Knob<T> : IKnob {
      */
     public func restrict(_ vs: [T]? = nil) {
         let values = vs == nil ? [self.value] : vs!
-        setApplicationKnobFilter(forKnob: self.name, to: values)
+        setApplicationKnobModelFilter(forKnob: self.name, to: values)
     }
 
     /** 

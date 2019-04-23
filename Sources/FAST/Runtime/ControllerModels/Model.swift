@@ -91,6 +91,19 @@ open class Model {
     func getMeasureValue(_ index: Int, measureName: String) -> Double {
         return configurations[index].measureValues[measureNameToIndexMap[measureName]!]
     }
+
+    /** Get the configuration with the corresponding KnobSettings */
+    func getConfiguration(correspondingTo knobSettings: KnobSettings) -> Configuration {
+        let matchingConfigurations = configurations.filter{ $0.knobSettings == knobSettings }
+        switch matchingConfigurations.count {
+            case 0:
+                FAST.fatalError("No configuration with the following knob settings was found in the model: \(knobSettings).")
+            case 1:
+                return matchingConfigurations[0]
+            default:
+                FAST.fatalError("Multiple configurations (\(matchingConfigurations.map{ $0.id })) with the following knob settings were found in the model: \(knobSettings).")
+        }        
+    }
    
     func getSizeOfConfigurations() -> Int {return configurations.count}
 
@@ -122,35 +135,8 @@ open class Model {
 
     /** Make a model basd on this one, but only containing configurations matching those in the intent. */
     func trim(to spec: IntentSpec) -> Model {
-
-        func isInIntent(_ c: Configuration) -> Bool {
-            return c.knobSettings.settings.map{ (knobName: String, knobValue: Any) in  
-                if let (knobRange,_) = spec.knobs[knobName] {
-                    if 
-                        let v = knobValue as? Int,
-                        let r = knobRange as? [Int] 
-                    {
-                        return r.contains(v)
-                    } 
-                    else {
-                        if 
-                            let v = knobValue as? String,
-                            let r = knobRange as? [String] 
-                        {
-                            return r.contains(v)
-                        } 
-                        else {
-                            FAST.fatalError("Knob \(knobName) in model has value '\(knobValue)' of unsupported type: '\(type(of: knobValue))'.")
-                        }
-                    }
-                }
-                else {
-                    return true
-                }
-            }.reduce(true, { $0 && $1 })
-        }
         
-        return trim(toSatisfy: isInIntent, "shrink to intent spec with knobs: \(spec.knobs)")
+        return trim(toSatisfy: { $0.isIn(intent: spec) }, "shrink to intent spec with knobs: \(spec.knobs)")
 
     }
 

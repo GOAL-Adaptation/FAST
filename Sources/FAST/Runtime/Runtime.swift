@@ -48,6 +48,7 @@ public class Runtime {
         intents                  = [:]
         models                   = [:]
         modelFilters             = [:]
+        perturbationOccurred     = true
         controller               = ConstantController()
         controllerLock           = NSLock()
 
@@ -153,8 +154,22 @@ public class Runtime {
     // - m1 is the currently active model, and 
     // - m2 is the original, untrimmed model (before trimming w.r.t. intent and modelFilters)
     var models: [String : (Model,Model)] = [:]
-    // Used to implement toggling of control for knobs
+    // This dictionary associates a filter name (String), with a function that,
+    // given a Configuration, says whether or not it should remain in the model.
+    // Used to implement toggling of control for knobs, to implement scenario
+    // knobs, and to implement filtering of the model using intents with smaller
+    // knob ranges.
     var modelFilters: [String : (Configuration) -> Bool] = [:]
+    // Used to ensure that the application is executed for at least one window using
+    // the ConstantController before an adaptive controller is initialized, so that
+    // the measure estimates for the initial configuration can be provided to the
+    // adaptive controller upon initialization.
+    // When the model is updated, e.g. when Knob.restrict() is called, the 
+    // perturbationOccurred variable will be set to true, prompting the optimize 
+    // loop to instantiate a WarmupController which will run the application in a
+    // fixed configuration for one window, to ensure valid measure values are passed 
+    // to the adaptive controller when it is instantiated with the new model.
+    var perturbationOccurred: Bool = true
 
     var controller: Controller = ConstantController()
     var controllerLock = NSLock()
@@ -189,9 +204,58 @@ public class Runtime {
         Log.info("Set intent for optimize scope '\(spec.name)' to: \(spec).")
     }
 
-    func setModel(name: String, currentModel: Model, untrimmedModel: Model) {
-        models[name] = (currentModel, untrimmedModel)
-        Log.info("Set model for optimize scope '\(name)'.")
+    /**
+     * When the model is changed e.g. by a call to the Knob.restrict() or 
+     * Knob.control() API, this function will pick a configuration in the 
+     * filtered model, instantiate ConstantController based on this 
+     * configuration, and assign this as the active controller in the runtime.
+     * The Optimize.run() function will let this controller control the system
+     * (i.e. keep it in a fixed configuration) for at least one window, before
+     * instantiating an adaptive controller. This way, the measure averages that
+     * are passed to the adaptive controller to compute its initial schedule
+     * will accurately reflect the behavior in the initial configuration.
+     *
+     * Returns: The knob settings in which the ConstantController will run.
+     */
+    @discardableResult func registerIntentAndModel(for intent: IntentSpec, _ model: Model, withInitialKnobSettings initialKnobSettings: KnobSettings? = nil) -> KnobSettings {
+        // Register the intent
+        setIntent(intent)
+        // Trim the model w.r.t. any registered filters.
+        let trimmedModel = trimModelToFilters(model, intent)
+        models[intent.name] = (trimmedModel, model)
+        Log.info("Set model for optimize scope '\(intent.name)'.")
+        // Set the active controller to a ConstantController
+        // Unless overridden, pick configuration 0 since FASTController assumes the model is sorted by the constraint measure
+        let initialSettings = initialKnobSettings ?? trimmedModel.configurations[0].knobSettings
+        self.currentKnobSettings = initialSettings
+        self.controller = ConstantController(knobSettings: initialSettings)
+        self.schedule = self.controller.getSchedule(intent, [String:Double]())
+        Log.info("Constant controller initialized, it will run the application in the following, fixed configuration: \(initialSettings).")
+        return initialSettings
+    }
+
+    func trimModelToFilters(_ model: Model, _ intent: IntentSpec) -> Model {
+        // Trim model with respect to the filters that have been registered in the runtime modelFilters array.
+        // These include application knob filters, that are used to implement toggling of control with respect
+        // to individual knobs using the Knob type's public API.
+        var modelTrimLog = [String]()
+        let modelTrimmedToFilters = self.modelFilters.reduce(model, {
+            (m: Model, descriptionAndFilter: (String, (Configuration) -> Bool)) in 
+            let (description, filter) = descriptionAndFilter
+            let modelAfterThisFilter = m.trim(toSatisfy: filter, description)
+            modelTrimLog.append("Model trimmed to filter '\(description)' (size before: \(m.configurations.count), size after: \(modelAfterThisFilter.configurations.count)).\n")
+            return modelAfterThisFilter
+        })
+        if model.configurations.count < modelTrimmedToFilters.configurations.count {
+            for log in modelTrimLog {
+                Log.debug(log)
+            }
+            Log.debug("Model trimmed to registered filters (size before: \(model.configurations.count), size after: \(modelTrimmedToFilters.configurations.count)).")
+        }
+        else {
+            Log.debug("The registered filters did not affect the model.")
+        }
+        return modelTrimmedToFilters
     }
 
     /**
@@ -265,14 +329,15 @@ public class Runtime {
         guard let newModel = Model(fromMachineLearning: newJSON, intent: currentIntent) else {
             FAST.fatalError("Failed in constructing an updated mode from ML JSON.")
         }
-        guard let intentPreservingController = self.controller as? IntentPreservingController else {
+        guard 
+            let warmupController = self.controller as? WarmupController,
+            let intentPreservingController = warmupController.wrappedController as? IntentPreservingController
+        else {
             FAST.fatalError("Attempt to update model from machine learning module without an active IntentPreservingController.")
         }
         Log.debug("Reinitializing controller with new model from machine learning module.")
-        self.reinitializeController(
-            currentIntent, 
-            replacingCurrentModelWith: newModel
-        )
+        self.perturbationOccurred = true
+        self.registerIntentAndModel(for: currentIntent, newModel)
 
     }
 
@@ -589,29 +654,20 @@ public class Runtime {
       }
     }
 
+
     /** Intialize intent preserving controller with the given model, intent, and window. */
     func initializeController(_ model: Model, _ intent: IntentSpec, _ window: UInt32 = 20) {
-        Log.debug("In preparation for initializing the controller, will now trim the model.")
-        // Trim model with respect to the intent, to force the controller to choose only those
-        // configurations that the user has specified there.
-        let modelTrimmedToIntent = model.trim(to: intent)
-        Log.debug("Model trimmed to intent.")
-        // Further trim model with respect to the filters that have been registered in the runtime modelFilters array.
-        // These include application knob filters, that are used to implement toggling of control with respect
-        // to individual knobs using the Knob type's public API.
-        let modelTrimmedToBothIntentAndFilters = self.modelFilters.reduce(modelTrimmedToIntent, {
-            (m: Model, descriptionAndFilter: (String, (Configuration) -> Bool)) in 
-            let (description, filter) = descriptionAndFilter
-            return m.trim(toSatisfy: filter, description)
-        })
-        Log.debug("Model trimmed to registered filters. Will now initialize controller for intent with \(intent.constraints.count) constraints.")
+        
+        let initialKnobSettings = registerIntentAndModel(for: intent, model)
+        let (modelTrimmedToBothIntentAndFilters, _) = self.models[intent.name]!
+        
+        Log.debug("Will now initialize controller for intent with \(intent.constraints.count) constraints.")
+        
         synchronized(controllerLock) {
             switch intent.constraints.count {
             case 1:    
                 if let c = IntentPreservingController(modelTrimmedToBothIntentAndFilters, intent, self, window) {
-                    setIntent(intent)
-                    setModel(name: intent.name, currentModel: modelTrimmedToBothIntentAndFilters, untrimmedModel: model)
-                    controller = c
+                    controller = WarmupController(first: initialKnobSettings, then: c)
                     Log.info("IntentPreservingController initialized.")
                 }
                 else {
@@ -620,9 +676,7 @@ public class Runtime {
 
             case 2...:    
                 if let c = MulticonstrainedIntentPreservingController(modelTrimmedToBothIntentAndFilters, intent, window) {
-                    setIntent(intent)
-                    setModel(name: intent.name, currentModel: modelTrimmedToBothIntentAndFilters, untrimmedModel: model)
-                    controller = c
+                    controller = WarmupController(first: initialKnobSettings, then: c)
                     Log.info("MulticonstrainedIntentPreservingController initialized.")
                 }
                 else {
@@ -631,9 +685,7 @@ public class Runtime {
 
             case 0:
                 if let c = UnconstrainedIntentPreservingController(modelTrimmedToBothIntentAndFilters, intent, window) {
-                    setIntent(intent)
-                    setModel(name: intent.name, currentModel: modelTrimmedToBothIntentAndFilters, untrimmedModel: model)
-                    controller = c
+                    controller = WarmupController(first: initialKnobSettings, then: c)
                     Log.info("UnconstrainedIntentPreservingController initialized.")
                 }
                 else {
@@ -643,51 +695,6 @@ public class Runtime {
             default:
                 FAST.fatalError("Intent doesn't havae any constraint initialized.")
             }
-        }
-    }
-
-    /** 
-     * Reintialize intent preserving controller keeping the previous intent, model and window 
-     * This method can be used when self.modelFilters have changed, for example when 
-     * Knob.control() or Knob.restrict() have been called, and the active model should be
-     * filtered according t.
-     */
-    public func reinitializeController() {
-        switch self.controller {
-            case let c as IntentPreservingController:
-                reinitializeController(c.intent)
-            case let c as MulticonstrainedIntentPreservingController:
-                reinitializeController(c.intent)
-            default:
-                FAST.fatalError("Attempt to reinitialize an unsupported controller of type \(type(of: self.controller)).")
-        }
-    }
-
-    /** Reintialize intent preserving controller with the intent, keeping the previous model and window */
-    public func reinitializeController(_ spec: IntentSpec, replacingCurrentModelWith newModel: Model? = nil) {
-        if 
-            let (_ /* currentModel will be recomputed */, untrimmedModel) = self.models[spec.name]
-        {
-            // Use the passed model if available, otherwise use the model of the active controller
-            var model = newModel ?? untrimmedModel
-            initializeController(model, spec, controller.window)   
-        } 
-        else if let constantController = self.controller as? ConstantController {
-            setIntent(spec)
-        } else {
-            FAST.fatalError("Attempt to reinitialize controller based on a controller (of type \(type(of: self.controller))) with an undefined model.")
-        }
-    }
-
-    public func changeIntent(_ spec: IntentSpec, _ missionLength: UInt64? = nil) {
-        if !(controller is IntentPreservingController || controller is MulticonstrainedIntentPreservingController) {
-            Log.error("Active controller type '\(type(of: controller))' does not support change of intent.")
-            return
-        }
-        /* TODO Re-introduce approach to preserving controller state whenever only the constraint goal has changed (at least for the IntentPreservingController) */
-        else {
-            Log.verbose("Reinitializing the controller for `\(spec.name)`.")
-            reinitializeController(spec)
         }
     }
 
@@ -752,12 +759,38 @@ public class Runtime {
 
     /** Set scenario knobs according to perturbation */
     func setScenarioKnobs(accordingTo perturbation: Perturbation) {
+
         var newSettings: [String : [String : Any]] = [
             "missionLength":      ["missionLength":      perturbation.missionLength]
         ]
         self.scenarioKnobs.setStatus(newSettings: newSettings)
         self.setKnob("availableCores",         to: perturbation.availableCores)
         self.setKnob("availableCoreFrequency", to: perturbation.availableCoreFrequency)
+
+        // Set model filters and update knob ranges for the system configuraiton knobs accordingly
+
+        var systemConfigurationKnobRangesChanges = false
+
+        if 
+            let (utilizedCoresKnobRange, _): ([Any], Any) = perturbation.missionIntent.knobs["utilizedCores"],
+            let range = utilizedCoresKnobRange as? [Int]
+        {
+            self.knobRanges["utilizedCores"] = range.filter{ $0 <= Int(perturbation.availableCores) }
+            systemConfigurationKnobRangesChanges = true
+        }
+
+        if 
+            let (utilizedCoreFrequencyKnobRange, _) = perturbation.missionIntent.knobs["utilizedCoreFrequency"],
+            let range = utilizedCoreFrequencyKnobRange as? [Int]
+        {
+            self.knobRanges["utilizedCoreFrequency"] = range.filter{ $0 <= Int(perturbation.availableCoreFrequency) }
+            systemConfigurationKnobRangesChanges = true
+        }
+
+        if systemConfigurationKnobRangesChanges {
+            setIntentModelFilter(perturbation.missionIntent)
+        }
+
     }
 
 }

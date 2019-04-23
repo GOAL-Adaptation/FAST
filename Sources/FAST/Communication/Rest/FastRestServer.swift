@@ -70,17 +70,21 @@ class FastRestServer : RestServer {
             {
                 Log.debug("Received valid JSON on /perturb endpoint: \(json)")
 
-                runtime.setScenarioKnobs(accordingTo: perturbation)
-
-                guard let intentBeforePerturbation = runtime.intents[perturbation.missionIntent.name] else {
+                guard 
+                    let intentBeforePerturbation = runtime.intents[perturbation.missionIntent.name],
+                    let (_, unTrimmedModelBeforePerturbation) = runtime.models[perturbation.missionIntent.name] 
+                else {
                     FAST.fatalError("Perturbation intent name '\(perturbation.missionIntent.name)' does not correspond to any registered application name. Known applications are: '\(runtime.intents.keys)'.")
                 }
+
+                // The scenario knobs (availableCores, availableCoreFrequency) 
+                // act as filters on the corresponding knobs in the intent.
+                runtime.setScenarioKnobs(accordingTo: perturbation)
 
                 if perturbation.scenarioChanged || !intentBeforePerturbation.isEqual(to: perturbation.missionIntent) {
                     Log.debug("Perturbation changed intent in a way that produced valid knob ranges. Reinitializing controller and invalidating current schedule.")
                     // Reinitialize the controller with the new intent
-                    runtime.reinitializeController(perturbation.missionIntent)
-                    runtime.schedule = nil // invalidate current schedule
+                    runtime.registerIntentAndModel(for: perturbation.missionIntent, unTrimmedModelBeforePerturbation)
                 }
                 else {
                     Log.verbose("Perturbation did not change the intent, or did so in a way that did not produce valid knob ranges. Did not invalidate current schedule.")
@@ -129,21 +133,6 @@ class FastRestServer : RestServer {
                 }
                 self.addJsonBody(toResponse: response, json: [:], jsonDescription: "empty", endpointName: "enable")
         })
-
-        routes.add(method: .post, uri: "/changeIntent", handler: {
-            request, response in
-                if let json = self.readRequestBody(request: request, fromEndpoint: "/changeIntent") {
-                    Log.debug("Received valid JSON on /changeIntent endpoint: \(json).")
-                    let missionIntent = json["missionIntent"]! as! String
-                    response.status = self.changeIntent(missionIntent, accumulatedStatus: response.status)
-                    Log.info("Intent change requested through /changeIntent endpoint.")
-                }
-                else {
-                    Log.error("Did not receive valid JSON on /changeIntent endpoint: \(request)")
-                }
-                self.addJsonBody(toResponse: response, json: [:], jsonDescription: "empty", endpointName: "changeIntent")
-            }
-        )
 
         routes.add(method: .post, uri: "/fixConfiguration", handler: {
             request, response in

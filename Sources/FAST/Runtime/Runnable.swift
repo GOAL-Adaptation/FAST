@@ -62,7 +62,7 @@ func registerApplicationKnob(_ knob: TextApiModule) {
  *  - filtering configurations that match an array of knob values (to "restrict the knob"),
  *  - including configurations for all values of this knob (to "enable control for the knob").
  */
-func setApplicationKnobFilter(forKnob knobName: String, to targetKnobValues: [Any]) {
+func setApplicationKnobModelFilter(forKnob knobName: String, to targetKnobValues: [Any]) {
     guard let r = runtime else {
         FAST.fatalError("Attempt to set model filter for knob '\(knobName)' before runtime is initialized.")
     }
@@ -100,8 +100,18 @@ func setApplicationKnobFilter(forKnob knobName: String, to targetKnobValues: [An
             }
         }
     }
-    r.reinitializeController()
+    r.perturbationOccurred = true
 }
+
+func setIntentModelFilter(_ spec: IntentSpec) {
+    guard let r = runtime else {
+        FAST.fatalError("Attempt to set model filter for the follwing intent before runtime is initialized: '\(spec)'.")
+    }
+    let filterName = "filter values for intent \(spec.name)"
+    Log.debug("Setting model filter for intent '\(spec.name)' based on intent specification: \(spec).")
+    r.modelFilters[filterName] = { $0.isIn(intent: spec) }
+    r.perturbationOccurred = true
+} 
 
 func getKnobRange(knobName: String) -> [Any] {
     guard let r = runtime else {

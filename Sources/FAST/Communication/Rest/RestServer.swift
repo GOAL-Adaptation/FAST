@@ -299,18 +299,4 @@ public class RestServer {
             "trainingSet []"
     }
 
-    /** Change the active intent */
-    func changeIntent(_ missionIntent: String, accumulatedStatus: HTTPResponseStatus) -> HTTPResponseStatus {
-        if let intentSpec = runtime.intentCompiler.compileIntentSpec(source: missionIntent) {
-            // TODO Figure out if it is better to delay intent change/controller re-init until the end of the window
-            runtime.changeIntent(intentSpec)
-            Log.info("Successfully received request on /changeIntent REST endpoint.")
-            return accumulatedStatus
-        }
-        else {
-            Log.error("Could not parse intent specification from JSON payload: \(missionIntent)")
-            return .notAcceptable
-        }
-    }
-
 }

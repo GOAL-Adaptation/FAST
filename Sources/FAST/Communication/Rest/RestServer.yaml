@@ -98,25 +98,6 @@ paths:
             schema:
               $ref: '#/components/schemas/ApplicationExecutionMode'
 
-  /changeIntent:
-    post:
-      description: Change the active intent.
-      responses:
-        '200':
-          description: Intent change successful.
-        '406':
-          description: Intent change unsuccessful.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/IntentSpecificationString'
-        description: Intent expressed in the FAST Intent Specification Langauge.
-
   /terminate:
     post:
       description: Terminate the application.
