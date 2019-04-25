@@ -7,8 +7,15 @@
 
 APPNAME := incrementer
 
-CURRENT_SWIFT_VERSION := $(shell swift -version | grep "Swift" | sed "s/.*version //g" | sed "s/ .*//g")
-REQUIRED_SWIFT_VERSION := 4.1.2
+SHELL = /bin/bash
+
+ifeq ($(shell whoami),root)
+ACTUAL_USER := $(shell who -s -m | tail -n 1 | awk '{print $$1}')
+export PATH := $(shell sudo su - ${ACTUAL_USER} -c 'echo $$PATH' 2>/dev/null | tail -n 1)
+endif
+
+CURRENT_SWIFT_VERSION := $(shell PATH="${PATH}" swift -version | grep "Swift" | sed "s/.*version //g" | sed "s/ .*//g" | perl -n -e'/(\d+\.\d+)/ && print $1')
+REQUIRED_SWIFT_VERSION := 4.1
 
 UNAME := $(shell uname)
 SPM_FLAGS_ALL := \
@@ -37,12 +44,13 @@ build: check-swift copy-resources-build
 	swift build -Xswiftc -suppress-warnings $(SPM_FLAGS)
 
 check-swift:
-ifneq (${CURRENT_SWIFT_VERSION}, ${REQUIRED_SWIFT_VERSION})
-	@echo "Please compile and run only with Swift version 4.1.2. Current version is ${CURRENT_SWIFT_VERSION}."
-	exit 1
-else
-	@echo "Using correct Swift version (${CURRENT_SWIFT_VERSION})."
-endif
+	@if [[ ${CURRENT_SWIFT_VERSION} == "${REQUIRED_SWIFT_VERSION}"* ]]; \
+	then \
+		echo "Using compatible Swift version (${CURRENT_SWIFT_VERSION})."; \
+	else \
+		echo "Please compile and run only with Swift major version ${REQUIRED_SWIFT_VERSION}. Current version is ${CURRENT_SWIFT_VERSION}."; \
+		exit 1; \
+	fi;
 
 test: export proteus_runtime_logLevel        := Error
 test: export proteus_runtime_missionLength   := 1000
