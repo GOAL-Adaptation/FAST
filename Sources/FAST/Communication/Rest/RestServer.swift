@@ -225,6 +225,12 @@ public class RestServer {
 
     /** Show the constraint predicate AST expressed by the JSON parameter as a string. */
     static func mkPredicateString(from json: [String: Any]) -> String {
+        if
+            let pAny = json["predicate"],
+            let p = pAny as? [String : Any]
+        {
+            return mkPredicateString(from: p)
+        }
         guard 
             let opAny = json["operator"],
             let op = opAny as? String
