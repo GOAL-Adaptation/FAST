@@ -9,9 +9,14 @@ APPNAME := incrementer
 
 SHELL = /bin/bash
 
-ifeq ($(shell whoami),root)
-ACTUAL_USER := $(shell who -s -m | tail -n 1 | awk '{print $$1}')
-export PATH := $(shell sudo su - ${ACTUAL_USER} -c 'echo $$PATH' 2>/dev/null | tail -n 1)
+# Are we running in Docker?
+IN_DOCKER = $(shell if [ -f /.dockerenv ]; then echo "yes"; else echo "no"; fi)
+
+ifeq ($(IN_DOCKER), no)
+   ifeq ($(shell whoami),root)
+   ACTUAL_USER := $(shell who -s -m | tail -n 1 | awk '{print $$1}')
+   export PATH := $(shell sudo su - ${ACTUAL_USER} -c 'echo $$PATH' 2>/dev/null | tail -n 1)
+   endif
 endif
 
 CURRENT_SWIFT_VERSION := $(shell PATH="${PATH}" swift -version | grep "Swift" | sed "s/.*version //g" | sed "s/ .*//g" | perl -n -e'/(\d+\.\d+)/ && print $1')
