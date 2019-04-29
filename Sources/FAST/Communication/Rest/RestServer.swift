@@ -244,7 +244,7 @@ public class RestServer {
                        mkPredicateString(from: json["rightPredicate"]!  as! [String: Any])
             default:
                 return mkExpressionString(from: json["leftExpression"]!  as! [String: Any]) +
-                       op +
+                       " " + op + " " +
                        mkExpressionString(from: json["rightExpression"]! as! [String: Any])
         }
     }
