@@ -433,6 +433,7 @@ public class Runtime {
 
             var arguments : [String : Any] =
                 [ "application"              : appName
+                , "architecture"             : architecture?.name ?? "NOT CONFIGURED"
                 , "measures"                 : toArrayOfPairDicts(getMeasures()) // Current measure values
                 , "applicationKnobs"         : toArrayOfKnobStateDicts(applicationKnobs)
                 , "systemConfigurationKnobs" : toArrayOfKnobStateDicts(systemConfigurationKnobs)
