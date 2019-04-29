@@ -7,21 +7,6 @@
 
 APPNAME := incrementer
 
-SHELL = /bin/bash
-
-# Are we running in Docker?
-IN_DOCKER = $(shell if [ -f /.dockerenv ]; then echo "yes"; else echo "no"; fi)
-
-ifeq ($(IN_DOCKER), no)
-   ifeq ($(shell whoami),root)
-   ACTUAL_USER := $(shell who -s -m | tail -n 1 | awk '{print $$1}')
-   export PATH := $(shell sudo su - ${ACTUAL_USER} -c 'echo $$PATH' 2>/dev/null | tail -n 1)
-   endif
-endif
-
-CURRENT_SWIFT_VERSION := $(shell PATH="${PATH}" swift -version | grep "Swift" | sed "s/.*version //g" | sed "s/ .*//g" | perl -n -e'/(\d+\.\d+)/ && print $1')
-REQUIRED_SWIFT_VERSION := 4.1
-
 UNAME := $(shell uname)
 SPM_FLAGS_ALL := \
   -Xlinker -lenergymon-default
@@ -45,24 +30,15 @@ SPM_FLAGS := $(SPM_FLAGS_ALL) \
 TEST_RESOURCE_TARGET_PATH := $(RESOURCE_TARGET_PATH)/FASTPackageTests.xctest/Contents/Resources
 endif
 
-build: check-swift copy-resources-build
+build: copy-resources-build
 	swift build -Xswiftc -suppress-warnings $(SPM_FLAGS)
-
-check-swift:
-	@if [[ ${CURRENT_SWIFT_VERSION} == "${REQUIRED_SWIFT_VERSION}"* ]]; \
-	then \
-		echo "Using compatible Swift version (${CURRENT_SWIFT_VERSION})."; \
-	else \
-		echo "Please compile and run only with Swift major version ${REQUIRED_SWIFT_VERSION}. Current version is ${CURRENT_SWIFT_VERSION}."; \
-		exit 1; \
-	fi;
 
 test: export proteus_runtime_logLevel        := Error
 test: export proteus_runtime_missionLength   := 1000
 test: export proteus_runtime_address         := 0.0.0.0
 test: export proteus_client_rest_serverPath  := 127.0.0.1
 test: export proteus_client_rest_serverPort  := 8080
-test: check-swift copy-resources-test
+test: copy-resources-test
 	swift test $(SPM_FLAGS)
 
 copy-resources-build:
@@ -108,7 +84,7 @@ execute:              export proteus_xilinxZcu_availableCoreFrequency         :=
 execute:              export proteus_xilinxZcu_utilizedCores                  := 4
 execute:              export proteus_xilinxZcu_utilizedCoreFrequency          := 1200
 
-execute: check-swift copy-resources-build
+execute: copy-resources-build
 	.build/debug/${APPNAME}
 
 go:                     build run
