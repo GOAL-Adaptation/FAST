@@ -87,6 +87,8 @@ execute:              export proteus_runtime_detailedStatus                   :=
 execute:              export proteus_runtime_sendStatusToTestHarness          := false
 execute:              export proteus_runtime_logToMemory                      := false
 
+execute:              export proteus_runtime_weightForFeedbackControl         := 0.5
+
 execute:              export proteus_armBigLittle_policy                      := Simple
 execute:              export proteus_armBigLittle_availableBigCores           := 4
 execute:              export proteus_armBigLittle_availableLittleCores        := 4
