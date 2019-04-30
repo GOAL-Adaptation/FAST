@@ -23,7 +23,7 @@ class Runnable: Application, EmulateableApplication, StreamApplication {
         self.name = name
         self.reinit = streamInit
 
-        #if !swift(>=4.1) || !swift(>=4.1.2)
+        #if !swift(>=4.1) || swift(>=4.2)
             print("Incompatible Swift version detected. Please compile using 4.1 <= Swift <= 4.1.2.")
             exit(1)
         #endif
