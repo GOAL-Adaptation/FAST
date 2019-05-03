@@ -71,9 +71,17 @@ func setApplicationKnobModelFilter(forKnob knobName: String, to targetKnobValues
     guard let r = runtime else {
         FAST.fatalError("Attempt to set model filter for knob '\(knobName)' before runtime is initialized.")
     }
-    let someTargetKnobValuesIsNotInt = targetKnobValues.map{ $0 is Int }.contains(false)
-    if someTargetKnobValuesIsNotInt {
+    guard let targetKnobIntValues = targetKnobValues as? [Int] else {
         FAST.fatalError("Currently application knob filters must consist only of Int values. Offending filter: \(targetKnobValues).")
+    }
+    // Check if the previous knob values are the same as the target ones, to exit early
+    if 
+        let previousKnobAnyValues = r.knobRanges[knobName],
+        let previousKnobIntValues = previousKnobAnyValues as? [Int],
+        targetKnobIntValues == previousKnobIntValues
+    {
+        // Filter is the same as the current one, no need to change anything
+        return
     }
     r.knobRanges[knobName] = targetKnobValues
     let filterName = "filter values for knob \(knobName)"
