@@ -134,9 +134,15 @@ profile-bounds:    		export proteus_runtime_applicationExecutionMode         := 
 profile-bounds:    		export proteus_runtime_missionLength                    := 200
 profile-bounds:    		copy-resources-build execute ## To select number of inputs to process when profiling: make size=<NUMBER_OF_RUNS> profile
 
+clean-partial-trace:
+	@if [[ `diff ./${APPNAME}.trace.json ./${APPNAME}.trace.json.partial` == "" ]]; \
+	then rm ./${APPNAME}.trace.json.partial; \
+	else echo ERROR: Partial trace file ./${APPNAME}.trace.json.partial differs from full trace file ./${APPNAME}.trace.json!; \
+	fi;
+
 # Run this application and record the measured data in a JSON file named ${APPNAME}.trace.json.
 # This file is to be used for emulation.
 trace:           		export proteus_runtime_logLevel                         := Info
 trace:           		export proteus_runtime_applicationExecutionMode         := EmulatorTracing
 trace:           		export proteus_runtime_missionLength                    := 200
-trace:           		copy-resources-build execute
+trace:           		copy-resources-build execute clean-partial-trace
