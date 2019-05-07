@@ -530,10 +530,81 @@ func optimize
             FAST.fatalError("Intent Spec \(intent) is NOT a CompiledIntentSpec!")
         }
 
-        Log.info("Tracing configuration space of size \(knobSpace.count) over \(traceSize) iterations: \(knobSpace).")
+       let profileOutputPrefix = initialize(type: String.self, name: "profileOutputPrefix", from: key, or: runtime.application?.name ?? "fast")
 
-        for i in 0 ..< knobSpace.count {
+        // Write JSON database to file
+        func writeDictDatabaseToJson(toFileName fileName: String) { 
 
+            let dicts = DictDatabase.Dicts(
+                  applicationName                     : myApp.name
+                , architectureName                    : myArch.name
+                , inputStreamName                     : inputStreamName
+                , getCurrentAppConfigurationIdDict    : getCurrentAppConfigurationIdDict
+                , getCurrentSysConfigurationIdDict    : getCurrentSysConfigurationIdDict
+                , warmupInputs                        : warmupInputNum 
+                , numberOfInputsTraced                : Int(traceSize)
+                , tracedConfigurations                : tracedConfigurations
+                , tapeNoise                           : tapeNoise
+                , applicationId                       : applicationId
+                , timeOutlier                         : timeOutlier
+                , energyOutlier                       : energyOutlier
+                , applicatioInputStreamId             : applicationInputID
+                , readDeltaDict                       : readDeltaDict
+            )
+            guard let encodedDicts = try? JSONEncoder().encode(dicts) else {
+                FAST.fatalError("Can not encode tracing database as JSON: \(dicts).")
+            }
+            withOpenFile(atPath: fileName) {
+                (jsonOutputStream: Foundation.OutputStream) in
+                    jsonOutputStream.write(String(decoding: encodedDicts, as: UTF8.self), maxLength: encodedDicts.count)
+            }
+        }
+
+        let fileExtension = "trace.json"
+        let partialFileExtension = fileExtension + ".partial"
+        let traceFileName = profileOutputPrefix + "." + fileExtension
+        let fileManager = FileManager.default
+        let dirPath = fileManager.currentDirectoryPath
+        let pathBundle = Bundle(path: dirPath)!
+
+        Log.info("Tracing configuration space of size \(knobSpace.count) over \(traceSize) iterations: \(knobSpace). Results will be saved in file: \(traceFileName).")
+
+        // If a partial trace exists, load it
+        if let partialTraceFileContents = readFile(withName: profileOutputPrefix, ofType: partialFileExtension, fromBundle: pathBundle) {
+
+            Log.info("Partial trace found at '\(traceFileName + ".partial")', will now attempt to decode it.")
+            let partialTraceFileContentsJSON = partialTraceFileContents.data(using: .utf8)!
+            
+            if let decodedDicts = try? JSONDecoder().decode(DictDatabase.Dicts.self, from: partialTraceFileContentsJSON) {
+
+                assert(myApp.name == decodedDicts.applicationName)
+                assert(myArch.name == decodedDicts.architectureName)
+                assert(inputStreamName == decodedDicts.inputStreamName)
+                getCurrentAppConfigurationIdDict = decodedDicts.getCurrentAppConfigurationIdDict
+                getCurrentSysConfigurationIdDict = decodedDicts.getCurrentSysConfigurationIdDict
+                assert(warmupInputNum == decodedDicts.warmupInputs)
+                assert(traceSize == UInt64(decodedDicts.numberOfInputsTraced))
+                tracedConfigurations = decodedDicts.tracedConfigurations
+                assert(tapeNoise == decodedDicts.tapeNoise)
+                assert(applicationId == decodedDicts.applicationId)
+                assert(timeOutlier == decodedDicts.timeOutlier)
+                assert(energyOutlier == decodedDicts.energyOutlier)
+                assert(applicationInputID == decodedDicts.applicatioInputStreamId)
+                readDeltaDict = decodedDicts.readDeltaDict
+                
+                Log.info("Partial trace with \(tracedConfigurations.count) traced configurations loaded. Will resume tracing an additional \(knobSpace.count - tracedConfigurations.count) configurations.")
+
+            }
+            else {
+                FAST.fatalError("Cannot decode partial JSON trace file.")
+            }
+        }
+        else {
+            Log.info("No partial trace found at '\(traceFileName + ".partial")', proceeding from scratch.")
+        }
+
+        for i in tracedConfigurations.count ..< knobSpace.count {
+                
             resetMeasures()
 
             // Initialize measuring device, that will update measures at every input
@@ -629,34 +700,11 @@ func optimize
                 inputNum += 1
             }
 
+            writeDictDatabaseToJson(toFileName: traceFileName + ".partial")
+
         }
 
-        let profileOutputPrefix = initialize(type: String.self, name: "profileOutputPrefix", from: key, or: runtime.application?.name ?? "fast")
-
-        // Write JSON database to file:
-        let dicts = DictDatabase.Dicts(
-              applicationName                     : myApp.name
-            , architectureName                    : myArch.name
-            , inputStreamName                     : inputStreamName
-            , getCurrentAppConfigurationIdDict    : getCurrentAppConfigurationIdDict
-            , getCurrentSysConfigurationIdDict    : getCurrentSysConfigurationIdDict
-            , warmupInputs                        : warmupInputNum 
-            , numberOfInputsTraced                : Int(traceSize)
-            , tracedConfigurations                : tracedConfigurations
-            , tapeNoise                           : tapeNoise
-            , applicationId                       : applicationId
-            , timeOutlier                         : timeOutlier
-            , energyOutlier                       : energyOutlier
-            , applicatioInputStreamId             : applicationInputID
-            , readDeltaDict                       : readDeltaDict
-        )
-        guard let encodedDicts = try? JSONEncoder().encode(dicts) else {
-            FAST.fatalError("Can not encode tracing database as JSON: \(dicts).")
-        }
-        withOpenFile(atPath: profileOutputPrefix + ".trace.json") {
-            (jsonOutputStream: Foundation.OutputStream) in
-                jsonOutputStream.write(String(decoding: encodedDicts, as: UTF8.self), maxLength: encodedDicts.count)
-        }
+        writeDictDatabaseToJson(toFileName: traceFileName)
 
     }
 
