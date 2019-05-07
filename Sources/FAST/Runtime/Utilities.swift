@@ -26,7 +26,7 @@ func readFile( withName name: String, ofType type: String
         }
     }
     else {
-        Log.warning("No file '\(name).\(type)' in \(Bundle.main).")
+        Log.warning("No file '\(name).\(type)' in \(bundle).")
         return nil
     }
 
