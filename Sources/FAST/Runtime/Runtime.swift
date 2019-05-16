@@ -102,6 +102,9 @@ public class Runtime {
     // Wait at least this long between successive status message logs.
     let minimumSecondsBetweenStatuses = initialize(type: Double.self, name: "minimumSecondsBetweenStatuses", from: key, or: 0.0)
 
+    // When set to true, the measure values associated (through the current model) with the current configuration will be included in status messages.
+    let outputMeasurePredictions = initialize(type: Bool.self, name: "outputMeasurePredictions", from: key, or: false)
+
     // When set to true, the MeasuringDevice will collect statistics for each combination of measure and KnobSettings.
     let collectDetailedStatistics = initialize(type: Bool.self, name: "collectDetailedStatistics", from: key, or: false)
 
@@ -475,11 +478,13 @@ public class Runtime {
                     // The measure values that the controller associates with the current configuration 
                     // through the controller model.
                     // Note: This will only be defined when running in Adaptive or MachineLearning mode.
-                    let currentConfiguration = getCurrentConfiguration()!
-                    arguments["measurePredictions"] = 
-                        zip( currentConfiguration.measureNames
-                        , currentConfiguration.measureValues
-                        ).map{ [ "name" : $0, "value" : $1 ] }
+                    if self.outputMeasurePredictions {
+                        let currentConfiguration = getCurrentConfiguration()!
+                        arguments["measurePredictions"] = 
+                            zip( currentConfiguration.measureNames
+                            , currentConfiguration.measureValues
+                            ).map{ [ "name" : $0, "value" : $1 ] }
+                    }
 
                     if self.collectDetailedStatistics {
 
