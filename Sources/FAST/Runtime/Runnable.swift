@@ -20,16 +20,89 @@ class Runnable: Application, EmulateableApplication, StreamApplication {
 
     /** Initialize the application */
     required init(name: String, knobs: [TextApiModule], streamInit: (() -> Void)?) {
+
         self.name = name
         self.reinit = streamInit
+
+        // Check that a compatible version of Swift was used to compile the application
 
         #if !swift(>=4.1) || swift(>=4.2)
             print("Incompatible Swift version detected. Please compile using 4.1 <= Swift <= 4.1.2.")
             exit(1)
         #endif
 
+        // Check for unknown environment variables (starting with "proteus")
+
+        let knownParameters = [
+
+            ["proteus","runtime","logLevel"],
+            ["proteus","runtime","logToStandardError"],
+            ["proteus","runtime","logToMemory"],
+            
+            ["proteus","runtime","missionLength"],
+            ["proteus","runtime","profileOutputPrefix"],
+
+            ["proteus","runtime","randomSeed"],
+            
+            ["proteus","runtime","weightForFeedbackControl"],
+            
+            ["proteus","emulator","emulationDatabaseType"],
+            ["proteus","emulator","database","db"],
+            ["proteus","emulator","database","readingMode"],
+            
+            ["proteus","client","rest","serverProtocol"],
+            ["proteus","client","rest","serverAddress"],
+            ["proteus","client","rest","serverPort"],
+            
+            ["proteus","runtime","port"],
+            ["proteus","runtime","profilingPort"],
+            ["proteus","runtime","address"],
+            
+            ["proteus","runtime","applicationExecutionMode"],
+
+            ["proteus","runtime","executeWithMachineLearning"],
+            ["proteus","runtime","executeWithTestHarness"],
+            ["proteus","runtime","sendStatusToTestHarness"],
+            ["proteus","runtime","detailedStatusMessages"],
+            ["proteus","runtime","suppressStatus"],
+            ["proteus","runtime","minimumSecondsBetweenStatuses"],
+            ["proteus","runtime","outputMeasurePredictions"],
+            ["proteus","runtime","collectDetailedStatistics"],
+
+            ["proteus","armBigLittle","policy"],
+            ["proteus","armBigLittle","availableBigCores"],
+            ["proteus","armBigLittle","availableLittleCores"],
+            ["proteus","armBigLittle","maximalBigCoreFrequency"],
+            ["proteus","armBigLittle","maximalLittleCoreFrequency"],
+            ["proteus","armBigLittle","utilizedBigCores"],
+            ["proteus","armBigLittle","utilizedLittleCores"],
+
+            ["proteus","xilinxZcu","policy"],
+            ["proteus","xilinxZcu","availableCores"],
+            ["proteus","xilinxZcu","availableCoreFrequency"],
+            ["proteus","xilinxZcu","utilizedCores"],
+            ["proteus","xilinxZcu","utilizedCoreFrequency"],
+
+            ["proteus","architecture","linuxDvfsGovernor"]
+
+        ]
+        
+        let knownParameterStrings = knownParameters.map{ $0.joined(separator: "_") }
+
+        let proteusEnvironment = ProcessInfo.processInfo.environment.keys.filter{ $0.starts(with: "proteus_") }
+
+        let unknownParameters = proteusEnvironment.filter{ !knownParameterStrings.contains($0) }
+
+        if unknownParameters.count > 0 {
+            let upv = unknownParameters.map{ p in (p, ProcessInfo.processInfo.environment[p]) }
+            FAST.fatalError("Unknown environment variables encountered: \(upv).")
+        }
+
+        // Initialize and register application knobs
+
         let applicationKnobs = ApplicationKnobs(submodules: knobs)
         self.addSubModule(newModule: applicationKnobs)
+
     }
 
     /** Look up the id (in the database) of the current application configuration. */
