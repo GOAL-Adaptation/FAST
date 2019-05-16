@@ -94,8 +94,10 @@ class Runnable: Application, EmulateableApplication, StreamApplication {
         let unknownParameters = proteusEnvironment.filter{ !knownParameterStrings.contains($0) }
 
         if unknownParameters.count > 0 {
-            let upv = unknownParameters.map{ p in (p, ProcessInfo.processInfo.environment[p]) }
-            FAST.fatalError("Unknown environment variables encountered: \(upv).")
+            let unknownParametersAndTheirValues = 
+                Array(unknownParameters.map{ p in (p, ProcessInfo.processInfo.environment[p] ?? "<UNASSIGNED>") })
+                    .map{ "\($0.0)=\($0.1)" }.joined(separator: ", ")
+            FAST.fatalError("Unknown environment variables encountered: \(unknownParametersAndTheirValues).")
         }
 
         // Initialize and register application knobs
