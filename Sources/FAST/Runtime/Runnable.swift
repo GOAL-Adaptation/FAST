@@ -59,6 +59,7 @@ class Runnable: Application, EmulateableApplication, StreamApplication {
             ["proteus","runtime","address"],
             
             ["proteus","runtime","applicationExecutionMode"],
+            ["proteus","runtime","interactionMode"],
 
             ["proteus","runtime","executeWithMachineLearning"],
             ["proteus","runtime","executeWithTestHarness"],
