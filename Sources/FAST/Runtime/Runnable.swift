@@ -76,12 +76,16 @@ class Runnable: Application, EmulateableApplication, StreamApplication {
             ["proteus","armBigLittle","maximalLittleCoreFrequency"],
             ["proteus","armBigLittle","utilizedBigCores"],
             ["proteus","armBigLittle","utilizedLittleCores"],
+            ["proteus","armBigLittle","executionMode"],
+            ["proteus","armBigLittle","actuationPolicy"],
 
             ["proteus","xilinxZcu","policy"],
             ["proteus","xilinxZcu","availableCores"],
             ["proteus","xilinxZcu","availableCoreFrequency"],
             ["proteus","xilinxZcu","utilizedCores"],
             ["proteus","xilinxZcu","utilizedCoreFrequency"],
+            ["proteus","xilinxZcu","executionMode"],
+            ["proteus","xilinxZcu","actuationPolicy"],
 
             ["proteus","architecture","linuxDvfsGovernor"]
 
