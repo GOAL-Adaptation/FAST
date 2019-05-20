@@ -434,6 +434,78 @@ components:
             type: number
     
     # Identical to the response type of TH/status
+
+    EqualityConstraint:
+      type: object
+      required: 
+        - variable
+        - value
+        - goal
+        - type
+      properties:
+        variable:
+          type: string
+        value:
+          type: number
+        goal:
+          type: number
+        type:
+          enum:
+            - '=='
+
+    InequalityConstraint:
+      type: object
+      required: 
+        - variable
+        - value
+        - goal
+        - type
+      properties:
+        variable:
+          type: string
+        value:
+          type: number
+        goal:
+          type: number
+        type:
+          enum:
+            - '<='
+            - '>='
+
+    UniConstraint:
+      type: array
+      minLength: 1
+      maxLength: 1
+      items:
+        $ref: '#/components/schemas/EqualityConstraint'
+
+    MultiConstraint:
+      type: array
+      minLength: 2
+      items:
+        $ref: '#/components/schemas/InequalityConstraint'
+    
+    VerdictComponents:
+      type: object
+      required: 
+        - objectiveFunction
+        - objectiveFunctionExpression
+        - optimizationType
+        - constraints
+      properties:
+        objectiveFunction:
+          type: number
+        objectiveFunctionExpression:
+          type: string
+        optimizationType:
+          enum:
+            - min
+            - max
+        constraints:
+          oneOf:
+            - $ref: '#/components/schemas/UniConstraint'
+            - $ref: '#/components/schemas/MultiConstraint'
+
     Status:
       type: object
       description: Data representing the current state of the SUT.
@@ -498,7 +570,13 @@ components:
               items:
                 $ref: '#/components/schemas/NameValuePair'
             verdictComponents:
-              type: array
+              type: object
               description: The verdict components of the active intent specifications.
-              items:
-                $ref: '#/components/schemas/NameValuesPair'
+              required:
+                - name
+                - value
+              properties:
+                name:
+                  type: string
+                value:
+                  $ref: '#/components/schemas/VerdictComponents'
