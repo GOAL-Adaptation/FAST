@@ -395,142 +395,140 @@ public class Runtime {
             return (module?.getStatus()?[subModule] as? [String: Any]).map{ unwrapKnobState($0) } ?? [:]
         }
 
-        if let appName               = application?.name {
+        guard 
+            let appName = application?.name,
+            let intentSpec = intents[appName],
+            let measuringDevice = self.measuringDevices[appName]
+        else { 
+            FAST.fatalError("Application has not been correctly initialized in the runtime.") 
+        }
 
-            let verdictComponents: [String : Any] =
-                Dictionary(measuringDevices.map{
-                    (intentName, measuringDevice) in
-                    let intentSpec = intents[intentName]!
-                    var components = [String : Any]()
-                    if 
-                        let objectiveFunction           = intentSpec.currentCostOrValue(runtime: self),
-                        let objectiveFunctionExpression = intentSpec.objectiveFunctionRawString
-                    {
-                        components["objectiveFunction"]           = objectiveFunction
-                        components["objectiveFunctionExpression"] = objectiveFunctionExpression
-                    }
-                    components["optimizationType"] = intentSpec.optimizationType == .minimize ? "min" : "max"
-                    let measureValues = measuringDevice.values()
-                    components["constraints"] = intentSpec.constraints.map {
-                        (constraintVariable: String, goalAndType: (Double, ConstraintType)) -> [String : Any] in 
-                        let (constraintGoal, constraintType) = goalAndType
-                        return [
-                            "variable" : constraintVariable,
-                            "goal"     : constraintGoal,
-                            "value"    : measureValues[constraintVariable]!,
-                            "type"     : constraintType.rawValue
-                        ]
-                    }
-                    return ( intentName, components )
-                })
+        if measuringDevices.count != 1 || !measuringDevices.keys.contains(appName) {
+            FAST.fatalError ("Status can only be produced if a single measuring device is registered, and it is registered for the current application (\(appName)). Currently, measuring devices are registered for the following applications: \(measuringDevices.keys).")
+        }
 
-            /** measure name -> (statistic name -> statistic)
-            * Create a Dictionary of (measureName, statisticsValues) where
-            * statisticsValues is a Dictionary of (statisticsName, statisticsValue).
-            */
-            let measuringDevice = self.measuringDevices[appName]!
+        var verdictComponents: [String : Any] = [:]
 
-            // Extract status from sub-modules (application-, and system configuration knobs)
-            let applicationKnobs               = extractKnobStatus(of: "applicationKnobs",         from: application  )
-            let systemConfigurationKnobs       = extractKnobStatus(of: "systemConfigurationKnobs", from: architecture )
+        if 
+            let objectiveFunction           = intentSpec.currentCostOrValue(runtime: self),
+            let objectiveFunctionExpression = intentSpec.objectiveFunctionRawString
+        {
+            verdictComponents["objectiveFunction"]           = objectiveFunction
+            verdictComponents["objectiveFunctionExpression"] = objectiveFunctionExpression
+        }
+        verdictComponents["optimizationType"] = intentSpec.optimizationType == .minimize ? "min" : "max"
+        let measureValues = measuringDevice.values()
+        verdictComponents["constraints"] = intentSpec.constraints.map {
+            (constraintVariable: String, goalAndType: (Double, ConstraintType)) -> [String : Any] in 
+            let (constraintGoal, constraintType) = goalAndType
+            return [
+                "variable" : constraintVariable,
+                "goal"     : constraintGoal,
+                "value"    : measureValues[constraintVariable]!,
+                "type"     : constraintType.rawValue
+            ]
+        }
+        
+        // Extract status from sub-modules (application-, and system configuration knobs)
+        let applicationKnobs               = extractKnobStatus(of: "applicationKnobs",         from: application  )
+        let systemConfigurationKnobs       = extractKnobStatus(of: "systemConfigurationKnobs", from: architecture )
 
-            var arguments : [String : Any] =
-                [ "application"              : appName
-                , "architecture"             : architecture?.name ?? "NOT CONFIGURED"
-                , "measures"                 : toArrayOfPairDicts(getMeasures()) // Current measure values
-                , "applicationKnobs"         : toArrayOfKnobStateDicts(applicationKnobs)
-                , "systemConfigurationKnobs" : toArrayOfKnobStateDicts(systemConfigurationKnobs)
-                , "verdictComponents"        : toArrayOfPairDicts(verdictComponents)
-                ]
+        var arguments : [String : Any] =
+            [ "application"              : appName
+            , "architecture"             : architecture?.name ?? "NOT CONFIGURED"
+            , "measures"                 : toArrayOfPairDicts(getMeasures()) // Current measure values
+            , "applicationKnobs"         : toArrayOfKnobStateDicts(applicationKnobs)
+            , "systemConfigurationKnobs" : toArrayOfKnobStateDicts(systemConfigurationKnobs)
+            , "verdictComponents"        : verdictComponents
+            ]
+        
+        /** measure name -> (statistic name -> statistic)
+        * Create a Dictionary of (measureName, statisticsValues) where
+        * statisticsValues is a Dictionary of (statisticsName, statisticsValue).
+        */
+        if detailedStatusMessages {
+
+            // Extract status from other sub-modules (architecture and scenario knobs)
+
+            let archName                       = architecture?.name ?? "NOT CONFIGURED"
+            let architecureScenarioKnobsStatus = extractStatus(of: "scenarioKnobs",            from: architecture)
+            let scenarioKnobsStatus            = extractStatus(                                from: scenarioKnobs)
             
-            if detailedStatusMessages {
-
-                // Extract status from other sub-modules (architecture and scenario knobs)
-
-                let archName                       = architecture?.name ?? "NOT CONFIGURED"
-                let architecureScenarioKnobsStatus = extractStatus(of: "scenarioKnobs",            from: architecture)
-                let scenarioKnobsStatus            = extractStatus(                                from: scenarioKnobs)
-                
-                var combinedScenarioKnobsStatus: [String: Any] = [:]
-                for k in scenarioKnobsStatus.keys {
-                    combinedScenarioKnobsStatus[k] = scenarioKnobsStatus[k]
-                }
-                for k in architecureScenarioKnobsStatus.keys {
-                    combinedScenarioKnobsStatus[k] = architecureScenarioKnobsStatus[k]
-                }
-
-                // Extract measure statistics
-                
-                let measureStatistics: [String : [String : Double]] =
-                    Dictionary(measuringDevice.stats.map {
-                        (measureName: String, stats: Statistics) in
-                        (measureName, stats.asJson)
-                    })
-
-                // Optionally extract measure predicitons (knob values of current configuration) 
-                // and per-configuration measure statistics.
-
-                let applicationExecutionMode = self.runtimeKnobs.applicationExecutionMode.get()
-                let isControllerModelAvailable = applicationExecutionMode == .Adaptive || applicationExecutionMode == .MachineLearning
-
-                if isControllerModelAvailable {
-                    
-                    // The measure values that the controller associates with the current configuration 
-                    // through the controller model.
-                    // Note: This will only be defined when running in Adaptive or MachineLearning mode.
-                    if self.outputMeasurePredictions {
-                        let currentConfiguration = getCurrentConfiguration()!
-                        arguments["measurePredictions"] = 
-                            zip( currentConfiguration.measureNames
-                            , currentConfiguration.measureValues
-                            ).map{ [ "name" : $0, "value" : $1 ] }
-                    }
-
-                    if self.collectDetailedStatistics {
-
-                        // Extract per-KnobSettings statistics
-                        // NOTE: This is very expensive! 
-                        //       When the time it takes to process an iteration is very low (<10ms),
-                        //       enabling proteus_runtime_collectDetailedStatistics will cause energy-derived
-                        //       measures such as performance and powerConsumption to be significantly
-                        //       affected by the time it takes to output this part of the status message.
-
-                        let measureStatisticsPerKnobSettings: [String: [String : [String: Double]]] =
-                            self.collectDetailedStatistics
-                                ?   Dictionary(measuringDevice.statsPerKnobSettings.map {
-                                        kv in
-                                        let measureName = kv.0
-                                        let perKnobSettingsStats: [KnobSettings: Statistics] = kv.1
-                                        return (measureName, Dictionary(perKnobSettingsStats.map{ (String($0.0.kid), $0.1.asJson) }))
-                                    })
-                                : [:]
-
-                        arguments["measureStatisticsPerKnobSettings"] = 
-                            measureStatisticsPerKnobSettings
-                    }
-                    
-                }
-                
-                arguments["architecture"            ] = archName
-                arguments["scenarioKnobs"           ] = toArrayOfPairDicts(combinedScenarioKnobsStatus)
-                arguments["measureStatistics"       ] = measureStatistics // Current measure statistics
-
+            var combinedScenarioKnobsStatus: [String: Any] = [:]
+            for k in scenarioKnobsStatus.keys {
+                combinedScenarioKnobsStatus[k] = scenarioKnobsStatus[k]
+            }
+            for k in architecureScenarioKnobsStatus.keys {
+                combinedScenarioKnobsStatus[k] = architecureScenarioKnobsStatus[k]
             }
 
-            Log.debug("Done extracting statusDictionary.")
+            // Extract measure statistics
+            
+            let measureStatistics: [String : [String : Double]] =
+                Dictionary(measuringDevice.stats.map {
+                    (measureName: String, stats: Statistics) in
+                    (measureName, stats.asJson)
+                })
 
-            let status : [String : Any] =
-                [ "time"      : utcDateString()
-                , "arguments" : arguments
-                ]
+            // Optionally extract measure predicitons (knob values of current configuration) 
+            // and per-configuration measure statistics.
 
-            return status
+            let applicationExecutionMode = self.runtimeKnobs.applicationExecutionMode.get()
+            let isControllerModelAvailable = applicationExecutionMode == .Adaptive || applicationExecutionMode == .MachineLearning
+
+            if isControllerModelAvailable {
+                
+                // The measure values that the controller associates with the current configuration 
+                // through the controller model.
+                // Note: This will only be defined when running in Adaptive or MachineLearning mode.
+                if self.outputMeasurePredictions {
+                    let currentConfiguration = getCurrentConfiguration()!
+                    arguments["measurePredictions"] = 
+                        zip( currentConfiguration.measureNames
+                        , currentConfiguration.measureValues
+                        ).map{ [ "name" : $0, "value" : $1 ] }
+                }
+
+                if self.collectDetailedStatistics {
+
+                    // Extract per-KnobSettings statistics
+                    // NOTE: This is very expensive! 
+                    //       When the time it takes to process an iteration is very low (<10ms),
+                    //       enabling proteus_runtime_collectDetailedStatistics will cause energy-derived
+                    //       measures such as performance and powerConsumption to be significantly
+                    //       affected by the time it takes to output this part of the status message.
+
+                    let measureStatisticsPerKnobSettings: [String: [String : [String: Double]]] =
+                        self.collectDetailedStatistics
+                            ?   Dictionary(measuringDevice.statsPerKnobSettings.map {
+                                    kv in
+                                    let measureName = kv.0
+                                    let perKnobSettingsStats: [KnobSettings: Statistics] = kv.1
+                                    return (measureName, Dictionary(perKnobSettingsStats.map{ (String($0.0.kid), $0.1.asJson) }))
+                                })
+                            : [:]
+
+                    arguments["measureStatisticsPerKnobSettings"] = 
+                        measureStatisticsPerKnobSettings
+                }
+                
+            }
+            
+            arguments["architecture"            ] = archName
+            arguments["scenarioKnobs"           ] = toArrayOfPairDicts(combinedScenarioKnobsStatus)
+            arguments["measureStatistics"       ] = measureStatistics // Current measure statistics
 
         }
-        else {
-            return nil
-        }
 
+        let status : [String : Any] =
+            [ "time"      : utcDateString()
+            , "arguments" : arguments
+            ]
+
+        Log.debug("Done extracting statusDictionary: \(status)")
+
+        return status
+        
     }
 
 
