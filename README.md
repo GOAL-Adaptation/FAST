@@ -76,10 +76,10 @@ The intent specification file declares the following.
 
 For our `my_incrementer` program, in the `Sources/my_incrementer/` subdirectory, we create an itent specification file named by convention `my_incrementer.intent` as follows.
 ```
-knobs       threshold             = [200000, 1000000] reference 1000000
-            step                  = [1,4]             reference 1
-            utilizedCores         = [2, 4]            reference 4
-            utilizedCoreFrequency = [600,1200]        reference 1200
+knobs       threshold             = [200000, 1000000 reference] 
+            step                  = [1 reference, 4]             
+            utilizedCores         = [2, 4 reference]            
+            utilizedCoreFrequency = [600, 1200 reference]        
 
 measures    energy           : Double // System measure
             energyDelta      : Double // System measure
@@ -296,7 +296,7 @@ Now `my_incrementer` can run in the *adaptive* mode.
 
 ### Tracing
 
-It is required that an application be _traced_ before FAST can run it in the _emukated_ mode.  Tracing entails:
+It is required that an application be _traced_ before FAST can run it in the _emulated_ mode.  Tracing entails:
 
 * running the application on the real hardware platform in all possible application and system configurations specified in the intent specification, and
 * saving the time and energy readings for each input unit are in a specific text file in JSON format labelled `my_incrementer.trace.json`.
