@@ -67,6 +67,7 @@ class Runnable: Application, EmulateableApplication, StreamApplication {
             ["proteus","runtime","detailedStatusMessages"],
             ["proteus","runtime","suppressStatus"],
             ["proteus","runtime","minimumSecondsBetweenStatuses"],
+            ["proteus","runtime","outputMeasureStatistics"],
             ["proteus","runtime","outputMeasurePredictions"],
             ["proteus","runtime","collectDetailedStatistics"],
 

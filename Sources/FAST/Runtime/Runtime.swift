@@ -102,6 +102,10 @@ public class Runtime {
     // Wait at least this long between successive status message logs.
     let minimumSecondsBetweenStatuses = initialize(type: Double.self, name: "minimumSecondsBetweenStatuses", from: key, or: 0.0)
 
+    // When set to true, current statistics of the measures are included in status messages.
+    // NOTE: This requires proteus_runtime_detailedStatusMessages to be set to true!
+    let outputMeasureStatistics = initialize(type: Bool.self, name: "outputMeasureStatistics", from: key, or: false)
+
     // When set to true, the measure values associated (through the current model) with the current configuration will be included in status messages.
     let outputMeasurePredictions = initialize(type: Bool.self, name: "outputMeasurePredictions", from: key, or: false)
 
@@ -466,11 +470,14 @@ public class Runtime {
 
             // Extract measure statistics
             
-            let measureStatistics: [String : [String : Double]] =
-                Dictionary(measuringDevice.stats.map {
-                    (measureName: String, stats: Statistics) in
-                    (measureName, stats.asJson)
-                })
+            if self.outputMeasureStatistics {
+                let measureStatistics: [String : [String : Double]] =
+                    Dictionary(measuringDevice.stats.map {
+                        (measureName: String, stats: Statistics) in
+                        (measureName, stats.asJson)
+                    })
+                arguments["measureStatistics"] = measureStatistics // Current measure statistics
+            }
 
             // Optionally extract measure predicitons (knob values of current configuration) 
             // and per-configuration measure statistics.
@@ -518,7 +525,6 @@ public class Runtime {
             
             arguments["architecture"            ] = archName
             arguments["scenarioKnobs"           ] = toArrayOfPairDicts(combinedScenarioKnobsStatus)
-            arguments["measureStatistics"       ] = measureStatistics // Current measure statistics
 
         }
 
