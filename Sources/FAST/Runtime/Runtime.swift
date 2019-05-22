@@ -407,18 +407,18 @@ public class Runtime {
             FAST.fatalError ("Status can only be produced if a single measuring device is registered, and it is registered for the current application (\(appName)). Currently, measuring devices are registered for the following applications: \(measuringDevices.keys).")
         }
 
-        var verdictComponents: [String : Any] = [:]
+        var verdictDetails: [String : Any] = [:]
 
         if 
             let objectiveFunction           = intentSpec.currentCostOrValue(runtime: self),
             let objectiveFunctionExpression = intentSpec.objectiveFunctionRawString
         {
-            verdictComponents["objectiveFunction"]           = objectiveFunction
-            verdictComponents["objectiveFunctionExpression"] = objectiveFunctionExpression
+            verdictDetails["objectiveFunction"]           = objectiveFunction
+            verdictDetails["objectiveFunctionExpression"] = objectiveFunctionExpression
         }
-        verdictComponents["optimizationType"] = intentSpec.optimizationType == .minimize ? "min" : "max"
+        verdictDetails["optimizationType"] = intentSpec.optimizationType == .minimize ? "min" : "max"
         let measureValues = measuringDevice.values()
-        verdictComponents["constraints"] = intentSpec.constraints.map {
+        verdictDetails["constraints"] = intentSpec.constraints.map {
             (constraintVariable: String, goalAndType: (Double, ConstraintType)) -> [String : Any] in 
             let (constraintGoal, constraintType) = goalAndType
             return [
@@ -429,6 +429,8 @@ public class Runtime {
             ]
         }
         
+        var verdictComponents: [String : Any] = ["name": appName, "value": verdictDetails]
+
         // Extract status from sub-modules (application-, and system configuration knobs)
         let applicationKnobs               = extractKnobStatus(of: "applicationKnobs",         from: application  )
         let systemConfigurationKnobs       = extractKnobStatus(of: "systemConfigurationKnobs", from: architecture )
