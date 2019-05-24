@@ -516,7 +516,7 @@ components:
           properties:
             application:
               enum:
-                - radar
+                - flightTestScenario7
                 - x264
                 - capsule
               description: Name of challenge problem application.
