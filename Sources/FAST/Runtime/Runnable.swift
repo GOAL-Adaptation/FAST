@@ -3,6 +3,7 @@ import LoggerAPI
 import HeliumLogger
 
 class Runnable: Application, EmulateableApplication, StreamApplication {
+
     class ApplicationKnobs: TextApiModule {
         let name = "applicationKnobs"
         var subModules = [String : TextApiModule]()
@@ -32,68 +33,8 @@ class Runnable: Application, EmulateableApplication, StreamApplication {
         #endif
 
         // Check for unknown environment variables (starting with "proteus")
-
-        let knownParameters = [
-
-            ["proteus","runtime","logLevel"],
-            ["proteus","runtime","logToStandardError"],
-            ["proteus","runtime","logToMemory"],
-            
-            ["proteus","runtime","missionLength"],
-            ["proteus","runtime","profileOutputPrefix"],
-
-            ["proteus","runtime","randomSeed"],
-            
-            ["proteus","runtime","weightForFeedbackControl"],
-            
-            ["proteus","emulator","emulationDatabaseType"],
-            ["proteus","emulator","database","db"],
-            ["proteus","emulator","database","readingMode"],
-            
-            ["proteus","client","rest","serverProtocol"],
-            ["proteus","client","rest","serverAddress"],
-            ["proteus","client","rest","serverPort"],
-            
-            ["proteus","runtime","port"],
-            ["proteus","runtime","profilingPort"],
-            ["proteus","runtime","address"],
-            
-            ["proteus","runtime","applicationExecutionMode"],
-            ["proteus","runtime","interactionMode"],
-
-            ["proteus","runtime","executeWithMachineLearning"],
-            ["proteus","runtime","executeWithTestHarness"],
-            ["proteus","runtime","sendStatusToTestHarness"],
-            ["proteus","runtime","detailedStatusMessages"],
-            ["proteus","runtime","suppressStatus"],
-            ["proteus","runtime","minimumSecondsBetweenStatuses"],
-            ["proteus","runtime","outputMeasureStatistics"],
-            ["proteus","runtime","outputMeasurePredictions"],
-            ["proteus","runtime","collectDetailedStatistics"],
-
-            ["proteus","armBigLittle","policy"],
-            ["proteus","armBigLittle","availableBigCores"],
-            ["proteus","armBigLittle","availableLittleCores"],
-            ["proteus","armBigLittle","maximalBigCoreFrequency"],
-            ["proteus","armBigLittle","maximalLittleCoreFrequency"],
-            ["proteus","armBigLittle","utilizedBigCores"],
-            ["proteus","armBigLittle","utilizedLittleCores"],
-            ["proteus","armBigLittle","executionMode"],
-            ["proteus","armBigLittle","actuationPolicy"],
-
-            ["proteus","xilinxZcu","policy"],
-            ["proteus","xilinxZcu","availableCores"],
-            ["proteus","xilinxZcu","availableCoreFrequency"],
-            ["proteus","xilinxZcu","utilizedCores"],
-            ["proteus","xilinxZcu","utilizedCoreFrequency"],
-            ["proteus","xilinxZcu","executionMode"],
-            ["proteus","xilinxZcu","actuationPolicy"],
-
-            ["proteus","architecture","linuxDvfsGovernor"]
-
-        ]
         
-        let knownParameterStrings = knownParameters.map{ $0.joined(separator: "_") }
+        let knownParameterStrings = knownParameters.map{ (p: [String], _: String) in p.joined(separator: "_") }
 
         let proteusEnvironment = ProcessInfo.processInfo.environment.keys.filter{ $0.starts(with: "proteus_") }
 
@@ -103,7 +44,14 @@ class Runnable: Application, EmulateableApplication, StreamApplication {
             let unknownParametersAndTheirValues = 
                 Array(unknownParameters.map{ p in (p, ProcessInfo.processInfo.environment[p] ?? "<UNASSIGNED>") })
                     .map{ "\($0.0)=\($0.1)" }.joined(separator: ", ")
-            FAST.fatalError("Unknown environment variables encountered: \(unknownParametersAndTheirValues).")
+            FAST.fatalError(
+                "Unknown environment variables encountered: \(unknownParametersAndTheirValues).\n\n" + 
+                "Available parameters are:\n\n" +
+                knownParameters.map{ 
+                    (p: [String], help: String) in 
+                    p.joined(separator: "_") + "\n\t" + help 
+                }.joined(separator: "\n\n")
+            )
         }
 
         // Initialize and register application knobs
@@ -112,6 +60,112 @@ class Runnable: Application, EmulateableApplication, StreamApplication {
         self.addSubModule(newModule: applicationKnobs)
 
     }
+
+    let knownParameters = [
+
+        (["proteus","runtime","logLevel"], 
+            "one of [Error, Info, Verbose (default), Debug]."),
+        (["proteus","runtime","logToStandardError"],
+            "one of [true, false (default)]."),
+        (["proteus","runtime","logToMemory"],
+            "one of [true, false (default)], when true, true, log messages are not written to the output/error stream until the end of execution, which reduces overhead."),
+        
+        (["proteus","runtime","missionLength"],
+            "Int, defaults to 1000."),
+        (["proteus","runtime","profileOutputPrefix"],
+            "String, defaults to application name (\"fast\" if that is undefined)."),
+
+        (["proteus","runtime","randomSeed"],
+            "Int, defaults to 0."),
+        
+        (["proteus","runtime","weightForFeedbackControl"],
+            "Double, defaults to 0.1."),
+        
+        (["proteus","emulator","emulationDatabaseType"],
+            "one of [Dict (default)]."),
+        (["proteus","emulator","database","db"],
+            "String (file name of database)"),
+        (["proteus","emulator","database","readingMode"],
+            "one of [Statistics, Tape]."),
+        
+        (["proteus","client","rest","serverProtocol"],
+            "String, protocol of outgoing HTTP requests, defaults to \"http\"."),
+        (["proteus","client","rest","serverAddress"],
+            "String, address of outgoing HTTP requests, defaults to \"127.0.0.1\"."),
+        (["proteus","client","rest","serverPort"],
+            "Int16, port of outgoing HTTP requests, defaults to \"80\"."),
+        
+        (["proteus","runtime","port"],
+            "UInt16, REST server port used by FAST application."),
+        (["proteus","runtime","address"],
+            "String, REST server address used by FAST application, defaults to \"0.0.0.0\"."),
+        (["proteus","runtime","profilingPort"],
+            "UInt16, REST server port used by FAST sub-processes started during profiling, defaults to 1339."),
+        
+        (["proteus","runtime","applicationExecutionMode"],
+            "one of [Adaptive (default), NonAdaptive, ExhaustiveProfiling, EndPointsProfiling, EmulatorTracing, MachineLearning]."),
+        (["proteus","runtime","interactionMode"],
+            "one of [Default (default), Scripted]. in Default mode iterations are processed as quickly as possible, in Scripted mode as a result of calls to the /process REST end-point."),
+
+        (["proteus","runtime","executeWithMachineLearning"],
+            "one of [true, false (default)], when true, controller models are requested from the machine learning module when the controller detects excessive oscillation." + 
+            "NOTE: Requires that the machine learning module is started in a parallel process."),
+        (["proteus","runtime","executeWithTestHarness"],
+            "one of [true, false (default)], when true, the initialization parameters and intent are obtained through a call to the test harness' /ready REST end-point."),
+        (["proteus","runtime","sendStatusToTestHarness"],
+            "one of [true, false (default)], when true status messages are posted to the test harness' /status REST end-point after every iteration."),
+        (["proteus","runtime","detailedStatusMessages"],
+            "one of [true, false (default)].\n" + 
+            "By default, status messages will contain the verdict components as well as the current value of each measure.\n" +
+            "Setting this flag to \"true\" will add information about: \n" +
+            " - knob values (application, system configuration [platform], and scenario)\n" +
+            " - architecture\n" +
+            " - measure statistics (if these are enabled by the proteus_runtime_outputMeasureStatistics flag)."),
+        (["proteus","runtime","suppressStatus"],
+            "one of [true, false (default)], when true, this will completely turn off logging of status messages (both to standard output and to the test harness' /status REST end-point)."),
+        (["proteus","runtime","minimumSecondsBetweenStatuses"],
+            "Double, wait at least this long between successive status message logs."),
+        (["proteus","runtime","outputMeasureStatistics"],
+            "one of [true, false (default)], when true, current statistics of the measures are included in status messages."),
+        (["proteus","runtime","outputMeasurePredictions"],
+            "one of [true, false (default)], when true, the measure values associated (through the current model) with the current configuration will be included in status messages."),
+        (["proteus","runtime","collectDetailedStatistics"],
+            "one of [true, false (default)], when true, the MeasuringDevice will collect statistics for each combination of measure and KnobSettings."),
+
+        (["proteus","architecture","linuxDvfsGovernor"],
+            "one of [Performance (default), Userspace], linux DVFS governor."),
+
+        (["proteus","armBigLittle","availableBigCores"],
+            "Int, scenario knob, upper bound to the utilizedBigCores platform knob."),
+        (["proteus","armBigLittle","availableLittleCores"],
+            "Int, scenario knob, upper bound to the utilizedLittleCores platform knob."),
+        (["proteus","armBigLittle","maximalBigCoreFrequency"],
+            "Int, scenario knob, upper bound to the utilizedBigCoreFrequency platform knob."),
+        (["proteus","armBigLittle","maximalLittleCoreFrequency"],
+            "Int, scenario knob, upper bound to the utilizedLittleCoreFrequency platform knob."),
+        (["proteus","armBigLittle","utilizedBigCores"],
+            "one of [0,1,2,3,4]"),
+        (["proteus","armBigLittle","utilizedLittleCores"],
+            "one of [0,1,2,3,4]"),
+        (["proteus","armBigLittle","executionMode"],
+            "one of [Default (default), Emulated], when Emulated, time and energy are read from the emulation database."),
+        (["proteus","armBigLittle","actuationPolicy"],
+            "one of [Actuate, NoActuation], when set to NoActuation, changes to the utilizedCores and utilizedCoreFrequency platform knobs are ignored."),
+
+        (["proteus","xilinxZcu","availableCores"],
+            "Int, scenario knob, upper bound to the utilizedCores platform knob."),
+        (["proteus","xilinxZcu","availableCoreFrequency"],
+            "Int, scenario knob, upper bound to the utilizedCoreFrequency platform knob."),
+        (["proteus","xilinxZcu","utilizedCores"],
+            "one of [0,1,2,3,4]"),
+        (["proteus","xilinxZcu","utilizedCoreFrequency"],
+            "one of [400, 600, 1200]"),
+        (["proteus","xilinxZcu","executionMode"],
+            "one of [Default (default), Emulated], when Emulated, time and energy are read from the emulation database."),
+        (["proteus","xilinxZcu","actuationPolicy"],
+            "one of [Actuate, NoActuation], when set to NoActuation, changes to the utilizedCores and utilizedCoreFrequency platform knobs are ignored.")
+
+    ]
 
     /** Look up the id (in the database) of the current application configuration. */
     func getCurrentConfigurationId(database: Database) -> Int {
