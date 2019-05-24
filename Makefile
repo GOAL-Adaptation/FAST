@@ -70,7 +70,6 @@ execute:              export proteus_runtime_logToMemory                      :=
 
 execute:              export proteus_runtime_weightForFeedbackControl         := 0.5
 
-execute:              export proteus_armBigLittle_policy                      := Simple
 execute:              export proteus_armBigLittle_availableBigCores           := 4
 execute:              export proteus_armBigLittle_availableLittleCores        := 4
 execute:              export proteus_armBigLittle_maximalBigCoreFrequency     := 2000
@@ -78,7 +77,6 @@ execute:              export proteus_armBigLittle_maximalLittleCoreFrequency  :=
 execute:              export proteus_armBigLittle_utilizedBigCores            := 4
 execute:              export proteus_armBigLittle_utilizedLittleCores         := 0
 
-execute:              export proteus_xilinxZcu_policy                         := Simple
 execute:              export proteus_xilinxZcu_availableCores                 := 4
 execute:              export proteus_xilinxZcu_availableCoreFrequency         := 1200
 execute:              export proteus_xilinxZcu_utilizedCores                  := 4

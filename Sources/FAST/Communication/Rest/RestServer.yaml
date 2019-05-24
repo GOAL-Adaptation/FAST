@@ -175,21 +175,6 @@ components:
             - Default
             - Emulated
 
-    ResourceUsagePolicy:
-      type: object
-      required:
-        - type
-        - value
-      properties:
-        type:
-          enum:
-            - FAST.ResourceUsagePolicy
-        value:
-          enum:
-            - Simple
-            - Maintain
-            - Maximal
-
     ActuationPolicy:
       type: object
       required:
