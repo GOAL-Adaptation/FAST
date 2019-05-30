@@ -122,7 +122,12 @@ class MulticonstrainedIntentPreservingController : Controller {
                 estimatedMeasure /= Double(lastSchedule!.count)
 
                 for i in 0..<sizeOfConfigurations {
-                    lastMeasureValues[i]![key]! *= (weight * (value / estimatedMeasure) + (1.0 - weight))
+                    if estimatedMeasure != 0.0 {
+                       lastMeasureValues[i]![key]! *= (weight * (value / estimatedMeasure) + (1.0 - weight))
+                    }
+                    else {
+                        Log.warning("estimatedMeasure was 0.0, not updaing lastMeasureValues[\(i)][\(key)]")
+                    }
                 }
             }
         }
