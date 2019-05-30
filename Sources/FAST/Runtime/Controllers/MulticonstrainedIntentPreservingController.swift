@@ -137,7 +137,7 @@ class MulticonstrainedIntentPreservingController : Controller {
         constraintCoefficientsGreaterOrEqualTo = (constraintMeasureIdxsGEQ.map { c in domain.map { k in lastMeasureValues[Int(k)]![model!.measureNames[c]]! } })
         constraintCoefficientsEqualTo = (constraintMeasureIdxsEQ.map { c in domain.map { k in lastMeasureValues[Int(k)]![model!.measureNames[c]]! } })
         constraintCoefficientsEqualTo.append([Double](repeating: 1.0, count: sizeOfConfigurations)) 
-        let measureVectorFunction = {(id: UInt32) in Array(self.lastMeasureValues[Int(id)]!.values)}
+        let measureVectorFunction = model!.getMeasureVectorFunction()
         let costOrValue = intent.costOrValue
         
         switch intent.optimizationType { 
