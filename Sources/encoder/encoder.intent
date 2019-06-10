@@ -1,0 +1,15 @@
+knobs       quality               from [10 reference, 20]
+            framerate             from [10 reference, 30]
+            utilizedCores         from [2, 4 reference]
+            utilizedCoreFrequency from [600, 1200 reference]
+
+            such that
+
+            utilizedCoreFrequency * utilizedCores <= 2400
+
+measures    energy  : Double
+            bitrate : Double
+
+intent      encoder min(energy) such that bitrate == 25000.0
+
+trainingSet []

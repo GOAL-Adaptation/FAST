@@ -6,6 +6,7 @@ let package = Package(
   name: "FAST",
   products: [
     .executable(name: "incrementer", targets: ["incrementer"]),
+    .executable(name: "encoder", targets: ["encoder"]),
     .library(name: "FAST", targets: ["FAST"]),
     .library(name: "CAffinity", targets: ["CAffinity"]),
   ],
@@ -24,6 +25,7 @@ let package = Package(
     .target(name: "FAST", dependencies: [
       "HeliumLogger", "PerfectHTTPServer", "Expression", "SwiftAST", "FASTController", "CSwiftV", "CAffinity", "UnconstrainedOptimizer", "MulticonstrainedOptimizer"]),
     .target(name: "incrementer", dependencies: ["FAST"]),
+    .target(name: "encoder", dependencies: ["FAST"]),
     .target(name: "CAffinity", path: "Sources/CAffinity"),
 	.testTarget(name: "FASTTests", dependencies: ["FAST"]),
   ],
