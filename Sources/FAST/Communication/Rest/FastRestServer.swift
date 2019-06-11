@@ -84,6 +84,7 @@ class FastRestServer : RestServer {
                 if perturbation.scenarioChanged || !intentBeforePerturbation.isEqual(to: perturbation.missionIntent) {
                     Log.debug("Perturbation changed intent in a way that produced valid knob ranges. Reinitializing controller and invalidating current schedule.")
                     // Reinitialize the controller with the new intent
+                    runtime.perturbationOccurred = true
                     runtime.registerIntentAndModel(for: perturbation.missionIntent, unTrimmedModelBeforePerturbation)
                 }
                 else {
