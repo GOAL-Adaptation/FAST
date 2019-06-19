@@ -38,16 +38,12 @@ public class Compiler {
         }
     }
 
-    /* 
-        Work-around to parse until knob constraints can be handled by swift-ast 
-        Returns (fileContentWithoutKnobConstraints, knobConstraints), where 
-        knobConstraints is nil whenever the fileContent does not contain a knob constraint.
-    */
-    func separateKnobConstraintsFromRestOfIntentSpec(source fileContent: String) -> (String,String?) {
-
-        let sectionNames = ["knobs", "measures", "intent", "trainingSet"]
-
+    public func splitIntentIntoSections(source fileContent: String) -> [String : String] {
+        
         func extractSection(_ sectionName: String) -> String? {
+            
+            let sectionNames = ["knobs", "measures", "intent", "trainingSet"]
+
             let stopParsingHereRegex = 
                 sectionNames.filter{ $0 != sectionName }
                             .map{ "(?:\($0))" } // sections may end with another section
@@ -58,6 +54,7 @@ public class Compiler {
             return fileContent
                 .range(of: sectionExtractorRegex, options: .regularExpression)
                 .map{ "\(fileContent[$0])"}
+            
         }
 
         guard let knobSection = extractSection("knobs") else {
@@ -73,6 +70,25 @@ public class Compiler {
             FAST.fatalError("Could not extract knobs section from intent specification: '\(fileContent)'.")
         }
 
+        return [
+            "knobs"       : knobSection,
+            "measures"    : measuresSection,
+            "intent"      : intentSection,
+            "trainingSet" : trainingSetSection,
+        ]
+
+    }
+
+    /* 
+        Work-around to parse until knob constraints can be handled by swift-ast 
+        Returns (fileContentWithoutKnobConstraints, knobConstraints), where 
+        knobConstraints is nil whenever the fileContent does not contain a knob constraint.
+    */
+    func separateKnobConstraintsFromRestOfIntentSpec(source fileContent: String) -> (String,String?) {
+
+        let sections = splitIntentIntoSections(source: fileContent)
+        let knobSection = sections["knobs"]!
+
         let knobSectionComponents = knobSection.components(separatedBy: "such that")
 
         switch knobSectionComponents.count {
@@ -82,7 +98,7 @@ public class Compiler {
                 let knobSectionWithoutConstraints = knobSectionComponents[0]
                 let knobConstraints = knobSectionComponents[1]
                 let intentWithoutKnobConstraint = 
-                    knobSectionWithoutConstraints + measuresSection + intentSection + trainingSetSection
+                    knobSectionWithoutConstraints + sections["measures"]! + sections["intent"]! + sections["trainingSet"]!
                 return (intentWithoutKnobConstraint, knobConstraints) 
             default:
                 FAST.fatalError("Malformed knob section: '\(knobSection)'.")
