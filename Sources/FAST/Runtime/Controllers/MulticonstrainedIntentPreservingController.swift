@@ -157,7 +157,7 @@ class MulticonstrainedIntentPreservingController : Controller {
         case .minimize:
             self.multiconstrainedLinearOptimizer =
                 MulticonstrainedLinearOptimizer<Double>( 
-                    objectiveFunction: {(id: UInt32) -> Double in costOrValue(measureVectorFunction(id))},
+                    objectiveFunction: {(id: UInt32) -> Double in -(costOrValue(measureVectorFunction(id)))},
                     domain: domain,
                     optimizationType: .maximize,
                     constraintBoundslt: constraintBoundsLessOrEqualTo,
