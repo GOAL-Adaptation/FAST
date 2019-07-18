@@ -211,6 +211,39 @@ public class Runtime {
         Log.info("Set intent for optimize scope '\(spec.name)' to: \(spec).")
     }
 
+    private func getCurrentIntentAndUntrimmedModel(forOptimizationScope intentName: String) -> (IntentSpec, Model) {
+        if 
+            let intentBeforePerturbation = self.intents[intentName],
+            let (_, unTrimmedModelBeforePerturbation) = self.models[intentName]
+        {
+            return (intentBeforePerturbation, unTrimmedModelBeforePerturbation)
+        }
+        else {
+            FAST.fatalError("Intent name '\(intentName)' does not correspond to any registered application name. Known applications are: '\(self.intents.keys)'.")
+        }
+    }
+
+    func registerPerturbation(_ perturbation: Perturbation) {
+
+        let (intentBeforePerturbation, unTrimmedModelBeforePerturbation) = 
+            getCurrentIntentAndUntrimmedModel(forOptimizationScope: perturbation.missionIntent.name)
+
+        // The scenario knobs (availableCores, availableCoreFrequency) 
+        // act as filters on the corresponding knobs in the intent.
+        self.setScenarioKnobs(accordingTo: perturbation)
+
+        if perturbation.scenarioChanged || !intentBeforePerturbation.isEqual(to: perturbation.missionIntent) {
+            Log.debug("Perturbation changed scenario in a way that produced valid knob ranges. Reinitializing controller and invalidating current schedule.")
+            // Reinitialize the controller with the new intent
+            self.perturbationOccurred = true
+            self.registerIntentAndModel(for: perturbation.missionIntent, unTrimmedModelBeforePerturbation)
+        }
+        else {
+            Log.verbose("Perturbation did not change the scenario, or did so in a way that did not produce valid knob ranges. Did not invalidate current schedule.")
+        }
+
+    }
+
     /**
      * When the model is changed e.g. by a call to the Knob.restrict() or 
      * Knob.control() API, this function will pick a configuration in the 
