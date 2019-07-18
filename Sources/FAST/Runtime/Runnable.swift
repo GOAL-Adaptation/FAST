@@ -271,9 +271,9 @@ func getKnobRange(knobName: String) -> [Any] {
 @discardableResult public func intend
 (
     _ optimizationScope  : String,
-    to optimizationType  : OptimizationType,
-    objective            : @escaping ([ String: Double ]) -> Double,
-    suchThat constraints : [ (measure: String, is: ConstraintType, goal: Double) ]
+    to optimizationType  : OptimizationType? = nil,
+    objective            : (([ String: Double ]) -> Double)? = nil,
+    suchThat constraints : [ (measure: String, is: ConstraintType, goal: Double) ]? = nil
 ) -> Void 
 {
     guard let r = runtime else {
@@ -286,26 +286,27 @@ func getKnobRange(knobName: String) -> [Any] {
     else {
         FAST.fatalError("No application with name '\(optimizationScope)' registered in the runtime.")
     }
-    let newIntentSpec = Compiler.CompiledIntentSpec(
+    runtime.changeIntent(to: Compiler.CompiledIntentSpec(
         name                       : currentCompiledIntentSpec.name,
         knobs                      : currentCompiledIntentSpec.knobs,
         measures                   : currentCompiledIntentSpec.measures,
-        constraints                : Dictionary(constraints.map{
-                                        (measure, relation, goal) in (measure, (goal, relation))
-                                     }), 
-        optimizationType           : optimizationType,
+        constraints                : constraints == nil ? currentCompiledIntentSpec.constraints
+                                                        : Dictionary(constraints!.map{
+                                                             (measure, relation, goal) in (measure, (goal, relation))
+                                                          }), 
+        optimizationType           : optimizationType ?? currentCompiledIntentSpec.optimizationType,
         trainingSet                : currentCompiledIntentSpec.trainingSet,
-        costOrValue                : { measureValues in
-                                          objective(
-                                              Dictionary(
-                                                Array(zip(currentCompiledIntentSpec.measures,measureValues))
-                                              )
-                                          )
-                                     },
+        costOrValue                : objective == nil ? currentCompiledIntentSpec.costOrValue
+                                                      : { measureValues in
+                                                            objective!(
+                                                                Dictionary(
+                                                                    Array(zip(currentCompiledIntentSpec.measures,measureValues))
+                                                                )
+                                                            )
+                                                        },
         objectiveFunctionRawString : nil,
         knobConstraintsRawString   : currentCompiledIntentSpec.knobConstraintsRawString
-    )
-    runtime.changeIntent(to: newIntentSpec)
+    ))
 }
 
 @discardableResult public func measure(_ name: String, _ value: Double) -> Double {
