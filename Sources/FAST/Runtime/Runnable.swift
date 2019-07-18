@@ -268,6 +268,46 @@ func getKnobRange(knobName: String) -> [Any] {
     return r.knobRanges[knobName] ?? []
 }
 
+@discardableResult public func intend
+(
+    _ optimizationScope  : String,
+    to optimizationType  : OptimizationType,
+    objective            : @escaping ([ String: Double ]) -> Double,
+    suchThat constraints : [ (measure: String, is: ConstraintType, goal: Double) ]
+) -> Void 
+{
+    guard let r = runtime else {
+        FAST.fatalError("Attempt to set intent '\(optimizationScope)' before runtime is initialized.")
+    }
+
+    guard 
+        let currentIntentSpec = runtime.intents[optimizationScope],
+        let currentCompiledIntentSpec = currentIntentSpec as? Compiler.CompiledIntentSpec
+    else {
+        FAST.fatalError("No application with name '\(optimizationScope)' registered in the runtime.")
+    }
+    let newIntentSpec = Compiler.CompiledIntentSpec(
+        name                       : currentCompiledIntentSpec.name,
+        knobs                      : currentCompiledIntentSpec.knobs,
+        measures                   : currentCompiledIntentSpec.measures,
+        constraints                : Dictionary(constraints.map{
+                                        (measure, relation, goal) in (measure, (goal, relation))
+                                     }), 
+        optimizationType           : optimizationType,
+        trainingSet                : currentCompiledIntentSpec.trainingSet,
+        costOrValue                : { measureValues in
+                                          objective(
+                                              Dictionary(
+                                                Array(zip(currentCompiledIntentSpec.measures,measureValues))
+                                              )
+                                          )
+                                     },
+        objectiveFunctionRawString : nil,
+        knobConstraintsRawString   : currentCompiledIntentSpec.knobConstraintsRawString
+    )
+    runtime.changeIntent(to: newIntentSpec)
+}
+
 @discardableResult public func measure(_ name: String, _ value: Double) -> Double {
     return runtime.measure(name, value)
 }

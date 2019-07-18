@@ -170,6 +170,7 @@ public class Compiler {
                 , constraints      : [String : (Double, ConstraintType)]
                 , optimizationType : OptimizationType
                 , trainingSet      : [String]
+                , costOrValue      : (([Double]) -> Double)? = nil
                 , objectiveFunctionRawString : String? = nil
                 , knobConstraintsRawString : String? = nil
             ) 
@@ -183,7 +184,7 @@ public class Compiler {
             self.objectiveFunctionRawString = objectiveFunctionRawString
             self.knobConstraintsRawString = knobConstraintsRawString
 
-            self.costOrValue = { measureValuesArray in
+            self.costOrValue = costOrValue ?? { measureValuesArray in
                 guard let objectiveFunctionString = objectiveFunctionRawString else {
                     FAST.fatalError("Objective function is not defined.")
                 }

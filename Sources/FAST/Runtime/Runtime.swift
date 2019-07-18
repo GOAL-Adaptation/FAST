@@ -244,6 +244,23 @@ public class Runtime {
 
     }
 
+    func changeIntent(to newIntent: IntentSpec) {
+
+        let (intentBeforePerturbation, unTrimmedModelBeforePerturbation) = 
+            getCurrentIntentAndUntrimmedModel(forOptimizationScope: newIntent.name) 
+
+        if !intentBeforePerturbation.isEqual(to: newIntent) {
+            Log.debug("Intent changed in a way that produced valid knob ranges. Reinitializing controller and invalidating current schedule.")
+            // Reinitialize the controller with the new intent
+            self.perturbationOccurred = true
+            self.registerIntentAndModel(for: newIntent, unTrimmedModelBeforePerturbation)
+        }
+        else {
+            Log.verbose("Intent did not change, or did so in a way that did not produce valid knob ranges. Did not invalidate current schedule.")
+        }
+
+    }
+
     /**
      * When the model is changed e.g. by a call to the Knob.restrict() or 
      * Knob.control() API, this function will pick a configuration in the 
