@@ -15,7 +15,6 @@ import AST
 import Parser
 import Source
 import Diagnostic
-import FASTController
 import struct Expression.AnyExpression
 
 //---------------------------------------
@@ -159,7 +158,7 @@ public class Compiler {
             let costOrValue      : ([Double]) -> Double // takes an array of measure values corresponding to all the measures 
                                                         // sorted in alphabetical order, and computes the optimized function
                                                         // represented in the objectiveFunctionRawString parameter.
-            let optimizationType : FASTControllerOptimizationType
+            let optimizationType : OptimizationType
             let trainingSet      : [String]
 
             var objectiveFunctionRawString : String?    // the textual representation of the objective function.
@@ -169,7 +168,7 @@ public class Compiler {
                 , knobs            : [String : ([Any], Any)]
                 , measures         : [String]
                 , constraints      : [String : (Double, ConstraintType)]
-                , optimizationType : FASTControllerOptimizationType
+                , optimizationType : OptimizationType
                 , trainingSet      : [String]
                 , objectiveFunctionRawString : String? = nil
                 , knobConstraintsRawString : String? = nil

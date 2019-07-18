@@ -39,12 +39,17 @@ class IntentPreservingController : Controller {
             }
 
             Log.debug("Initializing FASTController with constraint: '\(constraint)', constraintMeasureIdx: '\(constraintMeasureIdx)', window: '\(window)', objectiveFunctionRawString: '\(objectiveFunctionRawString)'.")
+            var fastControllerOptType: FASTControllerOptimizationType
+            switch optType {
+                case .minimize: fastControllerOptType = FASTControllerOptimizationType.minimize
+                case .maximize: fastControllerOptType = FASTControllerOptimizationType.maximize
+            }
             self.fastController =
                 FASTController( model: modelSortedByConstraintMeasure.getFASTControllerModel()
                               , constraint: constraint
                               , constraintMeasureIdx: constraintMeasureIdx
                               , window: window
-                              , optType: optType
+                              , optType: fastControllerOptType
                               , ocb: intent.costOrValue
                               , initialModelEntryIdx: initialModelEntryIdx
                               )

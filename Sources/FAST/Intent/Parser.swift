@@ -13,7 +13,6 @@ import Foundation
 import AST
 import Parser
 import Source
-import FASTController
 
 //---------------------------------------
 
@@ -100,11 +99,11 @@ public class MeasureSection : Expression {
  */
 public class IntentDecl : Expression {
     public var name: String
-    public var optimizationType : FASTControllerOptimizationType
+    public var optimizationType : OptimizationType
     public var optimizedExpr: Expression
     public var constraints: [String : (Expression, ConstraintType)]
 
-    public init(name: String, optimizationType : FASTControllerOptimizationType,
+    public init(name: String, optimizationType : OptimizationType,
         optimizedExpr: Expression, constraints: [String : (Expression, ConstraintType)]) {
         self.name = name
         self.optimizationType = optimizationType
@@ -112,7 +111,7 @@ public class IntentDecl : Expression {
         self.constraints = constraints
     }
     
-	public init(name: String, optimizationType : FASTControllerOptimizationType, optimizedExpr: Expression) {
+	public init(name: String, optimizationType : OptimizationType, optimizedExpr: Expression) {
         self.name = name
         self.optimizationType = optimizationType
         self.optimizedExpr = optimizedExpr
@@ -329,7 +328,7 @@ class IntentParser : Parser {
             if case .identifier(let optimizer, _) = _lexer.look().kind,
             (optimizer == "max" || optimizer == "min" ), _lexer.look(ahead: 1).kind == .leftParen {
                 _lexer.advance(by: 2)
-                let optimizationType = (optimizer == "max") ? FASTControllerOptimizationType.maximize : FASTControllerOptimizationType.minimize
+                let optimizationType = (optimizer == "max") ? OptimizationType.maximize : OptimizationType.minimize
                 let optimizedExpr = try super.parseExpression(config: config)
                 if _lexer.look().kind == .rightParen,
                    case .identifier(let myKeyword, _) = _lexer.look(ahead: 1).kind, myKeyword == "trainingSet" {

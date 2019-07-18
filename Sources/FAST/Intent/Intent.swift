@@ -26,7 +26,7 @@ public protocol IntentSpec {
 
   var costOrValue: ([Double]) -> Double { get }
 
-  var optimizationType: FASTControllerOptimizationType  { get }
+  var optimizationType: OptimizationType  { get }
 
   var trainingSet: [String]  { get }
 
@@ -40,6 +40,12 @@ public protocol IntentSpec {
 
 public enum ConstraintType : String {
   case lessOrEqualTo = "<=", equalTo = "==", greaterOrEqualTo = ">="
+}
+
+
+public enum OptimizationType {
+    case minimize
+    case maximize
 }
 
 extension IntentSpec {

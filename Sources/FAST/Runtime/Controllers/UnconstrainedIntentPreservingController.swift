@@ -1,5 +1,6 @@
 import Foundation
 import LoggerAPI
+import enum UnconstrainedOptimizer.OptimizationType
 import UnconstrainedOptimizer
 
 class UnconstrainedIntentPreservingController : Controller {
@@ -12,12 +13,12 @@ class UnconstrainedIntentPreservingController : Controller {
           _ intent: IntentSpec,
           _ window: UInt32) {
         assert(intent.constraints.count == 0, "Unconstrained controller only works when there is no constraints.")
-		let optimizationType: OptimizationType
+		let optimizationType: UnconstrainedOptimizer.OptimizationType
         switch intent.optimizationType {
         case .minimize:
-            optimizationType = .minimize
+            optimizationType = UnconstrainedOptimizer.OptimizationType.minimize
         case .maximize:
-            optimizationType = .maximize
+            optimizationType = UnconstrainedOptimizer.OptimizationType.maximize
         }
         self.model = model
         self.window = window
