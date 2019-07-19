@@ -330,6 +330,39 @@ func getKnobRange(knobName: String) -> [Any] {
     return runtime.measure(name, value)
 }
 
+extension Knob where T: Equatable {
+    
+    /** 
+     * Returns, for each optimization scope, the set of values that the 
+     * controller is allowed to choose from, based on the currently active 
+     * model filters, that is, on:
+     * 
+     *   - The current intent, whose knob ranges may be subsets of those
+     *     of the intent that was used to generate the original model used
+     *     to start the application. This can be a result of the actual knob
+     *     ranges being smaller, of tighter knob constraints, or of both.
+     *     
+     *   - The currently active knob restrictions, resulting from calls to
+     *     the Knob.restrict() method.
+     */
+    public func range() -> [ String : [T] ] {
+        guard let r = runtime else {
+            FAST.fatalError("Attempt to get the range of knob \(self.name) before the runtime was initialized.")
+        } 
+        return Dictionary(
+            r.models.map{ 
+                modelForOptimizationScope in 
+                let (optimizationScope, (activeModel,_)) = modelForOptimizationScope
+                return (
+                    optimizationScope, 
+                    activeModel.range(ofKnob: self.name)
+                )
+            }
+        )
+    }
+
+}
+
 class LogOutputStream: TextOutputStream {
     let inMemory: Bool
     let stream: FileHandle

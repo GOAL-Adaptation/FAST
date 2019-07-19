@@ -160,4 +160,22 @@ open class Model {
         }.joined(separator: "\n")
     }
 
+    func range<T: Equatable>(ofKnob knobName: String) -> [T] {
+        let rangeWithPossibleDuplicates: [T] = self.configurations.map { 
+            configuration in 
+            guard let knobValue = configuration.knobSettings.settings[knobName] else {
+                FAST.fatalError("Configuration '\(configuration)' does not contain a value for knob '\(knobName)'. Can not compute knob range.")
+            }
+            guard let knobValueAsT = knobValue as? T else {
+                FAST.fatalError("Knob value '\(knobValue)' for knob '\(knobName)' in configuration '\(configuration)' could not be cast to the expected type '\(T.self)'.")
+            }
+            return knobValueAsT
+        }
+        let range = rangeWithPossibleDuplicates.reduce([], {
+            range, knobValue in
+            return range.contains(knobValue) ? range : range + [knobValue]
+        })
+        return range
+    }
+
 }
