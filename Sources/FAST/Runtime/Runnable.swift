@@ -347,15 +347,19 @@ extension Knob where T: Equatable {
      */
     public func range() -> [ String : [T] ] {
         guard let r = runtime else {
-            FAST.fatalError("Attempt to get the range of knob \(self.name) before the runtime was initialized.")
+            FAST.fatalError("Attempt to get the range of knob '\(self.name)' before the runtime was initialized.")
         } 
         return Dictionary(
             r.models.map{ 
                 modelForOptimizationScope in 
-                let (optimizationScope, (activeModel,_)) = modelForOptimizationScope
+                let (optimizationScope, (_,unTrimmedModel)) = modelForOptimizationScope
+                guard let activeIntent = r.intents[optimizationScope] else {
+                    FAST.fatalError("Attempt to get the active intent for unkonwn optimization scope '\(optimizationScope)'.")
+                }
+                let trimmedModel = r.trimModelToFilters(unTrimmedModel, activeIntent)
                 return (
                     optimizationScope, 
-                    activeModel.range(ofKnob: self.name)
+                    trimmedModel.range(ofKnob: self.name)
                 )
             }
         )
