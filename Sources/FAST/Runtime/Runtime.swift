@@ -236,7 +236,7 @@ public class Runtime {
             Log.debug("Perturbation changed scenario in a way that produced valid knob ranges. Reinitializing controller and invalidating current schedule.")
             // Reinitialize the controller with the new intent
             self.perturbationOccurred = true
-            self.registerIntentAndModel(for: perturbation.missionIntent, unTrimmedModelBeforePerturbation)
+            self.setIntent(perturbation.missionIntent)
         }
         else {
             Log.verbose("Perturbation did not change the scenario, or did so in a way that did not produce valid knob ranges. Did not invalidate current schedule.")
@@ -250,10 +250,10 @@ public class Runtime {
             getCurrentIntentAndUntrimmedModel(forOptimizationScope: newIntent.name) 
 
         if !intentBeforePerturbation.isEqual(to: newIntent) {
-            Log.debug("Intent changed in a way that produced valid knob ranges. Reinitializing controller and invalidating current schedule.")
-            // Reinitialize the controller with the new intent
+            Log.debug("Intent changed in a way that produced valid knob ranges. This will reinitialize the controller at the next iteration.")
+            // Cause the controller to be reinitialized with the new intent
             self.perturbationOccurred = true
-            self.registerIntentAndModel(for: newIntent, unTrimmedModelBeforePerturbation)
+            self.setIntent(newIntent)
         }
         else {
             Log.verbose("Intent did not change, or did so in a way that did not produce valid knob ranges. Did not invalidate current schedule.")
