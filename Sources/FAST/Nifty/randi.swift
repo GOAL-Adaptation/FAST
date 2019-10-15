@@ -52,7 +52,7 @@ internal class UniformRandomGenerator
         self.v ^= self.v >> 17
         self.v ^= self.v << 31
         self.v ^= self.v >> 8
-        let w_temp = UInt64(4294957665).multipliedReportingOverflow(by: self.w & 0xffffffff).0
+        let w_temp = (4294957665 as UInt64).multipliedReportingOverflow(by: self.w & 0xffffffff).0
         self.w = w_temp.addingReportingOverflow(self.w >> 32).0
         var x: UInt64 = self.u ^ (self.u << 21)
         x ^= x >> 35
