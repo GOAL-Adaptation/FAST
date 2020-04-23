@@ -19,7 +19,7 @@ let package = Package(
     .package(url: "https://github.com/nicklockwood/Expression", .exact("0.12.11")),
     .package(url: "git@github.com:ahsanp/swift-ast.git", .exact("0.2.0")),
     .package(url: "git@github.com:ahsanp/UnconstrainedOptimizer.git", .exact("0.0.3")),
-    .package(url: "git@github.com:proteus/MulticonstrainedOptimizer.git", .exact("0.0.15")),
+    .package(url: "git@github.com:ahsanp/MulticonstrainedOptimizer.git", .exact("0.0.15")),
   ],
   targets: [
     .target(name: "FAST", dependencies: [
